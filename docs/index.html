@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OmniHub — fan and power control for Windows laptops</title>
+<meta name="description" content="A replacement for Omen Gaming Hub. Fan curve control with a safety floor, GPU power and mode, and AMD CPU tuning — reading the hardware back rather than assuming the write landed.">
+<link rel="icon" href="favicon.ico">
+<meta property="og:title" content="OmniHub">
+<meta property="og:description" content="Fan curve control with a safety floor, GPU power and mode, and AMD CPU tuning for Windows laptops.">
+<meta property="og:type" content="website">
+<style>
+/* Palette lifted from the app's own Midnight theme (OmniHub.App/Wpf/Palettes/Midnight.xaml)
+   so the site and the thing it ships look like the same project. */
+:root{
+  --bg:#0b0e17; --panel:#131829; --panel-alt:#1a2033; --panel-hover:#232b42;
+  --border:#262e45; --border-strong:#3a4460;
+  --text:#e8eaf2; --muted:#8a93ad; --faint:#59627c;
+  --accent:#8b7cf6; --good:#48d18b; --warn:#ebb552; --danger:#f4685a; --gpu:#60a5fa;
+  --radius:10px;
+  --mono:"Cascadia Mono",Consolas,"SF Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font:16px/1.6 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+a{color:var(--accent)}
+.wrap{max-width:940px;margin:0 auto;padding:0 24px}
+code,kbd{font-family:var(--mono);font-size:.9em}
+
+/* ---- top bar ---- */
+header{border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(11,14,23,.9);backdrop-filter:blur(8px);z-index:5}
+header .wrap{display:flex;align-items:center;gap:16px;height:60px}
+.brand{font-weight:600;letter-spacing:.02em;font-size:1.05rem;text-decoration:none;color:var(--text)}
+.brand span{color:var(--accent)}
+header nav{margin-left:auto;display:flex;gap:20px;font-size:.9rem}
+header nav a{color:var(--muted);text-decoration:none}
+header nav a:hover{color:var(--text)}
+
+/* ---- hero ---- */
+.hero{padding:76px 0 56px;text-align:center;border-bottom:1px solid var(--border)}
+.hero h1{font-size:clamp(2.3rem,6vw,3.4rem);margin:0 0 14px;letter-spacing:-.02em;line-height:1.1}
+.tagline{font-size:clamp(1rem,2.4vw,1.2rem);color:var(--muted);max-width:620px;margin:0 auto 34px}
+.cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:center}
+.btn{
+  display:inline-block;padding:13px 26px;border-radius:var(--radius);
+  font-weight:600;font-size:1rem;text-decoration:none;border:1px solid transparent;
+  transition:background .15s ease,border-color .15s ease,transform .1s ease;
+}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--accent);color:#0b0e17;border-color:var(--accent)}
+.btn-primary:hover{background:#9d90f8}
+.btn-ghost{background:transparent;color:var(--text);border-color:var(--border-strong)}
+.btn-ghost:hover{background:var(--panel-hover)}
+.meta{margin-top:18px;font-size:.85rem;color:var(--faint);font-family:var(--mono)}
+
+/* ---- sections ---- */
+section{padding:56px 0;border-bottom:1px solid var(--border)}
+section h2{font-size:1.55rem;margin:0 0 8px;letter-spacing:-.01em}
+section h2 + .lede{color:var(--muted);margin:0 0 28px;max-width:660px}
+h3{font-size:1.02rem;margin:26px 0 6px}
+
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px}
+.card + .card{margin-top:14px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.card h3{margin:0 0 6px;font-size:1rem}
+.card p{margin:0;color:var(--muted);font-size:.93rem}
+
+/* ---- compatibility table ---- */
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.93rem}
+th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--panel-alt);font-weight:600;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:none}
+td:last-child{color:var(--muted);white-space:nowrap}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:9px;vertical-align:middle}
+.dot-any{background:var(--good)} .dot-some{background:var(--warn)} .dot-hp{background:var(--gpu)}
+
+/* ---- callouts ---- */
+.note{border-left:3px solid var(--border-strong);background:var(--panel);padding:16px 20px;border-radius:0 var(--radius) var(--radius) 0;margin:18px 0;font-size:.94rem;color:var(--muted)}
+.note strong{color:var(--text)}
+.note-warn{border-left-color:var(--warn)}
+.note-danger{border-left-color:var(--danger)}
+
+pre{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:15px 18px;overflow-x:auto;font-family:var(--mono);font-size:.87rem;margin:12px 0;color:var(--text)}
+.hash{word-break:break-all;font-family:var(--mono);font-size:.78rem;color:var(--faint)}
+
+ol.steps{padding-left:20px;margin:0} ol.steps li{margin:0 0 18px}
+ol.steps li:last-child{margin-bottom:0}
+ul.plain{padding-left:20px;color:var(--muted);font-size:.94rem} ul.plain li{margin:7px 0}
+.small{color:var(--muted);font-size:.94rem}
+
+footer{padding:40px 0 56px;color:var(--faint);font-size:.87rem}
+footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+  <a class="brand" href="#">Omni<span>Hub</span></a>
+  <nav>
+    <a href="#compat">Compatibility</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com/Vomitted/OmniHub">GitHub</a>
+  </nav>
+</div></header>
+
+<div class="hero"><div class="wrap">
+  <h1>Your fan stops while the laptop is still hot.</h1>
+  <p class="tagline">
+    OmniHub is a replacement for Omen Gaming Hub that fixes it — fan curve control with a
+    safety floor, GPU power and mode, and AMD CPU tuning, through the same BIOS interface
+    the vendor's own app uses.
+  </p>
+  <div class="cta" id="cta">
+    <!-- Default state is build-from-source, because that is what is true until a release
+         with an attached binary exists. The script at the bottom upgrades this to a real
+         download only if the GitHub API confirms the asset is actually there. A button
+         that 404s would be worse than no button. -->
+    <a class="btn btn-primary" href="#install">Build it from source</a>
+    <a class="btn btn-ghost" href="https://github.com/Vomitted/OmniHub">View on GitHub</a>
+  </div>
+  <p class="meta" id="meta">Windows 10 / 11 · x64 · runs as Administrator</p>
+</div></div>
+
+<section><div class="wrap">
+  <h2>The bug it exists to fix</h2>
+  <p class="lede">
+    On some HP Omen and Victus laptops the Default/Balanced BIOS fan table contains a 0%
+    idle entry that can be reached while the machine is still genuinely hot. The fan stops.
+    The laptop keeps heating.
+  </p>
+  <div class="card">
+    <h3>Auto (Curve) mode adds a floor</h3>
+    <p>
+      Past a temperature you choose, the fan is never allowed to command 0% again — no matter
+      what the stock table asks for. That single rule is the reason the rest of this exists.
+    </p>
+  </div>
+  <div class="note note-warn">
+    <strong>The fix only holds while OmniHub is running.</strong> Closed, crashed, or not yet
+    launched after a reboot, the laptop is back on the stock BIOS curve — including the
+    behaviour above. Turn on <em>Launch when you sign in</em> in Settings so the protection is
+    the default rather than something you have to remember.
+  </div>
+</div></section>
+
+<section id="compat"><div class="wrap">
+  <h2>What will actually work on your laptop</h2>
+  <p class="lede">
+    OmniHub starts and runs on any Windows laptop. How much of it is <em>usable</em> depends on
+    your hardware. Controls your machine cannot drive are disabled and named, not left sitting
+    there pretending.
+  </p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Feature</th><th>Needs</th></tr></thead>
+    <tbody>
+      <tr><td><span class="dot dot-any"></span>Temperature, load, clocks, memory, battery health</td><td>Any laptop</td></tr>
+      <tr><td><span class="dot dot-any"></span>Power plans, scheduling, MMCSS, timer resolution, process priority</td><td>Any laptop</td></tr>
+      <tr><td><span class="dot dot-some"></span>Discrete GPU telemetry</td><td>NVIDIA GPU</td></tr>
+      <tr><td><span class="dot dot-some"></span>CPU power limits, thermal limit, curve optimizer</td><td>AMD Ryzen + PawnIO</td></tr>
+      <tr><td><span class="dot dot-hp"></span>Fan curve control, GPU TGP unlock, BIOS power limits</td><td>HP (<code>hpqBIntM</code>)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note">
+    <strong>Lenovo, Dell and ASUS are not supported.</strong> Each exposes a completely
+    different ACPI/WMI interface and there is no cross-vendor standard. The vendor layer is
+    isolated behind one availability check so another backend can slot in — but none ships
+    unverified, because untested code that writes to unknown ACPI methods on someone else's
+    laptop should not exist.
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>It does not make numbers up</h2>
+  <p class="lede">
+    The rule the whole project is built on. No invented fan RPM, no "AI" workload
+    classification, no plausible-looking figure standing in for a reading the hardware could
+    not give. If a value is unavailable, the interface says so.
+  </p>
+  <div class="grid">
+    <div class="card">
+      <h3>Every write is read back</h3>
+      <p>Applying a limit re-reads the hardware. The Tuning tab distinguishes a limit the firmware <em>accepted</em> from one it actually <em>enforces</em> — some SMUs return success for limits the vendor firmware then arbitrates away.</p>
+    </div>
+    <div class="card">
+      <h3>No telemetry, no network</h3>
+      <p>Settings are plain JSON in <code>%AppData%\OmniHub</code>. Nothing is sent anywhere. The only network call is the one you ask for when installing the PawnIO driver.</p>
+    </div>
+    <div class="card">
+      <h3>Real fan units</h3>
+      <p>The level sent to the BIOS is a speed target in units of ~100 RPM, not a 0–255 duty cycle. This interface exposes no true tachometer reading, and nothing here invents one.</p>
+    </div>
+  </div>
+</div></section>
+
+<section id="install"><div class="wrap">
+  <h2>Installing</h2>
+
+  <div class="note note-danger">
+    <strong>Windows will warn you about this download.</strong> The build is not code-signed —
+    a signing certificate costs money this project does not have — so SmartScreen shows
+    "Windows protected your PC". That warning is doing its job: it means Microsoft has not seen
+    this file vouched for, not that the file has been inspected and cleared. If you would
+    rather not take that on faith, build from source below. It is the same code and takes about
+    five minutes.
+  </div>
+
+  <h3>Verify what you downloaded</h3>
+  <p class="small" style="margin:0 0 6px">SHA-256 of <code>OmniHub-v1.0.0-win-x64.zip</code>:</p>
+  <p class="hash">6cb78c59339af91e18eb57ad8c990e625ad2d1f3c25bf88ae30b17dd525bdca6</p>
+  <pre>Get-FileHash .\OmniHub-v1.0.0-win-x64.zip -Algorithm SHA256</pre>
+
+  <h3>Then</h3>
+  <ol class="steps">
+    <li>Extract the zip somewhere permanent — the app runs from where you put it.</li>
+    <li>Run <code>OmniHub.exe</code> and accept the UAC prompt. <strong>Elevation is not
+      optional:</strong> fan and BIOS control go through an elevated WMI session, and the SMU
+      driver refuses unelevated callers.</li>
+    <li>Open <strong>Settings</strong> and turn on <em>Launch when you sign in</em>.</li>
+    <li>On AMD Ryzen, the dashboard offers <strong>Install the PawnIO driver</strong> if it is
+      missing — needed only for the Tuning tab. Or <code>winget install namazso.PawnIO</code>.
+      No restart; OmniHub retries every ten seconds and tuning comes online on its own.</li>
+  </ol>
+
+  <h3>Building it yourself</h3>
+  <pre>winget install Microsoft.DotNet.SDK.10
+git clone https://github.com/Vomitted/OmniHub.git
+cd OmniHub
+dotnet build OmniHub.slnx -c Release</pre>
+  <p class="small">
+    Install the <strong>current</strong> SDK, not the 8.0 one — the solution uses the newer
+    <code>.slnx</code> format that the .NET 8 SDK cannot parse. It still builds the
+    <code>net8.0</code> target fine. The app lands at
+    <code>OmniHub.App\bin\Release\net8.0-windows\OmniHub.exe</code>.
+  </p>
+
+  <h3>On a laptop model nobody has checked</h3>
+  <p class="small">
+    Before trusting curve control, run <code>OmniHub.exe -Probe</code> from an elevated
+    terminal. It dumps the raw fan count, type, level, table, temperature, throttling state and
+    GPU mode exactly as the BIOS reports them, with nothing interpreted on top — the ground
+    truth for confirming the command layout matches before you rely on it.
+  </p>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Known limitations</h2>
+  <ul class="plain">
+    <li>Per-model curve tuning is manual. There is no bundled database of per-model presets.</li>
+    <li>The usable raw fan range (~20–55) is a well-sourced community bound for this HP EC
+      family, not something measured on your unit. The Fans tab has a manual calibration tool
+      that steps through levels so you can find yours.</li>
+    <li><code>PawnIoAccess.cs</code> is an intentional stub — CPU-package temperature via MSR
+      read needs the PawnIO SDK wired against your installed version.</li>
+    <li>Throttling detection is not independently verified against known-good hardware.</li>
+  </ul>
+</div></section>
+
+<footer><div class="wrap">
+  <p>
+    <a href="https://github.com/Vomitted/OmniHub">Source</a> ·
+    <a href="https://github.com/Vomitted/OmniHub/blob/main/README.md">README</a> ·
+    <a href="https://github.com/namazso/PawnIO.Modules">PawnIO modules</a> (LGPL-2.1-or-later)
+  </p>
+  <p>
+    Not affiliated with HP, AMD or NVIDIA. Changing fan, power or thermal behaviour on your own
+    hardware carries its own risk — the safety floor reduces one specific failure mode, it does
+    not make the machine unmeltable.
+  </p>
+</div></footer>
+
+<script>
+// Swap the hero over to a real download, but only once GitHub confirms the asset exists.
+// Pinned to the v1.0.0 tag on purpose: /releases/latest on this repo resolves to v9.0.0,
+// which is OmniControl Suite -- a different application that happens to share the repo.
+(function () {
+  var TAG = 'v1.0.0';
+  fetch('https://api.github.com/repos/Vomitted/OmniHub/releases/tags/' + TAG)
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (rel) {
+      if (!rel || !rel.assets) return;
+      var asset = rel.assets.filter(function (a) { return /\.zip$/i.test(a.name); })[0];
+      if (!asset) return;
+
+      var mb = (asset.size / 1048576).toFixed(0);
+      document.getElementById('cta').innerHTML =
+        '<a class="btn btn-primary" href="' + asset.browser_download_url + '">Download for Windows</a>' +
+        '<a class="btn btn-ghost" href="#install">Build from source instead</a>';
+      document.getElementById('meta').textContent =
+        TAG + ' · ' + mb + ' MB · Windows 10 / 11 · x64 · runs as Administrator';
+    })
+    .catch(function () { /* offline, rate-limited, or no release yet: leave the honest default */ });
+})();
+</script>
+</body>
+</html>

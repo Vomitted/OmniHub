@@ -47,8 +47,15 @@ unknown ACPI methods on someone's laptop should not exist.
 
 ## Installing
 
-There is no prebuilt download yet, so installing means building it once. It
-takes about five minutes and you only do it once per machine.
+Download page: **https://vomitted.github.io/OmniHub/**
+
+When a release is published it carries a self-contained zip that needs no .NET
+runtime, listed there with a SHA-256 to check it against. The build is not
+code-signed, so SmartScreen will warn about it — that warning means Microsoft
+has not seen the file vouched for, not that it has been cleared.
+
+Building it yourself avoids that question entirely. It takes about five minutes
+and you only do it once per machine.
 
 **Before you start:** Windows 10 or 11, and about 1 GB free for the .NET SDK.
 OmniHub runs on any laptop; how much of it is *usable* depends on your

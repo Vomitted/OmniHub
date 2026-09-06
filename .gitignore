@@ -6,3 +6,9 @@ obj/
 # Local agent/tool configuration. Machine-specific, not part of the app.
 .claude/
 .claude-flow/
+
+# Packaged release output (uploaded to GitHub Releases, not committed).
+dist/
+
+# Packaged release output (uploaded to GitHub Releases, not committed).
+dist/
