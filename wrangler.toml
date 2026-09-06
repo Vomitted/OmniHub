@@ -1,0 +1,15 @@
+# Cloudflare Pages configuration.
+#
+# There is no build step: docs/ is hand-written static HTML with no dependencies, so Pages
+# uploads it as-is. That is also the directory GitHub Pages serves from this repository, so one
+# source backs both hosts and neither can drift from the other.
+#
+# Deploy with:
+#     npx wrangler pages deploy
+#
+# The first run opens a browser to authorise a Cloudflare account. That step cannot be done on
+# your behalf, and is deliberately not scripted here.
+
+name = "omnihub"
+pages_build_output_dir = "docs"
+compatibility_date = "2026-09-07"

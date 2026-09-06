@@ -1,30 +1,52 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Management;
 
 namespace OmniHub.Core.Hardware;
 
-/// <summary>One sample of discrete-GPU state. Fields the driver will not report come back null.</summary>
+/// <summary>Where a GPU reading came from. Shown in the UI, because the two sources differ.</summary>
+public enum GpuSource
+{
+    /// <summary>nvidia-smi: name, temperature, power, clock and utilisation.</summary>
+    NvidiaSmi,
+
+    /// <summary>Windows itself: name and utilisation only. Temperature is not exposed.</summary>
+    WindowsCounters,
+}
+
+/// <summary>One sample of GPU state. Fields the source will not report come back null.</summary>
 public sealed record GpuReading(
     string Name,
     double? TempC,
     double? PowerWatts,
     int? ClockMhz,
-    int? UtilisationPercent);
+    int? UtilisationPercent,
+    string Vendor = "",
+    GpuSource Source = GpuSource.NvidiaSmi);
 
 /// <summary>
-/// Discrete GPU telemetry, read through nvidia-smi.
+/// GPU telemetry, from nvidia-smi where it exists and from Windows itself everywhere else.
 ///
-/// The obvious alternative is NVAPI, and it is the "proper" answer -- but it means shipping
-/// P/Invoke against an unversioned vendor DLL whose entry points are looked up by numeric
-/// hash, for numbers nvidia-smi already prints. nvidia-smi installs with every NVIDIA driver,
-/// lives in System32, and needs no privileges. For a readout refreshed every few seconds it is
-/// the same data at a fraction of the surface area.
+/// nvidia-smi is the richer source and stays the preferred one: it reports temperature, power
+/// and clock, which nothing in Windows exposes generically. The obvious alternative is NVAPI,
+/// and it is the "proper" answer -- but it means shipping P/Invoke against an unversioned vendor
+/// DLL whose entry points are looked up by numeric hash, for numbers nvidia-smi already prints.
+/// nvidia-smi installs with every NVIDIA driver, lives in System32, and needs no privileges.
 ///
-/// The cost that matters is process startup, measured at about 56 ms on this machine, so
-/// results are cached and a caller cannot accidentally spawn one per frame.
+/// The fallback exists because the NVIDIA-only version reported *nothing at all* on an AMD or
+/// Intel machine -- no name, no load, no panel. Windows can answer two of those questions on any
+/// adapter: Win32_VideoController names it, and the GPU engine performance counters give
+/// utilisation. It cannot answer the third. Temperature, power and clock stay null there rather
+/// than being estimated, so the UI says "unavailable" instead of showing a number the machine
+/// never reported.
 ///
-/// ponytail: process spawn per refresh. Move to NVAPI only if something needs this faster than
-/// once a second, which a temperature readout does not.
+/// The cost that matters for nvidia-smi is process startup, measured at about 56 ms on this
+/// machine; the cost for the fallback is a WMI query. Both are cached behind the same 3 s window
+/// so a caller cannot accidentally spawn one per frame.
+///
+/// ponytail: process spawn per refresh on the NVIDIA path, WMI query on the other. Move to NVAPI
+/// or a perf-counter handle only if something needs this faster than once a second, which a
+/// temperature readout does not.
 /// </summary>
 public static class GpuTelemetry
 {
@@ -36,15 +58,34 @@ public static class GpuTelemetry
     private static GpuReading? _cached;
     private static DateTime _cachedAtUtc = DateTime.MinValue;
 
-    /// <summary>True when an NVIDIA driver is installed and its query tool is present.</summary>
-    public static bool IsAvailable => File.Exists(ExePath);
+    private static bool HasNvidiaSmi => File.Exists(ExePath);
 
     /// <summary>
-    /// Latest GPU reading, or null when there is no NVIDIA GPU or the query failed.
+    /// Whether any GPU can be described at all.
     ///
-    /// Null is a normal answer, not an error: a machine on integrated graphics has no discrete
-    /// GPU to report, and the caller should say "unavailable" rather than show a zero that
-    /// looks like a stone-cold card.
+    /// Cached for the process lifetime: it is called from the UI thread to decide whether to
+    /// build a readout, and a WMI round trip per call would be felt. Adapters do not appear and
+    /// disappear during a session in a way this readout needs to track.
+    /// </summary>
+    private static readonly Lazy<bool> AnyAdapter = new(
+        () => Adapters().Count > 0, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+
+    /// <summary>True when some GPU can be reported -- via nvidia-smi, or via Windows.</summary>
+    public static bool IsAvailable => HasNvidiaSmi || AnyAdapter.Value;
+
+    /// <summary>
+    /// True when a source exists that can report GPU temperature and power, not merely name and
+    /// load. Only the NVIDIA path can. A file-existence check, so it is cheap enough to call
+    /// from the UI thread while building the readiness panel.
+    /// </summary>
+    public static bool HasThermalSource => HasNvidiaSmi;
+
+    /// <summary>
+    /// Latest GPU reading, or null when no GPU could be described at all.
+    ///
+    /// Null is a normal answer, not an error, and so is a reading whose temperature is null: a
+    /// machine whose driver exposes no thermal sensor has no temperature to report, and the
+    /// caller should say "unavailable" rather than show a zero that looks like a stone-cold card.
     /// </summary>
     public static GpuReading? Read()
     {
@@ -57,10 +98,13 @@ public static class GpuTelemetry
         }
     }
 
-    private static GpuReading? Query()
-    {
-        if (!IsAvailable) return null;
+    // Falls through to the Windows path when nvidia-smi is present but fails -- a driver that
+    // is installed but wedged should still leave the name and load readable.
+    private static GpuReading? Query() =>
+        (HasNvidiaSmi ? QueryNvidiaSmi() : null) ?? QueryWindows();
 
+    private static GpuReading? QueryNvidiaSmi()
+    {
         try
         {
             var psi = new ProcessStartInfo(ExePath)
@@ -107,7 +151,115 @@ public static class GpuTelemetry
                 Number(parts[1]),
                 Number(parts[2]),
                 (int?)Number(parts[3]),
-                (int?)Number(parts[4]));
+                (int?)Number(parts[4]),
+                "NVIDIA",
+                GpuSource.NvidiaSmi);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Name and utilisation from Windows, for any adapter from any vendor.
+    ///
+    /// Temperature, power and clock are deliberately null: Windows exposes no generic thermal
+    /// or power counter for a GPU, and there is no honest way to derive one from what it does
+    /// expose. AdapterRAM is skipped for a related reason -- it is a uint32 that saturates at
+    /// 4 GB, so on an 8 GB card it reports a number that is simply wrong.
+    /// </summary>
+    private static GpuReading? QueryWindows()
+    {
+        try
+        {
+            var adapters = Adapters();
+            if (adapters.Count == 0) return null;
+
+            var (name, vendor) = PickAdapter(adapters);
+            return new GpuReading(name, null, null, null, Utilisation(), vendor, GpuSource.WindowsCounters);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static List<(string Name, string Vendor)> Adapters()
+    {
+        var found = new List<(string, string)>();
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                "SELECT Name, AdapterCompatibility FROM Win32_VideoController");
+            foreach (var mo in searcher.Get().Cast<ManagementObject>())
+            {
+                using (mo)
+                {
+                    string name = mo["Name"]?.ToString()?.Trim() ?? "";
+                    if (name.Length > 0)
+                        found.Add((name, mo["AdapterCompatibility"]?.ToString()?.Trim() ?? ""));
+                }
+            }
+        }
+        catch { }
+        return found;
+    }
+
+    /// <summary>
+    /// Chooses which adapter to describe when a machine has more than one.
+    ///
+    /// Microsoft's fallback display driver is skipped: it appears when a real driver has failed
+    /// and describes nothing useful about the hardware. Beyond that this takes the first
+    /// enumerated adapter rather than guessing which is "the" GPU -- on a hybrid machine that
+    /// choice is genuinely ambiguous, and the reading carries the adapter's name so whoever
+    /// reads it can see which one answered.
+    ///
+    /// Pure and separated from WMI so it is testable without a graphics card.
+    /// </summary>
+    public static (string Name, string Vendor) PickAdapter(IReadOnlyList<(string Name, string Vendor)> adapters)
+    {
+        foreach (var a in adapters)
+            if (!a.Name.Contains("Basic Display", StringComparison.OrdinalIgnoreCase) &&
+                !a.Name.Contains("Basic Render", StringComparison.OrdinalIgnoreCase))
+                return a;
+
+        return adapters[0];
+    }
+
+    /// <summary>
+    /// Total 3D engine utilisation, summed across every process using it.
+    ///
+    /// Filtered in the query rather than in the loop: this class reports one instance per
+    /// process per engine -- 532 of them on the machine this was written on -- and pulling all
+    /// of those across the WMI boundary every few seconds to discard most of them is the kind
+    /// of cost that shows up as a stutter rather than as a number.
+    ///
+    /// Null rather than zero when the counters are missing, so "no data" and "idle" stay
+    /// distinguishable.
+    /// </summary>
+    private static int? Utilisation()
+    {
+        try
+        {
+            using var searcher = new ManagementObjectSearcher(
+                "SELECT UtilizationPercentage FROM Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine " +
+                "WHERE Name LIKE '%engtype_3D%'");
+
+            double total = 0;
+            bool any = false;
+            foreach (var mo in searcher.Get().Cast<ManagementObject>())
+            {
+                using (mo)
+                {
+                    any = true;
+                    if (mo["UtilizationPercentage"] is { } v)
+                        total += Convert.ToDouble(v, CultureInfo.InvariantCulture);
+                }
+            }
+
+            // Summing per-process counters can exceed 100 across overlapping engines.
+            return any ? (int)Math.Clamp(Math.Round(total), 0, 100) : null;
         }
         catch
         {

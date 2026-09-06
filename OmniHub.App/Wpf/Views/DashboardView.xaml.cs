@@ -328,8 +328,15 @@ public partial class DashboardView : UserControl
         if (_ctx.Smu is null)
             missing.Add(("Processor tuning and die temperature", _ctx.SmuUnavailableReason ?? "The SMU could not be opened."));
 
+        // Two different degrees of unavailable, and conflating them was misleading on every
+        // non-NVIDIA machine: those get a name and a load figure, they just get no thermal
+        // sensor, because Windows exposes none generically for a GPU.
         if (!GpuTelemetry.IsAvailable)
-            missing.Add(("Discrete GPU telemetry", "nvidia-smi was not found, so there is either no NVIDIA GPU or no driver installed."));
+            missing.Add(("GPU telemetry", "No display adapter could be read."));
+        else if (!GpuTelemetry.HasThermalSource)
+            missing.Add(("GPU temperature and power",
+                "Windows reports GPU name and load for any adapter but exposes no thermal or power sensor. "
+                + "Those readings need nvidia-smi, which installs with an NVIDIA driver."));
 
         if (missing.Count == 0) return;
 
@@ -596,7 +603,7 @@ public partial class DashboardView : UserControl
                 Animate.Clear(GpuTempText);
                 GpuTempUnit.Visibility = Visibility.Collapsed;
                 SetBar(GpuBar, 0);
-                GpuFootRight.Text = GpuTelemetry.IsAvailable ? "UNAVAILABLE" : "NO DISCRETE GPU";
+                GpuFootRight.Text = GpuTelemetry.IsAvailable ? "UNAVAILABLE" : "NO GPU REPORTED";
             }
 
             TrendChart.Push(tempC);

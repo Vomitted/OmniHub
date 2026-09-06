@@ -126,7 +126,7 @@ public partial class TuningView : UserControl, IDisposable
         _liveCoreTemp = AddReadout("Core (SMU)");
         _liveSocTemp = AddReadout("SoC / graphics");
         _liveTemp = AddReadout("Die temperature");
-        if (GpuTelemetry.IsAvailable) _liveGpu = AddReadout("Discrete GPU");
+        if (GpuTelemetry.IsAvailable) _liveGpu = AddReadout("GPU");
 
         TextBlock AddReadout(string label)
         {
