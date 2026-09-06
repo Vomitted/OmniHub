@@ -7,7 +7,7 @@
 <meta name="description" content="A replacement for Omen Gaming Hub. Fan curve control with a safety floor, GPU power and mode, and AMD CPU tuning — reading the hardware back rather than assuming the write landed.">
 <link rel="icon" href="favicon.ico">
 <meta property="og:title" content="OmniHub">
-<meta property="og:description" content="Fan curve control with a safety floor, GPU power and mode, and AMD CPU tuning for Windows laptops.">
+<meta property="og:description" content="Your fan stops while the laptop is still hot. OmniHub fixes it.">
 <meta property="og:type" content="website">
 <style>
 /* Palette lifted from the app's own Midnight theme (OmniHub.App/Wpf/Palettes/Midnight.xaml)
@@ -16,129 +16,348 @@
   --bg:#0b0e17; --panel:#131829; --panel-alt:#1a2033; --panel-hover:#232b42;
   --border:#262e45; --border-strong:#3a4460;
   --text:#e8eaf2; --muted:#8a93ad; --faint:#59627c;
-  --accent:#8b7cf6; --good:#48d18b; --warn:#ebb552; --danger:#f4685a; --gpu:#60a5fa;
-  --radius:10px;
+  --accent:#8b7cf6; --accent-2:#60a5fa;
+  --good:#48d18b; --warn:#ebb552; --danger:#f4685a;
+  --radius:12px;
   --mono:"Cascadia Mono",Consolas,"SF Mono",ui-monospace,monospace;
+  --ease:cubic-bezier(.22,.61,.36,1);
 }
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 body{
-  margin:0; background:var(--bg); color:var(--text);
-  font:16px/1.6 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+  margin:0;background:var(--bg);color:var(--text);overflow-x:hidden;
+  font:16px/1.65 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
 }
 a{color:var(--accent)}
-.wrap{max-width:940px;margin:0 auto;padding:0 24px}
+.wrap{max-width:1000px;margin:0 auto;padding:0 24px;position:relative}
 code,kbd{font-family:var(--mono);font-size:.9em}
 
-/* ---- top bar ---- */
-header{border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(11,14,23,.9);backdrop-filter:blur(8px);z-index:5}
-header .wrap{display:flex;align-items:center;gap:16px;height:60px}
-.brand{font-weight:600;letter-spacing:.02em;font-size:1.05rem;text-decoration:none;color:var(--text)}
-.brand span{color:var(--accent)}
-header nav{margin-left:auto;display:flex;gap:20px;font-size:.9rem}
-header nav a{color:var(--muted);text-decoration:none}
+/* ================= header ================= */
+header{
+  position:sticky;top:0;z-index:20;border-bottom:1px solid var(--border);
+  background:rgba(11,14,23,.82);backdrop-filter:blur(14px) saturate(160%);
+}
+header .wrap{display:flex;align-items:center;gap:16px;height:62px}
+.brand{
+  font-weight:600;letter-spacing:.01em;font-size:1.08rem;text-decoration:none;color:var(--text);
+  display:flex;align-items:center;gap:9px;
+}
+.brand b{
+  background:linear-gradient(100deg,var(--accent),var(--accent-2));
+  -webkit-background-clip:text;background-clip:text;color:transparent;font-weight:600;
+}
+.brand .mark{
+  width:9px;height:9px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 4px rgba(139,124,246,.16),0 0 14px 2px rgba(139,124,246,.55);
+  animation:pulse 2.6s var(--ease) infinite;
+}
+@keyframes pulse{
+  0%,100%{box-shadow:0 0 0 4px rgba(139,124,246,.16),0 0 14px 2px rgba(139,124,246,.5)}
+  50%    {box-shadow:0 0 0 7px rgba(139,124,246,.05),0 0 20px 3px rgba(139,124,246,.8)}
+}
+header nav{margin-left:auto;display:flex;gap:22px;font-size:.9rem;align-items:center}
+header nav a{color:var(--muted);text-decoration:none;transition:color .18s var(--ease);position:relative}
 header nav a:hover{color:var(--text)}
+header nav a::after{
+  content:"";position:absolute;left:0;right:100%;bottom:-5px;height:1px;
+  background:var(--accent);transition:right .25s var(--ease);
+}
+header nav a:hover::after{right:0}
+.nav-dl{
+  color:var(--text)!important;border:1px solid var(--border-strong);
+  padding:7px 15px;border-radius:99px;font-weight:500;
+  transition:background .2s var(--ease),border-color .2s var(--ease);
+}
+.nav-dl:hover{background:var(--panel-hover);border-color:var(--accent)}
+.nav-dl::after{display:none}
+#progress{position:absolute;left:0;bottom:-1px;height:2px;width:0;
+  background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .1s linear}
+@media(max-width:640px){header nav a:not(.nav-dl){display:none}}
 
-/* ---- hero ---- */
-.hero{padding:76px 0 56px;text-align:center;border-bottom:1px solid var(--border)}
-.hero h1{font-size:clamp(2.3rem,6vw,3.4rem);margin:0 0 14px;letter-spacing:-.02em;line-height:1.1}
-.tagline{font-size:clamp(1rem,2.4vw,1.2rem);color:var(--muted);max-width:620px;margin:0 auto 34px}
+/* ================= hero ================= */
+.hero{position:relative;padding:88px 0 72px;overflow:hidden;border-bottom:1px solid var(--border)}
+.hero::before{ /* glow */
+  content:"";position:absolute;top:-340px;left:50%;transform:translateX(-50%);
+  width:1000px;height:640px;pointer-events:none;
+  background:radial-gradient(closest-side,rgba(139,124,246,.20),transparent 72%);
+}
+.hero::after{ /* grid */
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.4;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),
+                   linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:56px 56px;
+  -webkit-mask-image:radial-gradient(ellipse 75% 60% at 50% 32%,#000,transparent 75%);
+  mask-image:radial-gradient(ellipse 75% 60% at 50% 32%,#000,transparent 75%);
+}
+.hero .wrap{z-index:1}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:9px;margin:0 auto 22px;
+  padding:6px 14px 6px 9px;border:1px solid var(--border-strong);border-radius:99px;
+  background:rgba(19,24,41,.7);font-size:.79rem;color:var(--muted);
+  letter-spacing:.03em;
+}
+.eyebrow .tag{
+  background:linear-gradient(100deg,var(--accent),var(--accent-2));color:#0b0e17;
+  font-weight:700;font-size:.68rem;padding:2px 8px;border-radius:99px;letter-spacing:.05em;
+}
+.hero-inner{text-align:center;max-width:760px;margin:0 auto}
+h1{
+  font-size:clamp(2.4rem,6.2vw,4rem);margin:0 0 20px;letter-spacing:-.035em;line-height:1.04;
+  font-weight:700;
+}
+h1 .grad{
+  background:linear-gradient(105deg,#fff 10%,var(--accent) 55%,var(--accent-2) 95%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.tagline{font-size:clamp(1.02rem,2.2vw,1.18rem);color:var(--muted);max-width:610px;margin:0 auto 36px}
 .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:center}
 .btn{
-  display:inline-block;padding:13px 26px;border-radius:var(--radius);
+  display:inline-flex;align-items:center;gap:10px;padding:14px 28px;border-radius:var(--radius);
   font-weight:600;font-size:1rem;text-decoration:none;border:1px solid transparent;
-  transition:background .15s ease,border-color .15s ease,transform .1s ease;
+  transition:transform .16s var(--ease),box-shadow .22s var(--ease),background .2s var(--ease),border-color .2s var(--ease);
 }
-.btn:active{transform:translateY(1px)}
-.btn-primary{background:var(--accent);color:#0b0e17;border-color:var(--accent)}
-.btn-primary:hover{background:#9d90f8}
-.btn-ghost{background:transparent;color:var(--text);border-color:var(--border-strong)}
-.btn-ghost:hover{background:var(--panel-hover)}
-.meta{margin-top:18px;font-size:.85rem;color:var(--faint);font-family:var(--mono)}
+.btn svg{flex:none}
+.btn-primary{
+  background:linear-gradient(120deg,var(--accent),#7d6df2);color:#0b0e17;
+  box-shadow:0 8px 26px -8px rgba(139,124,246,.75),inset 0 1px 0 rgba(255,255,255,.28);
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 14px 34px -8px rgba(139,124,246,.9),inset 0 1px 0 rgba(255,255,255,.32)}
+.btn-primary:active{transform:translateY(0)}
+.btn-ghost{background:rgba(19,24,41,.6);color:var(--text);border-color:var(--border-strong)}
+.btn-ghost:hover{background:var(--panel-hover);border-color:var(--accent);transform:translateY(-2px)}
+.meta{margin-top:18px;font-size:.83rem;color:var(--faint);font-family:var(--mono);letter-spacing:.01em}
+#unpublished{
+  display:none;margin:16px auto 0;max-width:520px;font-size:.85rem;color:var(--warn);
+  border:1px solid rgba(235,181,82,.3);background:rgba(235,181,82,.07);
+  border-radius:var(--radius);padding:11px 16px;
+}
 
-/* ---- sections ---- */
-section{padding:56px 0;border-bottom:1px solid var(--border)}
-section h2{font-size:1.55rem;margin:0 0 8px;letter-spacing:-.01em}
-section h2 + .lede{color:var(--muted);margin:0 0 28px;max-width:660px}
-h3{font-size:1.02rem;margin:26px 0 6px}
+/* ================= the chart ================= */
+.compare{
+  display:grid;gap:18px;grid-template-columns:1fr 1fr;margin:56px auto 0;max-width:860px;
+}
+@media(max-width:720px){.compare{grid-template-columns:1fr}}
+.panel{
+  background:linear-gradient(180deg,rgba(26,32,51,.85),rgba(19,24,41,.85));
+  border:1px solid var(--border);border-radius:var(--radius);padding:18px 18px 12px;
+  position:relative;overflow:hidden;
+}
+.panel::before{content:"";position:absolute;inset:0 0 auto;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.14),transparent)}
+.panel.bad{border-color:rgba(244,104,90,.32)}
+.panel.good{border-color:rgba(72,209,139,.32)}
+.panel h4{
+  margin:0 0 2px;font-size:.83rem;letter-spacing:.07em;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;
+}
+.panel.bad h4{color:var(--danger)} .panel.good h4{color:var(--good)}
+.panel p{margin:0 0 12px;font-size:.85rem;color:var(--muted);min-height:2.6em}
+.panel svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:18px;justify-content:center;margin-top:20px;font-size:.78rem;color:var(--faint);flex-wrap:wrap}
+.legend i{display:inline-block;width:14px;height:2px;margin-right:7px;vertical-align:middle;border-radius:2px}
+.caption{text-align:center;font-size:.76rem;color:var(--faint);margin-top:14px;font-style:italic}
 
-.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px}
-.card + .card{margin-top:14px}
-.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
-.card h3{margin:0 0 6px;font-size:1rem}
-.card p{margin:0;color:var(--muted);font-size:.93rem}
+/* draw-in animation */
+.spark{stroke-dasharray:600;stroke-dashoffset:600;animation:draw 1.6s var(--ease) forwards}
+.spark.d2{animation-delay:.25s}
+@keyframes draw{to{stroke-dashoffset:0}}
+.fanfill{opacity:0;animation:fade .9s var(--ease) .7s forwards}
+@keyframes fade{to{opacity:1}}
+.alarm{opacity:0;animation:alarmIn .5s var(--ease) 1.9s forwards}
+@keyframes alarmIn{to{opacity:1}}
+.alarm rect{animation:blink 1.7s steps(1) 2.4s infinite}
+@keyframes blink{0%,70%{opacity:1}71%,100%{opacity:.35}}
 
-/* ---- compatibility table ---- */
-.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)}
-table{border-collapse:collapse;width:100%;min-width:520px;font-size:.93rem}
-th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--border);vertical-align:top}
-th{background:var(--panel-alt);font-weight:600;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-tr:last-child td{border-bottom:none}
-td:last-child{color:var(--muted);white-space:nowrap}
-.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:9px;vertical-align:middle}
-.dot-any{background:var(--good)} .dot-some{background:var(--warn)} .dot-hp{background:var(--gpu)}
+/* ================= sections ================= */
+section{padding:82px 0;border-bottom:1px solid var(--border);position:relative}
+.kicker{
+  font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+  margin:0 0 12px;font-weight:600;
+}
+section h2{font-size:clamp(1.6rem,3.4vw,2.1rem);margin:0 0 12px;letter-spacing:-.025em;line-height:1.15}
+.lede{color:var(--muted);margin:0 0 34px;max-width:660px;font-size:1.02rem}
+h3{font-size:1.02rem;margin:30px 0 6px}
+.small{color:var(--muted);font-size:.93rem}
+
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(255px,1fr))}
+.card{
+  background:linear-gradient(180deg,var(--panel-alt),var(--panel));
+  border:1px solid var(--border);border-radius:var(--radius);padding:24px;
+  position:relative;overflow:hidden;
+  transition:transform .24s var(--ease),border-color .24s var(--ease),box-shadow .24s var(--ease);
+}
+.card::before{content:"";position:absolute;inset:0 0 auto;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.13),transparent)}
+.card:hover{transform:translateY(-4px);border-color:var(--border-strong);
+  box-shadow:0 18px 40px -20px rgba(0,0,0,.9)}
+.card .ico{
+  width:36px;height:36px;border-radius:9px;display:grid;place-items:center;margin-bottom:14px;
+  background:rgba(139,124,246,.13);border:1px solid rgba(139,124,246,.28);
+}
+.card h3{margin:0 0 7px;font-size:1rem}
+.card p{margin:0;color:var(--muted);font-size:.92rem}
+
+/* ---- compatibility ---- */
+.compat{display:grid;gap:12px}
+.row{
+  display:flex;align-items:center;gap:16px;padding:16px 20px;
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  transition:border-color .2s var(--ease),background .2s var(--ease);
+}
+.row:hover{border-color:var(--border-strong);background:var(--panel-alt)}
+.row .what{flex:1;font-size:.95rem}
+.pill{
+  font-size:.74rem;letter-spacing:.05em;text-transform:uppercase;font-weight:600;
+  padding:5px 12px;border-radius:99px;white-space:nowrap;
+}
+.pill-any{background:rgba(72,209,139,.13);color:var(--good);border:1px solid rgba(72,209,139,.3)}
+.pill-some{background:rgba(235,181,82,.12);color:var(--warn);border:1px solid rgba(235,181,82,.3)}
+.pill-hp{background:rgba(96,165,250,.12);color:var(--accent-2);border:1px solid rgba(96,165,250,.3)}
 
 /* ---- callouts ---- */
-.note{border-left:3px solid var(--border-strong);background:var(--panel);padding:16px 20px;border-radius:0 var(--radius) var(--radius) 0;margin:18px 0;font-size:.94rem;color:var(--muted)}
+.note{
+  border-left:3px solid var(--border-strong);background:var(--panel);padding:18px 22px;
+  border-radius:0 var(--radius) var(--radius) 0;margin:20px 0;font-size:.94rem;color:var(--muted);
+}
 .note strong{color:var(--text)}
-.note-warn{border-left-color:var(--warn)}
-.note-danger{border-left-color:var(--danger)}
+.note-warn{border-left-color:var(--warn);background:linear-gradient(90deg,rgba(235,181,82,.06),var(--panel))}
+.note-danger{border-left-color:var(--danger);background:linear-gradient(90deg,rgba(244,104,90,.06),var(--panel))}
 
-pre{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:15px 18px;overflow-x:auto;font-family:var(--mono);font-size:.87rem;margin:12px 0;color:var(--text)}
-.hash{word-break:break-all;font-family:var(--mono);font-size:.78rem;color:var(--faint)}
+pre{
+  background:#0d1120;border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 20px;overflow-x:auto;font-family:var(--mono);font-size:.86rem;margin:12px 0;color:var(--text);
+}
+.hash{
+  word-break:break-all;font-family:var(--mono);font-size:.78rem;color:var(--muted);
+  background:#0d1120;border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;
+}
+ol.steps{padding-left:22px;margin:0;counter-reset:s}
+ol.steps li{margin:0 0 20px} ol.steps li:last-child{margin-bottom:0}
+ul.plain{padding-left:20px;color:var(--muted);font-size:.94rem} ul.plain li{margin:9px 0}
 
-ol.steps{padding-left:20px;margin:0} ol.steps li{margin:0 0 18px}
-ol.steps li:last-child{margin-bottom:0}
-ul.plain{padding-left:20px;color:var(--muted);font-size:.94rem} ul.plain li{margin:7px 0}
-.small{color:var(--muted);font-size:.94rem}
-
-footer{padding:40px 0 56px;color:var(--faint);font-size:.87rem}
+footer{padding:52px 0 64px;color:var(--faint);font-size:.87rem}
 footer a{color:var(--muted)}
+footer p{max-width:640px}
+
+/* ---- scroll reveal ---- */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s var(--ease),transform .6s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+  .spark{animation:none;stroke-dashoffset:0}
+  .fanfill,.alarm{animation:none;opacity:1}
+  .alarm rect{animation:none}
+  .brand .mark{animation:none}
+  .btn:hover,.card:hover{transform:none}
+}
 </style>
 </head>
 <body>
 
 <header><div class="wrap">
-  <a class="brand" href="#">Omni<span>Hub</span></a>
+  <a class="brand" href="#"><span class="mark"></span><span>Omni<b>Hub</b></span></a>
   <nav>
+    <a href="#why">Why</a>
     <a href="#compat">Compatibility</a>
     <a href="#install">Install</a>
     <a href="https://github.com/Vomitted/OmniHub">GitHub</a>
+    <a class="nav-dl" href="https://github.com/Vomitted/OmniHub/releases/download/v1.0.0/OmniHub-v1.0.0-win-x64.zip">Download</a>
   </nav>
+  <div id="progress"></div>
 </div></header>
 
-<div class="hero"><div class="wrap">
-  <h1>Your fan stops while the laptop is still hot.</h1>
+<div class="hero"><div class="wrap"><div class="hero-inner">
+  <div class="eyebrow"><span class="tag">v1.0.0</span> Free · open source · no telemetry</div>
+  <h1>Your fan stops while<br>the laptop is <span class="grad">still hot.</span></h1>
   <p class="tagline">
     OmniHub is a replacement for Omen Gaming Hub that fixes it — fan curve control with a
     safety floor, GPU power and mode, and AMD CPU tuning, through the same BIOS interface
     the vendor's own app uses.
   </p>
-  <div class="cta" id="cta">
-    <!-- Default state is build-from-source, because that is what is true until a release
-         with an attached binary exists. The script at the bottom upgrades this to a real
-         download only if the GitHub API confirms the asset is actually there. A button
-         that 404s would be worse than no button. -->
-    <a class="btn btn-primary" href="#install">Build it from source</a>
-    <a class="btn btn-ghost" href="https://github.com/Vomitted/OmniHub">View on GitHub</a>
+  <div class="cta">
+    <a class="btn btn-primary" id="dl" href="https://github.com/Vomitted/OmniHub/releases/download/v1.0.0/OmniHub-v1.0.0-win-x64.zip">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download for Windows
+    </a>
+    <a class="btn btn-ghost" href="https://github.com/Vomitted/OmniHub">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.2.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.4 11.4 0 0 1 6 0C17.6 4.7 18.6 5 18.6 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .4.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+      View source
+    </a>
   </div>
-  <p class="meta" id="meta">Windows 10 / 11 · x64 · runs as Administrator</p>
+  <p class="meta" id="meta">v1.0.0 · 63 MB · Windows 10 / 11 · x64 · runs as Administrator</p>
+  <div id="unpublished"></div>
+</div>
+
+<!-- Illustration, not telemetry: hand-drawn shapes showing the shape of the failure mode.
+     Explicitly captioned as such, because this project does not display invented readings. -->
+<div class="compare">
+  <div class="panel bad">
+    <h4>Stock BIOS curve</h4>
+    <p>The fan table's 0% idle entry is reached while the machine is still hot. The fan stops. Heat runs away.</p>
+    <svg viewBox="0 0 280 150" role="img" aria-label="Illustration: fan drops to zero while temperature climbs">
+      <defs>
+        <linearGradient id="fanBad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#f4685a" stop-opacity=".34"/>
+          <stop offset="100%" stop-color="#f4685a" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <g stroke="#1b2133" stroke-width="1">
+        <line x1="10" y1="35" x2="270" y2="35"/><line x1="10" y1="75" x2="270" y2="75"/>
+        <line x1="10" y1="115" x2="270" y2="115"/>
+      </g>
+      <path class="fanfill" d="M10 125 L40 123 L70 106 L100 84 L130 68 L152 66 L154 125 Z" fill="url(#fanBad)"/>
+      <g class="alarm">
+        <rect x="154" y="12" width="116" height="113" fill="rgba(244,104,90,.09)"/>
+        <text x="212" y="26" fill="#f4685a" font-size="8" font-family="monospace" text-anchor="middle" letter-spacing=".5">FAN 0% · STILL HOT</text>
+      </g>
+      <path class="spark" d="M10 125 L40 123 L70 106 L100 84 L130 68 L152 66 L154 125 L270 125"
+            fill="none" stroke="#f4685a" stroke-width="2" stroke-linejoin="round"/>
+      <path class="spark d2" d="M10 108 L40 104 L70 96 L100 88 L130 83 L152 82 L180 62 L210 44 L240 32 L270 26"
+            fill="none" stroke="#ebb552" stroke-width="2.2" stroke-linejoin="round"/>
+    </svg>
+  </div>
+
+  <div class="panel good">
+    <h4>OmniHub — Auto (Curve)</h4>
+    <p>Past a temperature you choose, the fan is never allowed to command 0% again. The floor holds.</p>
+    <svg viewBox="0 0 280 150" role="img" aria-label="Illustration: fan holds a floor and temperature stays flat">
+      <defs>
+        <linearGradient id="fanGood" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#48d18b" stop-opacity=".3"/>
+          <stop offset="100%" stop-color="#48d18b" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <g stroke="#1b2133" stroke-width="1">
+        <line x1="10" y1="35" x2="270" y2="35"/><line x1="10" y1="75" x2="270" y2="75"/>
+        <line x1="10" y1="115" x2="270" y2="115"/>
+      </g>
+      <path class="fanfill" d="M10 125 L40 123 L70 106 L100 84 L130 68 L160 65 L200 64 L270 63 L270 125 Z" fill="url(#fanGood)"/>
+      <line x1="10" y1="70" x2="270" y2="70" stroke="#48d18b" stroke-width="1" stroke-dasharray="3 4" opacity=".5"/>
+      <text x="14" y="64" fill="#48d18b" font-size="8" font-family="monospace" letter-spacing="1">SAFETY FLOOR</text>
+      <path class="spark" d="M10 125 L40 123 L70 106 L100 84 L130 68 L160 65 L200 64 L270 63"
+            fill="none" stroke="#48d18b" stroke-width="2" stroke-linejoin="round"/>
+      <path class="spark d2" d="M10 108 L40 104 L70 96 L100 88 L130 84 L160 82 L200 81 L270 80"
+            fill="none" stroke="#ebb552" stroke-width="2.2" stroke-linejoin="round"/>
+    </svg>
+  </div>
+</div>
+<div class="legend">
+  <span><i style="background:#ebb552"></i>Temperature</span>
+  <span><i style="background:#f4685a"></i>Fan, stock table</span>
+  <span><i style="background:#48d18b"></i>Fan, with floor</span>
+</div>
+<p class="caption">Illustration of the failure mode — drawn to show its shape, not plotted from a log.</p>
 </div></div>
 
-<section><div class="wrap">
-  <h2>The bug it exists to fix</h2>
+<section id="why"><div class="wrap reveal">
+  <p class="kicker">Why it exists</p>
+  <h2>One rule, and everything else follows</h2>
   <p class="lede">
-    On some HP Omen and Victus laptops the Default/Balanced BIOS fan table contains a 0%
-    idle entry that can be reached while the machine is still genuinely hot. The fan stops.
-    The laptop keeps heating.
+    On some HP Omen and Victus laptops the Default/Balanced BIOS fan table contains a 0% idle
+    entry that can be reached while the machine is still genuinely hot. Auto (Curve) mode adds a
+    floor the stock table cannot push through.
   </p>
-  <div class="card">
-    <h3>Auto (Curve) mode adds a floor</h3>
-    <p>
-      Past a temperature you choose, the fan is never allowed to command 0% again — no matter
-      what the stock table asks for. That single rule is the reason the rest of this exists.
-    </p>
-  </div>
   <div class="note note-warn">
     <strong>The fix only holds while OmniHub is running.</strong> Closed, crashed, or not yet
     launched after a reboot, the laptop is back on the stock BIOS curve — including the
@@ -147,23 +366,21 @@ footer a{color:var(--muted)}
   </div>
 </div></section>
 
-<section id="compat"><div class="wrap">
+<section id="compat"><div class="wrap reveal">
+  <p class="kicker">Compatibility</p>
   <h2>What will actually work on your laptop</h2>
   <p class="lede">
     OmniHub starts and runs on any Windows laptop. How much of it is <em>usable</em> depends on
     your hardware. Controls your machine cannot drive are disabled and named, not left sitting
     there pretending.
   </p>
-  <div class="tablewrap"><table>
-    <thead><tr><th>Feature</th><th>Needs</th></tr></thead>
-    <tbody>
-      <tr><td><span class="dot dot-any"></span>Temperature, load, clocks, memory, battery health</td><td>Any laptop</td></tr>
-      <tr><td><span class="dot dot-any"></span>Power plans, scheduling, MMCSS, timer resolution, process priority</td><td>Any laptop</td></tr>
-      <tr><td><span class="dot dot-some"></span>Discrete GPU telemetry</td><td>NVIDIA GPU</td></tr>
-      <tr><td><span class="dot dot-some"></span>CPU power limits, thermal limit, curve optimizer</td><td>AMD Ryzen + PawnIO</td></tr>
-      <tr><td><span class="dot dot-hp"></span>Fan curve control, GPU TGP unlock, BIOS power limits</td><td>HP (<code>hpqBIntM</code>)</td></tr>
-    </tbody>
-  </table></div>
+  <div class="compat">
+    <div class="row"><span class="what">Temperature, load, clocks, memory, battery health</span><span class="pill pill-any">Any laptop</span></div>
+    <div class="row"><span class="what">Power plans, scheduling, MMCSS, timer resolution, process priority</span><span class="pill pill-any">Any laptop</span></div>
+    <div class="row"><span class="what">Discrete GPU telemetry</span><span class="pill pill-some">NVIDIA</span></div>
+    <div class="row"><span class="what">CPU power limits, thermal limit, curve optimizer</span><span class="pill pill-some">AMD + PawnIO</span></div>
+    <div class="row"><span class="what">Fan curve control, GPU TGP unlock, BIOS power limits</span><span class="pill pill-hp">HP · hpqBIntM</span></div>
+  </div>
   <div class="note">
     <strong>Lenovo, Dell and ASUS are not supported.</strong> Each exposes a completely
     different ACPI/WMI interface and there is no cross-vendor standard. The vendor layer is
@@ -173,43 +390,48 @@ footer a{color:var(--muted)}
   </div>
 </div></section>
 
-<section><div class="wrap">
+<section><div class="wrap reveal">
+  <p class="kicker">The rule</p>
   <h2>It does not make numbers up</h2>
   <p class="lede">
-    The rule the whole project is built on. No invented fan RPM, no "AI" workload
-    classification, no plausible-looking figure standing in for a reading the hardware could
-    not give. If a value is unavailable, the interface says so.
+    No invented fan RPM, no "AI" workload classification, no plausible-looking figure standing
+    in for a reading the hardware could not give. If a value is unavailable, the interface says
+    so.
   </p>
   <div class="grid">
     <div class="card">
+      <div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8b7cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"/><polyline points="21 3 21 9 15 9"/></svg></div>
       <h3>Every write is read back</h3>
       <p>Applying a limit re-reads the hardware. The Tuning tab distinguishes a limit the firmware <em>accepted</em> from one it actually <em>enforces</em> — some SMUs return success for limits the vendor firmware then arbitrates away.</p>
     </div>
     <div class="card">
+      <div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8b7cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
       <h3>No telemetry, no network</h3>
       <p>Settings are plain JSON in <code>%AppData%\OmniHub</code>. Nothing is sent anywhere. The only network call is the one you ask for when installing the PawnIO driver.</p>
     </div>
     <div class="card">
+      <div class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8b7cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.9 2.9M16.2 16.2l2.9 2.9M2 12h4M18 12h4M4.9 19.1l2.9-2.9M16.2 7.8l2.9-2.9"/><circle cx="12" cy="12" r="3"/></svg></div>
       <h3>Real fan units</h3>
-      <p>The level sent to the BIOS is a speed target in units of ~100 RPM, not a 0–255 duty cycle. This interface exposes no true tachometer reading, and nothing here invents one.</p>
+      <p>The level sent to the BIOS is a speed target in units of ~100&nbsp;RPM, not a 0–255 duty cycle. This interface exposes no true tachometer reading, and nothing here invents one.</p>
     </div>
   </div>
 </div></section>
 
-<section id="install"><div class="wrap">
+<section id="install"><div class="wrap reveal">
+  <p class="kicker">Getting started</p>
   <h2>Installing</h2>
 
   <div class="note note-danger">
     <strong>Windows will warn you about this download.</strong> The build is not code-signed —
     a signing certificate costs money this project does not have — so SmartScreen shows
     "Windows protected your PC". That warning is doing its job: it means Microsoft has not seen
-    this file vouched for, not that the file has been inspected and cleared. If you would
-    rather not take that on faith, build from source below. It is the same code and takes about
-    five minutes.
+    this file vouched for, not that it has been inspected and cleared. If you would rather not
+    take that on faith, build from source below. It is the same code and takes about five
+    minutes.
   </div>
 
   <h3>Verify what you downloaded</h3>
-  <p class="small" style="margin:0 0 6px">SHA-256 of <code>OmniHub-v1.0.0-win-x64.zip</code>:</p>
+  <p class="small" style="margin:0 0 8px">SHA-256 of <code>OmniHub-v1.0.0-win-x64.zip</code>:</p>
   <p class="hash">6cb78c59339af91e18eb57ad8c990e625ad2d1f3c25bf88ae30b17dd525bdca6</p>
   <pre>Get-FileHash .\OmniHub-v1.0.0-win-x64.zip -Algorithm SHA256</pre>
 
@@ -246,7 +468,8 @@ dotnet build OmniHub.slnx -c Release</pre>
   </p>
 </div></section>
 
-<section><div class="wrap">
+<section><div class="wrap reveal">
+  <p class="kicker">Honesty</p>
   <h2>Known limitations</h2>
   <ul class="plain">
     <li>Per-model curve tuning is manual. There is no bundled database of per-model presets.</li>
@@ -273,26 +496,49 @@ dotnet build OmniHub.slnx -c Release</pre>
 </div></footer>
 
 <script>
-// Swap the hero over to a real download, but only once GitHub confirms the asset exists.
-// Pinned to the v1.0.0 tag on purpose: /releases/latest on this repo resolves to v9.0.0,
-// which is OmniControl Suite -- a different application that happens to share the repo.
+// Scroll progress bar.
+var bar = document.getElementById('progress');
+addEventListener('scroll', function () {
+  var h = document.documentElement;
+  var pct = h.scrollTop / (h.scrollHeight - h.clientHeight) * 100;
+  bar.style.width = (pct || 0) + '%';
+}, { passive: true });
+
+// Reveal sections as they come into view.
+if ('IntersectionObserver' in window) {
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: .12 });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+} else {
+  document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
+}
+
+// The download link is direct and static -- it does not wait on a network round trip.
+// This only checks afterwards whether the asset is actually published, and says so if it
+// is not, rather than letting someone click through to a 404 with no explanation.
+//
+// Pinned to the v1.0.0 tag on purpose: /releases/latest on this repository resolves to
+// v9.0.0, which is OmniControl Suite -- a different application sharing the repo.
 (function () {
   var TAG = 'v1.0.0';
   fetch('https://api.github.com/repos/Vomitted/OmniHub/releases/tags/' + TAG)
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (rel) {
-      if (!rel || !rel.assets) return;
-      var asset = rel.assets.filter(function (a) { return /\.zip$/i.test(a.name); })[0];
-      if (!asset) return;
-
-      var mb = (asset.size / 1048576).toFixed(0);
-      document.getElementById('cta').innerHTML =
-        '<a class="btn btn-primary" href="' + asset.browser_download_url + '">Download for Windows</a>' +
-        '<a class="btn btn-ghost" href="#install">Build from source instead</a>';
-      document.getElementById('meta').textContent =
-        TAG + ' · ' + mb + ' MB · Windows 10 / 11 · x64 · runs as Administrator';
+      var asset = rel && rel.assets && rel.assets.filter(function (a) { return /\.zip$/i.test(a.name); })[0];
+      if (asset) {
+        document.getElementById('dl').href = asset.browser_download_url;
+        document.getElementById('meta').textContent =
+          TAG + ' · ' + (asset.size / 1048576).toFixed(0) +
+          ' MB · Windows 10 / 11 · x64 · runs as Administrator';
+        return;
+      }
+      var n = document.getElementById('unpublished');
+      n.textContent = 'The ' + TAG + ' build has not been attached to a release yet, so that ' +
+                      'button will not resolve. Building from source works today.';
+      n.style.display = 'block';
     })
-    .catch(function () { /* offline, rate-limited, or no release yet: leave the honest default */ });
+    .catch(function () { /* offline or rate-limited: leave the static link alone */ });
 })();
 </script>
 </body>
