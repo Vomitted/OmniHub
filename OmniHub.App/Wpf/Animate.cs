@@ -25,8 +25,18 @@ namespace OmniHub.App.Wpf;
 /// </summary>
 public static class Animate
 {
-    /// <summary>How long a value takes to travel to its new reading.</summary>
-    private static readonly Duration Travel = new(TimeSpan.FromMilliseconds(650));
+    /// <summary>
+    /// How long a value takes to travel to its new reading.
+    ///
+    /// 220ms, down from 650. The longer figure looked better in isolation and made the whole
+    /// app feel slow in use: this is an instrument, and a reading that takes two thirds of a
+    /// second to arrive is a reading you wait for. Polish bought with immediacy is a bad trade
+    /// on a gauge, however well the motion reads on its own.
+    ///
+    /// Short enough to register as a response, long enough to still be a movement rather than
+    /// a jump, which was the point of easing these at all.
+    /// </summary>
+    private static readonly Duration Travel = new(TimeSpan.FromMilliseconds(220));
 
     /// <summary>
     /// Eased rather than linear, and EaseOut rather than EaseInOut: a readout should leave the
@@ -81,8 +91,12 @@ public static class Animate
         target.BeginAnimation(ValueProperty, new DoubleAnimation(from, to, Travel) { EasingFunction = Ease });
     }
 
-    /// <summary>How long a colour takes to cross a threshold.</summary>
-    private static readonly Duration Tint = new(TimeSpan.FromMilliseconds(450));
+    /// <summary>
+    /// How long a colour takes to cross a threshold. 240ms, down from 450, for the same reason
+    /// as Travel: it is still slower than the number roll, because a colour is a judgement
+    /// about severity and should not flicker, but it no longer lags the value it describes.
+    /// </summary>
+    private static readonly Duration Tint = new(TimeSpan.FromMilliseconds(240));
 
     /// <summary>
     /// Eases a brush property to a new colour instead of switching it.

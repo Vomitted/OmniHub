@@ -259,8 +259,8 @@ public partial class MainWindow : Window
 
             ViewHost.Content = view;
             ViewSlideTransform.X = 18;
-            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(240)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-            var slideIn = new DoubleAnimation(18, 0, TimeSpan.FromMilliseconds(240)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+            var slideIn = new DoubleAnimation(18, 0, TimeSpan.FromMilliseconds(160)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
             ViewHost.BeginAnimation(OpacityProperty, fadeIn);
             ViewSlideTransform.BeginAnimation(TranslateTransform.XProperty, slideIn);
 

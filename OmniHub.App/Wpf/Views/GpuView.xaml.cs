@@ -57,27 +57,40 @@ public partial class GpuView : UserControl
         // disabled rather than left looking live and silently ignored.
         PresetCard.IsEnabled = !on;
 
-        try
+        // The BIOS work runs OFF the UI thread.
+        //
+        // This is a write followed by a read, and BIOS round trips are the slowest thing this
+        // app does. It was called straight from the constructor, so both of them blocked the
+        // window from appearing at launch, and again from the checkbox handler, so ticking the
+        // box froze the UI mid-click. Neither needed to be synchronous: nothing on screen
+        // depends on the result until the result exists.
+        Task.Run(() =>
         {
-            _ctx.Gpu.SetPower(new GpuPowerData(
-                on ? GpuCustomTgp.On : GpuCustomTgp.Off,
-                on ? GpuPpab.On : GpuPpab.Off,
-                GpuDState.D1,
-                0));
+            try
+            {
+                _ctx.Gpu.SetPower(new GpuPowerData(
+                    on ? GpuCustomTgp.On : GpuCustomTgp.Off,
+                    on ? GpuPpab.On : GpuPpab.Off,
+                    GpuDState.D1,
+                    0));
 
-            // Read back rather than trust the write, as everywhere else on this page.
-            var actual = _ctx.Gpu.GetPower();
-            bool applied = (actual.CustomTgp == GpuCustomTgp.On) == on;
-            MaxPowerResult.Text = applied
-                ? $"GPU power {(on ? "unlocked" : "restored to stock")} (Custom TGP {actual.CustomTgp}, Boost {actual.Ppab})."
-                : $"Change did not take: BIOS still reports {actual}.";
-            MaxPowerResult.Foreground = (Brush)FindResource(applied ? "TextMutedBrush" : "DangerBrush");
-        }
-        catch (Exception ex)
+                // Read back rather than trust the write, as everywhere else on this page.
+                var actual = _ctx.Gpu.GetPower();
+                bool applied = (actual.CustomTgp == GpuCustomTgp.On) == on;
+                return (Text: applied
+                    ? $"GPU power {(on ? "unlocked" : "restored to stock")} (Custom TGP {actual.CustomTgp}, Boost {actual.Ppab})."
+                    : $"Change did not take: BIOS still reports {actual}.", Ok: applied);
+            }
+            catch (Exception ex)
+            {
+                return (Text: $"GPU power change refused: {ex.Message}", Ok: false);
+            }
+        }).ContinueWith(t => Dispatcher.BeginInvoke(() =>
         {
-            MaxPowerResult.Text = $"GPU power change refused: {ex.Message}";
-            MaxPowerResult.Foreground = (Brush)FindResource("DangerBrush");
-        }
+            if (t.IsFaulted) return;
+            MaxPowerResult.Text = t.Result.Text;
+            MaxPowerResult.Foreground = (Brush)FindResource(t.Result.Ok ? "TextMutedBrush" : "DangerBrush");
+        }), TaskScheduler.Default);
     }
 
     // Set while the checked pill is being synced from a hardware read, so restoring the UI to
