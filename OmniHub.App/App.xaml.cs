@@ -75,6 +75,25 @@ public partial class App : Application
         base.OnStartup(e);
         InstallCrashHandlers();
 
+        // -Probe runs BEFORE the single-instance guard, deliberately.
+        //
+        // The guard exists because two instances fight for fan control: both poll the BIOS and
+        // both issue SetFanLevel, so whichever wrote last wins and the curve becomes a race.
+        // That reasoning covers -Calibrate and -RunHeadless, which command the fan. It does not
+        // cover -Probe, which only reads -- fan count, type, level, table, temperature,
+        // throttling state, GPU mode and power.
+        //
+        // Blocking it bought nothing and cost the one thing the probe is for. It is what you
+        // run on an unverified laptop to see what the BIOS actually reports, and the natural
+        // moment to run it is while the app is up. Instead it popped a dialog saying OmniHub
+        // was already running -- advice, in place of the output that was asked for.
+        if (e.Args.Length > 0 && e.Args[0].Equals("-Probe", StringComparison.OrdinalIgnoreCase))
+        {
+            Program.RunProbeCli();
+            Shutdown();
+            return;
+        }
+
         _singleInstanceMutex = new Mutex(true, "Local\\OmniHub_SingleInstance_Mutex", out bool createdNew);
         if (!createdNew)
         {
@@ -82,13 +101,6 @@ public partial class App : Application
                 "OmniHub is already running -- check your system tray icon, or Task Manager's " +
                 "Details tab (not just the Processes search) if you don't see it there.",
                 "OmniHub already running", MessageBoxButton.OK, MessageBoxImage.Information);
-            Shutdown();
-            return;
-        }
-
-        if (e.Args.Length > 0 && e.Args[0].Equals("-Probe", StringComparison.OrdinalIgnoreCase))
-        {
-            Program.RunProbeCli();
             Shutdown();
             return;
         }
