@@ -111,7 +111,32 @@ public sealed class BiosInterop : IDisposable
         }
     }
 
-    private byte[] SendLocked(string methodName, BiosCmdGroup group, byte commandId, byte[] inData, int outSize)
+    /// <summary>
+    /// Sends a command with NO input payload: Size is set to 0 and hpqBData is left unset.
+    ///
+    /// Deliberately a separate entry point rather than a new meaning for Send's null, because
+    /// null already means something here -- it pads to a four-byte zero buffer, and the fan
+    /// commands depend on that. GetFanCount, GetFanType, GetFanLevel and GetFanTable all pass
+    /// null and all work, and OmenMon sends those same commands with an explicit four-byte
+    /// buffer, so the padding is right for them.
+    ///
+    /// A few commands want the other thing. The system design data query (0x28) is one: asked
+    /// with a four-byte payload it answers, but with a degenerate buffer -- every capability
+    /// byte zero -- which decodes into a confident claim that the machine supports nothing.
+    /// Asked with no payload at all, the way HP's own software asks, it answers properly.
+    /// </summary>
+    public byte[] SendWithoutPayload(BiosCmdGroup group, byte commandId, int outSize)
+    {
+        if (!IsAvailable)
+            throw new NotSupportedException(UnavailableReason ?? "The vendor control interface is unavailable.");
+
+        lock (_sendLock)
+        {
+            return SendLocked(MethodNameFor(outSize), group, commandId, null, outSize);
+        }
+    }
+
+    private byte[] SendLocked(string methodName, BiosCmdGroup group, byte commandId, byte[]? inData, int outSize)
     {
         // Non-null by construction: Send refuses before reaching here unless IsAvailable, and
         // IsAvailable is only set once Initialise has assigned both of these.
@@ -124,8 +149,18 @@ public sealed class BiosInterop : IDisposable
         inDataInstance[BiosWmi.SignField] = BiosWmi.Signature;
         inDataInstance[BiosWmi.CommandField] = (uint)group;
         inDataInstance[BiosWmi.CommandTypeField] = (uint)commandId;
-        inDataInstance[BiosWmi.SizeField] = (uint)inData.Length;
-        inDataInstance[BiosWmi.InDataField] = inData;
+        // Null is the no-payload call: Size 0, and hpqBData left entirely unset rather than set
+        // to an empty array. Setting the field at all is what the BIOS treats as "there is a
+        // payload", so writing an empty buffer is not the same request as omitting it.
+        if (inData is null)
+        {
+            inDataInstance[BiosWmi.SizeField] = 0u;
+        }
+        else
+        {
+            inDataInstance[BiosWmi.SizeField] = (uint)inData.Length;
+            inDataInstance[BiosWmi.InDataField] = inData;
+        }
 
         inParams[BiosWmi.InParamName] = inDataInstance;
 

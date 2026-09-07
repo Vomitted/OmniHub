@@ -350,7 +350,11 @@ public sealed class SystemController
     /// </summary>
     public HpSystemData? ReadSystemData()
     {
-        try { return HpSystemData.Parse(_bios.Send(BiosCmdGroup.Default, SysCmd.GetSystemData, new byte[4], 128)); }
+        // No payload, not a four-byte zero buffer. Asked with a payload this command replies
+        // with every capability byte clear, which decodes into "this machine supports nothing"
+        // -- on a machine whose fans this application is demonstrably driving. HP's own
+        // software omits the payload here; see BiosInterop.SendWithoutPayload.
+        try { return HpSystemData.Parse(_bios.SendWithoutPayload(BiosCmdGroup.Default, SysCmd.GetSystemData, 128)); }
         catch { return null; }
     }
 

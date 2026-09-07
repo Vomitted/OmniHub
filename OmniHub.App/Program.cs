@@ -108,7 +108,20 @@ internal static class Program
             Console.WriteLine("--- capabilities, as reported by the firmware ---");
             var sysData = sys.ReadSystemData();
             Console.WriteLine($"System data     : {(sysData is { } sd ? sd.ToString() : "not reported (command unsupported on this board)")}");
-            Console.WriteLine($"Fan control     : {(sysData is { } s2 ? (s2.SoftwareFanControl ? "supported" : "NOT SUPPORTED -- the safety floor cannot work here") : "unknown")}");
+
+            // Three outcomes, not two. A reply with every capability byte clear is a failed
+            // read, and reporting it as "no fan control" once produced a flat contradiction:
+            // the claim appeared on a machine this application was actively driving the fans
+            // of. Whether the fan commands work is answered by trying them -- the fan count,
+            // types and levels printed above -- not by trusting a blank capability block.
+            Console.WriteLine($"Fan control     : {sysData switch
+            {
+                { LooksUnreported: true } => "capability block came back empty -- treat as unknown, not unsupported "
+                                             + "(the fan readings above are the real evidence)",
+                { SoftwareFanControl: true } => "supported",
+                { } => "the board reports no software fan control",
+                null => "unknown",
+            }}");
             Console.WriteLine($"Adapter         : {(sys.ReadAdapterStatus() is { } ad ? ad.ToString() : "not reported")}");
             Console.WriteLine($"Keyboard type   : {(sys.ReadKeyboardType() is { } kt ? kt.ToString() : "not reported")}");
             Console.WriteLine($"Backlight       : {sys.HasKeyboardBacklight() switch { true => "supported", false => "not supported", null => "not reported" }}");

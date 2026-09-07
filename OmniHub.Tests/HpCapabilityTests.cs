@@ -89,6 +89,45 @@ public class HpCapabilityTests
     }
 
     /// <summary>
+    /// The regression that prompted this property.
+    ///
+    /// Asked with a four-byte payload instead of none, the BIOS returned a well-formed 128-byte
+    /// buffer with every capability byte clear. That decoded to "no software fan control" and
+    /// was printed as such -- on the machine whose fans the application was driving at that
+    /// moment. A zeroed block has to be distinguishable from a real negative answer.
+    /// </summary>
+    [Fact]
+    public void AllZeroCapabilityBlockIsFlaggedAsUnreported()
+    {
+        // The exact reply observed on an HP Victus 15-fb2xxx before the transport was fixed.
+        var s = HpSystemData.Parse(Payload(
+            status: 0x00C8, policy: 0x00, support: 0x00, pl4: 0x00, gpuSwitch: 0x00))!.Value;
+
+        Assert.True(s.LooksUnreported);
+        Assert.False(s.SoftwareFanControl);  // still false, but callers must not trust it
+    }
+
+    /// <summary>A populated reply is never mistaken for an empty one.</summary>
+    [Fact]
+    public void PopulatedBlockIsNotFlaggedAsUnreported()
+    {
+        Assert.False(HpSystemData.Parse(Payload())!.Value.LooksUnreported);
+    }
+
+    /// <summary>
+    /// A board that genuinely lacks fan control still reports its other design data, so a real
+    /// negative answer stays distinguishable from a blank one.
+    /// </summary>
+    [Fact]
+    public void RealNegativeAnswerIsNotFlaggedAsUnreported()
+    {
+        var s = HpSystemData.Parse(Payload(support: 0x00, pl4: 0xD7, gpuSwitch: 0x06))!.Value;
+
+        Assert.False(s.LooksUnreported);
+        Assert.False(s.SoftwareFanControl);
+    }
+
+    /// <summary>
     /// A board that does not implement the command replies short or not at all. That must come
     /// back as "unknown" rather than being decoded out of whatever bytes happen to be there.
     /// </summary>

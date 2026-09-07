@@ -79,6 +79,22 @@ public readonly record struct HpSystemData(
     public bool SoftwareFanControl => SupportFlags.HasFlag(HpSupportFlags.SoftwareFanControl);
 
     /// <summary>
+    /// True when the reply carries no capability information at all, however well-formed it
+    /// looked.
+    ///
+    /// This exists because of a real failure. Asked the wrong way, the BIOS returned a full
+    /// 128-byte buffer with every capability byte clear, and that decoded into a confident
+    /// report that the machine supported no fan control -- on the very laptop whose fans this
+    /// application was driving at the time. A zeroed reply is a failed read, not a featureless
+    /// board, and the difference has to reach whatever displays it.
+    ///
+    /// The default CPU PL4 is the giveaway: a board that answers this command at all reports a
+    /// real wattage there, so a zero means nothing was populated.
+    /// </summary>
+    public bool LooksUnreported =>
+        DefaultCpuPowerLimit4W == 0 && SupportFlags == HpSupportFlags.None && GpuModeSwitchFlags == 0;
+
+    /// <summary>
     /// Whether the board can switch graphics mode. Bits #2 and #3 are the observed "supported"
     /// bits; the remainder have only ever been seen clear, so they are reported raw rather than
     /// given names this project cannot stand behind.
