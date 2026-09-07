@@ -220,9 +220,12 @@
                         <TextBlock Text="WHAT CHANGED" Style="{StaticResource SubHeadingText}" Margin="0,18,0,0"/>
                         <TextBlock Style="{StaticResource SettingNote}" Margin="0,0,0,10"
                                    Text="Read from the published releases themselves, so this list and the website cannot disagree about what shipped."/>
-                        <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
-                            <ItemsControl x:Name="ChangelogList"/>
-                        </ScrollViewer>
+                        <!-- No inner ScrollViewer. One nested here inside the page's own
+                             scroller swallowed the mouse wheel: with the pointer anywhere over
+                             the changelog, the Settings page stopped scrolling entirely, which
+                             is worse than a tall card. The list flows into the page instead and
+                             the page scrolls, as it already did for every other card. -->
+                        <ItemsControl x:Name="ChangelogList"/>
                     </StackPanel>
                 </Grid>
             </Border>
