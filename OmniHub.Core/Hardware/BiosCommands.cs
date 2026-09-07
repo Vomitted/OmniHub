@@ -335,6 +335,68 @@ public sealed class SystemController
     /// </summary>
     public static bool IsAtSensorCeiling(double celsius) => celsius >= SensorCeilingC - 0.5;
 
+    /// <summary>
+    /// Asks the board what it supports, rather than inferring it from the model name.
+    ///
+    /// This is the answer to "does OmniHub work on a Pavilion / an older Omen / a Victus S".
+    /// Maintaining a list of model numbers by hand is how that question gets answered wrongly:
+    /// HP ships the same interface across families with different capability bits set, and the
+    /// firmware will simply say which. In particular the software-fan-control bit decides
+    /// whether the safety floor can work at all on a given board.
+    ///
+    /// Null when the command is not implemented or returns a short reply -- which is itself
+    /// information, and is reported as "not available" rather than defaulted to something
+    /// optimistic.
+    /// </summary>
+    public HpSystemData? ReadSystemData()
+    {
+        try { return HpSystemData.Parse(_bios.Send(BiosCmdGroup.Default, SysCmd.GetSystemData, new byte[4], 128)); }
+        catch { return null; }
+    }
+
+    /// <summary>
+    /// Smart power adapter state. Worth surfacing because "below requirement" is a real and
+    /// commonly misdiagnosed cause of a laptop refusing to boost: the machine is not throttling
+    /// for heat, it is being fed by an underpowered charger.
+    /// </summary>
+    public HpAdapterStatus? ReadAdapterStatus()
+    {
+        try
+        {
+            var data = _bios.Send(BiosCmdGroup.Legacy, SysCmd.GetAdapter, new byte[4], 4);
+            return data is { Length: > 0 } ? (HpAdapterStatus)data[0] : null;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Keyboard layout, which also indicates whether per-key colour is possible.</summary>
+    public HpKeyboardType? ReadKeyboardType()
+    {
+        try
+        {
+            var data = _bios.Send(BiosCmdGroup.Default, SysCmd.GetKeyboardType, new byte[4], 4);
+            return data is { Length: > 0 } ? (HpKeyboardType)data[0] : null;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>
+    /// Whether this board has a controllable keyboard backlight.
+    ///
+    /// Checked before any backlight feature is offered. A value of 0x03 is the documented
+    /// "no support" reply; null means the query itself failed, which is a different thing and
+    /// is not treated as a no.
+    /// </summary>
+    public bool? HasKeyboardBacklight()
+    {
+        try
+        {
+            var data = _bios.Send(BiosCmdGroup.Keyboard, SysCmd.HasBacklight, new byte[4], 4);
+            return data is { Length: > 0 } ? data[0] != 0x03 : null;
+        }
+        catch { return null; }
+    }
+
     public bool GetMaxFanActive()
     {
         var data = _bios.Send(BiosCmdGroup.Default, SysCmd.GetMaxFan, new byte[4], 4);

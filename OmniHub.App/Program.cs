@@ -101,6 +101,18 @@ internal static class Program
             Console.WriteLine($"GPU mode        : {gpu.GetMode()}");
             Console.WriteLine($"GPU power       : {gpu.GetPower()}");
 
+            // What the board says about itself. This is the part that answers "will this work
+            // on my laptop" for a model nobody has tried, without anyone maintaining a list of
+            // model numbers by hand.
+            Console.WriteLine();
+            Console.WriteLine("--- capabilities, as reported by the firmware ---");
+            var sysData = sys.ReadSystemData();
+            Console.WriteLine($"System data     : {(sysData is { } sd ? sd.ToString() : "not reported (command unsupported on this board)")}");
+            Console.WriteLine($"Fan control     : {(sysData is { } s2 ? (s2.SoftwareFanControl ? "supported" : "NOT SUPPORTED -- the safety floor cannot work here") : "unknown")}");
+            Console.WriteLine($"Adapter         : {(sys.ReadAdapterStatus() is { } ad ? ad.ToString() : "not reported")}");
+            Console.WriteLine($"Keyboard type   : {(sys.ReadKeyboardType() is { } kt ? kt.ToString() : "not reported")}");
+            Console.WriteLine($"Backlight       : {sys.HasKeyboardBacklight() switch { true => "supported", false => "not supported", null => "not reported" }}");
+
             Console.WriteLine();
             Console.WriteLine("Copy this whole block back -- it's the ground truth needed to");
             Console.WriteLine("calibrate the curve and confirm command bytes for this exact laptop.");

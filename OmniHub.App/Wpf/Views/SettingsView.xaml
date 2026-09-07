@@ -171,6 +171,36 @@
                 </Grid>
             </Border>
 
+            <TextBlock Text="POWER PLAN" Style="{StaticResource SubHeadingText}"/>
+            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Switch power plan with the charger" Style="{StaticResource SettingTitle}" VerticalAlignment="Center"/>
+                                    <Border x:Name="PowerPlanChip" Style="{StaticResource StatusChipStyle}">
+                                        <TextBlock x:Name="PowerPlanChipText" Style="{StaticResource StatusChipText}" Text="OFF"/>
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource SettingNote}"
+                                           Text="Creates two plans of its own -- OmniHub Performance on mains, OmniHub Battery Saver on battery -- and activates whichever matches. It never edits your existing plans, so Balanced keeps exactly the processor settings you configured. Turning this off leaves whatever plan is active alone."/>
+                            </StackPanel>
+                            <CheckBox Grid.Column="1" x:Name="PowerPlanToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                      VerticalAlignment="Center" Checked="PowerPlanToggle_Changed" Unchecked="PowerPlanToggle_Changed"/>
+                        </Grid>
+                        <TextBlock x:Name="PowerPlanStatus" Style="{StaticResource SettingNote}" Margin="0,12,0,0"/>
+                        <Button x:Name="RemovePlansBtn" Content="Delete OmniHub Power Plans" Style="{StaticResource FlatButtonStyle}"
+                                HorizontalAlignment="Left" Margin="0,14,0,0" Click="RemovePlansBtn_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <TextBlock Text="UPDATES" Style="{StaticResource SubHeadingText}"/>
             <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
                 <Grid>

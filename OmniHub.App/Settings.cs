@@ -71,6 +71,21 @@ public sealed class AppSettings
     /// <summary>Whether to apply those profiles automatically as the power source changes.</summary>
     public bool AutoSwitchProfiles { get; set; } = false;
 
+    /// <summary>
+    /// Whether OmniHub switches the Windows power scheme when the charger goes in or out.
+    ///
+    /// Off by default, and separate from <see cref="AutoSwitchProfiles"/>: that one moves
+    /// firmware wattage caps, this one moves OS power policy. Sharing a trigger does not make
+    /// them the same decision, and someone may well want one without the other.
+    /// </summary>
+    public bool AutoPowerPlan { get; set; } = false;
+
+    /// <summary>Scheme applied on mains. Null until the plans have been created.</summary>
+    public Guid? AcPlanId { get; set; }
+
+    /// <summary>Scheme applied on battery. Null until the plans have been created.</summary>
+    public Guid? DcPlanId { get; set; }
+
     /// <summary>Whether the always-on-top telemetry overlay is showing.</summary>
     public bool OverlayEnabled { get; set; } = false;
 

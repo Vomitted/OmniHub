@@ -37,8 +37,9 @@ public partial class SettingsView : UserControl
         InitialiseOverlayControls();
         _suppressEvents = false;
 
-        // After the suppression flag clears: this one starts a network call whose completion
-        // touches controls, and it must not run while the view is still wiring itself up.
+        // After the suppression flag clears: these start work whose completion touches
+        // controls, and neither must run while the view is still wiring itself up.
+        InitialisePowerPlanControls();
         InitialiseUpdateControls();
 
         RefreshLoggingChip();
@@ -379,6 +380,109 @@ public partial class SettingsView : UserControl
             System.Windows.MessageBox.Show(ex.Message, "Could not open the log folder",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    // ------------------------------------------------------------- power plan
+
+    private OmniHub.Core.Optimize.PowerPlanAutomation? _powerPlan;
+
+    /// <summary>
+    /// Boost mode written to the mains plan: 3 = Aggressive.
+    ///
+    /// Named rather than inlined because it is the one value in the whole feature with a real
+    /// thermal cost, and it was chosen by the machine's owner rather than by this code.
+    /// </summary>
+    private const uint MainsBoostMode = 3;
+
+    private void InitialisePowerPlanControls()
+    {
+        _suppressEvents = true;
+        PowerPlanToggle.IsChecked = _settings.AutoPowerPlan;
+        _suppressEvents = false;
+
+        if (_settings.AutoPowerPlan) StartPowerPlanAutomation(announce: false);
+        RefreshPowerPlanChip();
+    }
+
+    private void PowerPlanToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressEvents) return;
+
+        _settings.AutoPowerPlan = PowerPlanToggle.IsChecked == true;
+        _settings.Save();
+
+        if (_settings.AutoPowerPlan) StartPowerPlanAutomation(announce: true);
+        else
+        {
+            _powerPlan?.Stop();
+            // The active plan is deliberately left alone. Switching the machine back on the
+            // way out would be a second surprise change from a toggle that was just turned off.
+            PowerPlanStatus.Text = "Automation off. The plan currently active was left as it is.";
+        }
+
+        RefreshPowerPlanChip();
+    }
+
+    /// <summary>
+    /// Creates the plans if needed and begins watching.
+    ///
+    /// Plan creation is idempotent, so this runs at every enable without multiplying entries in
+    /// the Windows power menu. Failure turns the switch back off rather than leaving it on over
+    /// an automation that is not actually running.
+    /// </summary>
+    private void StartPowerPlanAutomation(bool announce)
+    {
+        var (saver, perf, detail) = OmniHub.Core.Optimize.PowerPlanSetup.EnsurePlans(MainsBoostMode);
+
+        if (saver is not { } dc || perf is not { } ac)
+        {
+            PowerPlanStatus.Text = detail;
+            _suppressEvents = true;
+            PowerPlanToggle.IsChecked = false;
+            _suppressEvents = false;
+            _settings.AutoPowerPlan = false;
+            _settings.Save();
+            return;
+        }
+
+        _settings.AcPlanId = ac;
+        _settings.DcPlanId = dc;
+        _settings.Save();
+
+        _powerPlan ??= new OmniHub.Core.Optimize.PowerPlanAutomation();
+        _powerPlan.OnApplied -= OnPowerPlanApplied;
+        _powerPlan.OnApplied += OnPowerPlanApplied;
+        _powerPlan.Start(ac, dc);
+
+        if (announce) PowerPlanStatus.Text = detail;
+    }
+
+    // Raised from the watcher's poll thread; the UI has to be touched on the dispatcher.
+    private void OnPowerPlanApplied(string message) =>
+        Dispatcher.BeginInvoke(() =>
+        {
+            PowerPlanStatus.Text = message;
+            RefreshPowerPlanChip();
+        });
+
+    private void RefreshPowerPlanChip() =>
+        SetChip(PowerPlanChip, PowerPlanChipText, _powerPlan?.IsRunning == true, "WATCHING");
+
+    private void RemovePlansBtn_Click(object sender, RoutedEventArgs e)
+    {
+        // Stopped first: deleting a scheme the automation is about to re-activate would leave
+        // the two fighting each other on the next plug event.
+        _powerPlan?.Stop();
+        _suppressEvents = true;
+        PowerPlanToggle.IsChecked = false;
+        _suppressEvents = false;
+        _settings.AutoPowerPlan = false;
+        _settings.AcPlanId = null;
+        _settings.DcPlanId = null;
+        _settings.Save();
+
+        PowerPlanStatus.Text = OmniHub.Core.Optimize.PowerPlanSetup.Remove();
+        RefreshPowerPlanChip();
     }
 
     // ---------------------------------------------------------------- updates

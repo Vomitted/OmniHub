@@ -124,6 +124,13 @@ public static class SysCmd
     // These two live under different command groups, not Default
     public const byte GetGpuMode = 0x52;       // BiosCmdGroup.Legacy
     public const byte SetGpuMode = 0x52;       // BiosCmdGroup.GpuMode
+
+    // Capability queries. Read-only, and they are what lets the app describe a board it has
+    // never seen instead of inferring from a model string. Opcodes from OmenMon's BiosCtl,
+    // which took them from HP's own Omen Gaming Hub -- not guessed here.
+    public const byte GetAdapter = 0x0F;       // BiosCmdGroup.Legacy,   out 4B  -> HpAdapterStatus
+    public const byte GetKeyboardType = 0x2B;  // BiosCmdGroup.Default,  out 4B  -> HpKeyboardType
+    public const byte HasBacklight = 0x01;     // BiosCmdGroup.Keyboard, out 4B  -> byte[0] != 0x03
 }
 
 public enum IdleState : byte { Off = 0x00, On = 0x01 }
