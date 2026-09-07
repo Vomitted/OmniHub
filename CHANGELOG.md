@@ -14,9 +14,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+Nothing yet.
+
+---
+
+## [1.1.0] — 2026-09-07
+
+Updates, power plans, and broader hardware support. The theme running through all of it: ask the
+machine what it can do instead of assuming, and say plainly when the answer is "unknown".
+
 ### Added
 
-- **In-app updater.** Settings gains an Updates card: current version, a manual check, the
+- **In-app updater.** Settings gains an Updates card: installed version, a manual check, the
   release notes for anything newer, and a download with progress that reveals the file in
   Explorer. It stops short of unpacking over the running install — OmniHub runs elevated and
   holds the fan service, and swapping its own binary underneath itself to save one manual
@@ -24,27 +33,62 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   curve.
 - **Changelog in the app and on the website**, both read from the published releases rather than
   from a file either could forget to update.
+- **Power plan builder** (System tab). One slider runs from maximum battery life to maximum
+  performance; every setting is derived from it, and the resolved values for both rails are
+  shown before anything is written. Available values are read from Windows rather than listed in
+  the source, so a machine with a different set of boost modes gets a builder that matches it.
+- **Automatic power plan switching** (Settings), off by default, with a picker per rail listing
+  every scheme on the machine — so an existing tuned plan can be targeted instead of taking the
+  two OmniHub creates.
 - **GPU telemetry on every machine, not only NVIDIA ones.** `Win32_VideoController` names the
   adapter and the GPU engine performance counters give 3D load, on any vendor. Temperature,
   power and clock stay unavailable there rather than estimated, because Windows exposes no
-  generic thermal sensor for a GPU and inventing one is the thing this project does not do.
-- Two screenshots of the running application on the download page.
+  generic thermal sensor for a GPU.
+- **HP capability reporting.** `GetSystemData` (`0x28`) was declared and never called. It is now
+  decoded, and answers "will this work on my laptop" from the firmware rather than from a
+  hand-maintained list of model numbers. Two fields matter: whether software fan control is
+  supported at all, and which thermal-policy encoding the board speaks — legacy boards including
+  Pavilion Gaming take `0x00`–`0x03`, current Omen and Victus take `0x30`–`0x50`. Smart adapter
+  status, keyboard type and backlight support are read too.
+- `-Probe` reports all of the above, and two screenshots of the running application are on the
+  download page.
 
 ### Changed
 
-- The readiness panel now distinguishes *no adapter readable at all* from *an adapter that
-  reports name and load but exposes no thermal sensor*. Conflating them was misleading on every
-  non-NVIDIA machine.
-- Readouts that said "DISCRETE" no longer do, since GPU availability no longer implies a
-  discrete NVIDIA card.
+- **No coloured status text.** Red was decorating permanent labels and repeating what result
+  sentences already said. Numeric readouts keep their thresholds — the temperature figure still
+  turns red past 80 °C — and bars, gauges, chart lines and status chips keep their colour. Prose
+  and labels no longer take it.
+- The readiness panel distinguishes *no adapter readable at all* from *an adapter that reports
+  name and load but exposes no thermal sensor*. Conflating them was misleading on every
+  non-NVIDIA machine, and readouts no longer say "DISCRETE" when availability no longer implies
+  a discrete NVIDIA card.
+- Power plans are only ever **created**, never edited. Duplicating a scheme leaves the machine's
+  own configuration untouched and reversible.
 
 ### Fixed
 
-- The update checker never offers **OmniControl Suite** as an OmniHub upgrade. That application
-  shares this repository, its `v9.0.0` tag is numerically the highest here, and it is what
-  GitHub's own `/releases/latest` returns — so a naive check would push an unrelated program at
-  every user, forever. A release counts as OmniHub only if it carries an `OmniHub-*.zip` asset.
-  Covered by tests.
+- **The update checker never offers OmniControl Suite as an OmniHub upgrade.** That application
+  shares this repository and its `v9.0.0` tag is numerically the highest here, so a naive check
+  would push an unrelated program at every user, forever. A release counts as OmniHub only if it
+  carries an `OmniHub-*.zip` asset. Covered by tests.
+- **The system design query is sent with no payload**, the way HP's own software sends it. Asked
+  with a four-byte buffer it returned a well-formed reply with every capability byte clear,
+  which decoded into "this machine supports no fan control" — printed on a laptop whose fans the
+  application was driving at that moment. A zeroed capability block is now reported as a failed
+  read rather than a featureless board.
+- **Boost mode is selected by name, not by index.** It was written as `3` under a comment saying
+  "Aggressive"; Windows enumerates `3` as Efficient Enabled and `2` as Aggressive on this
+  hardware. Index assumptions apply cleanly, report success, and do the wrong thing.
+- `-Probe` runs while the application is open. The single-instance guard sat in front of it, so
+  the one command you would run to diagnose a live machine answered with a dialog instead of
+  output. The guard still covers `-Calibrate` and `-RunHeadless`, which command the fan.
+- The changelog list no longer swallows the mouse wheel on the Settings tab.
+
+### Notes
+
+The build is not code-signed, so SmartScreen will warn. The SHA-256 of the archive is published
+with the release and on the download page.
 
 ---
 
@@ -85,5 +129,6 @@ telemetry. If a value cannot be read, the interface says so.
   against your installed version.
 - Throttling detection is not independently verified against known-good hardware.
 
-[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.0.0

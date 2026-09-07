@@ -9,7 +9,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>OmniHub</AssemblyName>
     <RootNamespace>OmniHub.App</RootNamespace>
-    <Version>1.0.0</Version>
+    <!-- Read at runtime by UpdateCheck.CurrentVersion and compared against the published
+         release tags, so this and the tag have to move together. -->
+    <Version>1.1.0</Version>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>

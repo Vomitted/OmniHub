@@ -559,12 +559,14 @@ render();
    happens to share the repo. A release counts as OmniHub only if it ships an
    OmniHub-*.zip asset, which is the same rule the application's updater uses. */
 (function () {
-  var TAG = 'v1.0.0';
-
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
     });
+  }
+
+  function date(iso) {
+    return iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
   }
 
   fetch('https://api.github.com/repos/Vomitted/OmniHub/releases')
@@ -572,37 +574,43 @@ render();
     .then(function (all) {
       if (!Array.isArray(all)) throw 0;
 
+      // An OmniHub release is one shipping an OmniHub-*.zip. The same structural test the
+      // application's updater uses, and for the same reason: this repository also hosts
+      // OmniControl Suite, whose v9.0.0 tag outranks anything here numerically.
       var rels = all.filter(function (r) {
         return (r.assets || []).some(function (a) { return /^OmniHub.*\.zip$/i.test(a.name); });
       });
       if (!rels.length) throw 0;
 
-      // changelog
+      // Newest first, so a release needs no edit here to become the download. Sorted by
+      // publication date rather than array order, which the API does not promise.
+      rels.sort(function (a, b) { return new Date(b.published_at) - new Date(a.published_at); });
+      var cur = rels[0];
+      var TAG = cur.tag_name;
+
       document.getElementById('log').innerHTML = rels.map(function (r) {
-        var d = r.published_at
-          ? new Date(r.published_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-          : '';
         var here = r.tag_name === TAG ? '<span class="cur">ON THIS PAGE</span>' : '';
         return '<div class="rel"><h4>' + esc(r.tag_name) +
-               '<span class="when">' + esc(d) + '</span>' + here + '</h4>' +
+               '<span class="when">' + esc(date(r.published_at)) + '</span>' + here + '</h4>' +
                '<div class="body">' + esc((r.body || '').trim()) + '</div></div>';
       }).join('');
 
-      // download metadata for the pinned release
-      var cur = rels.filter(function (r) { return r.tag_name === TAG; })[0];
-      var asset = cur && (cur.assets || []).filter(function (a) { return /\.zip$/i.test(a.name); })[0];
+      var asset = (cur.assets || []).filter(function (a) { return /\.zip$/i.test(a.name); })[0];
       if (!asset) {
         var n = document.getElementById('unpub');
-        n.textContent = 'The ' + TAG + ' build is not attached to a release yet, so that link will not resolve.';
+        n.textContent = 'The newest release has no build attached, so that link will not resolve.';
         n.style.display = 'block';
         return;
       }
+
       document.getElementById('dl').href = asset.browser_download_url;
+      document.getElementById('fVer').textContent = TAG.replace(/^v/, '');
       document.getElementById('fSize').textContent = (asset.size / 1048576).toFixed(0) + ' MB';
-      if (cur.published_at) {
-        document.getElementById('fDate').textContent =
-          new Date(cur.published_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-      }
+      document.getElementById('fDate').textContent = date(cur.published_at);
+
+      var head = document.querySelector('.name span');
+      if (head) head.textContent = TAG;
+
       if (asset.download_count > 0) {
         document.getElementById('dlnote').textContent =
           asset.download_count + ' downloads · unsigned build, SmartScreen will warn · SHA-256 below.';
