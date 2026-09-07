@@ -46,6 +46,15 @@ public sealed class PowerPlanAutomation : IDisposable
         LastResult = "Watching for power source changes.";
     }
 
+    /// <summary>
+    /// Applies the plan for the source the machine is on right now.
+    ///
+    /// Start only re-points the targets; the watcher raises its event on a change, and on its
+    /// first observation. Re-pointing an already-running automation would otherwise sit inert
+    /// until a cable moved, which makes picking a plan look like it did nothing.
+    /// </summary>
+    public void ApplyNow() => Apply(_watcher.Current);
+
     public void Stop()
     {
         if (!IsRunning) return;

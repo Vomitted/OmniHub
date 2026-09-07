@@ -89,7 +89,6 @@ public partial class GpuView : UserControl
         {
             if (t.IsFaulted) return;
             MaxPowerResult.Text = t.Result.Text;
-            MaxPowerResult.Foreground = (Brush)FindResource(t.Result.Ok ? "TextMutedBrush" : "DangerBrush");
         }), TaskScheduler.Default);
     }
 
@@ -129,19 +128,16 @@ public partial class GpuView : UserControl
                 if (!ok)
                 {
                     PresetResult.Text = error;
-                    PresetResult.Foreground = (Brush)FindResource("DangerBrush");
                 }
                 else if (applied is GpuPowerLevel actual)
                 {
                     PresetResult.Text = actual == level
                         ? $"{actual} applied."
                         : $"Requested {level}, but the GPU reports {actual}.";
-                    PresetResult.Foreground = (Brush)FindResource(actual == level ? "GoodBrush" : "WarnBrush");
                 }
                 else
                 {
                     PresetResult.Text = $"{level} sent; the GPU did not report its state back.";
-                    PresetResult.Foreground = (Brush)FindResource("WarnBrush");
                 }
 
                 SyncPresetPills(applied);

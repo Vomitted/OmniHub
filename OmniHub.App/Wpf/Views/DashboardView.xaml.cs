@@ -136,14 +136,12 @@ public partial class DashboardView : UserControl
     private void ShowChipResult(TuningResult result)
     {
         ChipResult.Text = result.Detail;
-        ChipResult.Foreground = (Brush)FindResource(result.Applied ? "GoodBrush" : "DangerBrush");
     }
 
     private void RunChip(Button chip, Func<TuningResult> action)
     {
         chip.IsEnabled = false;
         ChipResult.Text = "Working...";
-        ChipResult.Foreground = (Brush)FindResource("TextMutedBrush");
 
         Task.Run(action).ContinueWith(t =>
         {
@@ -554,7 +552,6 @@ public partial class DashboardView : UserControl
             // the whole card between one poll and the next, which made a one-degree wobble
             // around a threshold look like an event.
             Animate.BrushTo(ThermalText, TextBlock.ForegroundProperty, thermalBrush);
-            Animate.BrushTo(ThermalTitle, TextBlock.ForegroundProperty, thermalBrush);
             Animate.BrushTo(ThermalUnit, TextBlock.ForegroundProperty, thermalBrush);
             Animate.BrushTo(ThermalBarFill, Border.BackgroundProperty, thermalBrush);
             Animate.BrushTo(StripTemp, TextBlock.ForegroundProperty, thermalBrush);

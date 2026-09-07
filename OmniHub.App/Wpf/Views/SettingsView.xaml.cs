@@ -453,16 +453,83 @@ public partial class SettingsView : UserControl
             return;
         }
 
-        _settings.AcPlanId = ac;
-        _settings.DcPlanId = dc;
+        // The OmniHub plans are the default, not the mandate. A picked scheme wins, so someone
+        // who already keeps a tuned plan of their own can point the automation at it.
+        PopulatePlanChoices(defaultAc: ac, defaultDc: dc);
+
+        Guid useAc = SelectedPlan(AcPlanCombo) ?? ac;
+        Guid useDc = SelectedPlan(DcPlanCombo) ?? dc;
+
+        _settings.AcPlanId = useAc;
+        _settings.DcPlanId = useDc;
         _settings.Save();
 
         _powerPlan ??= new OmniHub.Core.Optimize.PowerPlanAutomation();
         _powerPlan.OnApplied -= OnPowerPlanApplied;
         _powerPlan.OnApplied += OnPowerPlanApplied;
-        _powerPlan.Start(ac, dc);
+        _powerPlan.Start(useAc, useDc);
 
         if (announce) PowerPlanStatus.Text = detail;
+    }
+
+    /// <summary>
+    /// Fills both pickers with every scheme on the machine.
+    ///
+    /// Selection prefers what was saved, then the supplied default, so re-running this does not
+    /// silently move a choice the user made. A saved id that no longer exists -- the plan was
+    /// deleted from Windows -- falls back rather than leaving the automation pointed at nothing.
+    /// </summary>
+    private void PopulatePlanChoices(Guid defaultAc, Guid defaultDc)
+    {
+        var schemes = OmniHub.Core.Optimize.PowerPlan.List();
+        if (schemes.Count == 0) return;
+
+        _suppressEvents = true;
+        foreach (var (combo, saved, fallback) in new[]
+        {
+            (AcPlanCombo, _settings.AcPlanId, defaultAc),
+            (DcPlanCombo, _settings.DcPlanId, defaultDc),
+        })
+        {
+            combo.Items.Clear();
+            object? select = null;
+
+            foreach (var s in schemes)
+            {
+                var item = new ComboBoxItem { Content = s.Name, Tag = s.Id };
+                combo.Items.Add(item);
+                if (s.Id == saved) select = item;
+                else if (select is null && s.Id == fallback) select = item;
+            }
+
+            combo.SelectedItem = select ?? combo.Items[0];
+        }
+        _suppressEvents = false;
+    }
+
+    private static Guid? SelectedPlan(System.Windows.Controls.ComboBox combo) =>
+        combo.SelectedItem is ComboBoxItem { Tag: Guid id } ? id : null;
+
+    private void PlanChoice_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressEvents) return;
+        if (SelectedPlan(AcPlanCombo) is not { } ac || SelectedPlan(DcPlanCombo) is not { } dc) return;
+
+        _settings.AcPlanId = ac;
+        _settings.DcPlanId = dc;
+        _settings.Save();
+
+        // Re-pointed and applied immediately rather than at the next plug event, so the choice
+        // visibly takes effect instead of waiting for a cable to move.
+        if (_settings.AutoPowerPlan && _powerPlan is { } automation)
+        {
+            automation.Start(ac, dc);
+            automation.ApplyNow();
+        }
+        else
+        {
+            PowerPlanStatus.Text = "Plan choice saved. It applies once the switch above is on.";
+        }
     }
 
     // Raised from the watcher's poll thread; the UI has to be touched on the dispatcher.

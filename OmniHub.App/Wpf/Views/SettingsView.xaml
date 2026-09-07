@@ -194,6 +194,33 @@
                             <CheckBox Grid.Column="1" x:Name="PowerPlanToggle" Style="{StaticResource ToggleSwitchStyle}"
                                       VerticalAlignment="Center" Checked="PowerPlanToggle_Changed" Unchecked="PowerPlanToggle_Changed"/>
                         </Grid>
+                        <!-- Which plan goes on which rail. Defaults to the two OmniHub plans,
+                             but any scheme on the machine can be chosen: someone who already
+                             keeps a tuned plan of their own should be able to point the
+                             automation at it rather than be handed a second one. -->
+                        <Grid Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Plugged in" VerticalAlignment="Center"
+                                       Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,12,6"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" x:Name="AcPlanCombo" Margin="0,0,0,6"
+                                      HorizontalAlignment="Left" Width="300"
+                                      SelectionChanged="PlanChoice_Changed"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="On battery" VerticalAlignment="Center"
+                                       Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,12,0"/>
+                            <ComboBox Grid.Row="1" Grid.Column="1" x:Name="DcPlanCombo"
+                                      HorizontalAlignment="Left" Width="300"
+                                      SelectionChanged="PlanChoice_Changed"/>
+                        </Grid>
+
                         <TextBlock x:Name="PowerPlanStatus" Style="{StaticResource SettingNote}" Margin="0,12,0,0"/>
                         <Button x:Name="RemovePlansBtn" Content="Delete OmniHub Power Plans" Style="{StaticResource FlatButtonStyle}"
                                 HorizontalAlignment="Left" Margin="0,14,0,0" Click="RemovePlansBtn_Click"/>

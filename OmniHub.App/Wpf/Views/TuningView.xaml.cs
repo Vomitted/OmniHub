@@ -192,7 +192,6 @@ public partial class TuningView : UserControl, IDisposable
         if (profile is null)
         {
             ResultText.Text = $"Profile \"{name}\" no longer exists.";
-            ResultText.Foreground = (Brush)FindResource("DangerBrush");
             return Task.CompletedTask;
         }
 
@@ -1117,7 +1116,6 @@ public partial class TuningView : UserControl, IDisposable
             if (t.IsFaulted)
             {
                 CapabilityStatus.Text = t.Exception?.GetBaseException().Message ?? "The probe failed.";
-                CapabilityStatus.Foreground = (Brush)FindResource("DangerBrush");
                 return;
             }
 
@@ -1302,7 +1300,6 @@ public partial class TuningView : UserControl, IDisposable
             if (t.IsFaulted)
             {
                 ResultText.Text = t.Exception?.GetBaseException().Message ?? "Tuning failed.";
-                ResultText.Foreground = (Brush)FindResource("DangerBrush");
                 return;
             }
 
@@ -1341,7 +1338,6 @@ public partial class TuningView : UserControl, IDisposable
                 ? new TuningResult(false, t.Exception?.GetBaseException().Message ?? "Failed.")
                 : t.Result;
             ResultText.Text = r.Detail;
-            ResultText.Foreground = (Brush)FindResource(r.Applied ? "TextFaintBrush" : "DangerBrush");
         }));
     }
 
@@ -1403,7 +1399,6 @@ public partial class TuningView : UserControl, IDisposable
             ResultText.Text = r.Applied
                 ? $"Holding {target} C via the thermal limit."
                 : $"Thermal limit {target} C refused: {r.Detail}";
-            ResultText.Foreground = (Brush)FindResource(r.Applied ? "GoodBrush" : "DangerBrush");
         }
 
         _settings.Save();
@@ -1430,7 +1425,6 @@ public partial class TuningView : UserControl, IDisposable
         ResultText.Text = capped.Applied
             ? $"Holding {target} C via the thermal limit."
             : $"Thermal limit {target} C refused: {capped.Detail}";
-        ResultText.Foreground = (Brush)FindResource(capped.Applied ? "GoodBrush" : "DangerBrush");
 
         _adaptive = new AdaptiveTuning(_tuning, () => _ctx.CurrentTemperature().Celsius)
         {
@@ -1444,7 +1438,6 @@ public partial class TuningView : UserControl, IDisposable
             if (_adaptive?.StoppedReason is { } reason)
             {
                 ResultText.Text = reason;
-                ResultText.Foreground = (Brush)FindResource("DangerBrush");
 
                 // The controller self-stopped, so the switch has to follow it. Otherwise the
                 // box stays ticked describing something that is no longer running.

@@ -86,7 +86,7 @@
                     <Grid>
                         <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
-                            <TextBlock x:Name="TempLabel" Text="TEMPERATURE" Style="{StaticResource TileLabel}" Foreground="{StaticResource DangerBrush}"/>
+                            <TextBlock x:Name="TempLabel" Text="TEMPERATURE" Style="{StaticResource TileLabel}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock x:Name="TempValue" Style="{StaticResource TileValue}" Text="--"/>
                                 <TextBlock x:Name="TempUnit" Text="&#176;C" Style="{StaticResource TileUnit}"/>

@@ -306,7 +306,6 @@ public partial class FansView : UserControl
 
         TempValue.Foreground = brush;
         TempUnit.Foreground = brush;
-        TempLabel.Foreground = brush;
         TempFoot.Foreground = throttling ? brush : (Brush)FindResource("TextFaintBrush");
     }
 

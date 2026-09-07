@@ -110,7 +110,7 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
                     <StackPanel Margin="0,0,26,0">
-                        <TextBlock Text="CPU TEMP" Style="{StaticResource MetricTitle}" HorizontalAlignment="Left" Foreground="{StaticResource DangerBrush}"/>
+                        <TextBlock Text="CPU TEMP" Style="{StaticResource MetricTitle}" HorizontalAlignment="Left"/>
                         <TextBlock x:Name="StripTemp" Text="--" FontFamily="{StaticResource MonoFont}" FontSize="14" FontWeight="Bold"
                                    Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
@@ -262,7 +262,7 @@
                         <Grid>
                             <Border Style="{StaticResource CardSheenStyle}"/>
                             <StackPanel>
-                                <TextBlock x:Name="ThermalTitle" Text="CPU THERMAL" Style="{StaticResource MetricTitle}" Foreground="{StaticResource DangerBrush}"/>
+                                <TextBlock x:Name="ThermalTitle" Text="CPU THERMAL" Style="{StaticResource MetricTitle}"/>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
                                     <TextBlock x:Name="ThermalText" Style="{StaticResource MetricValue}" Text="--"/>
                                     <TextBlock x:Name="ThermalUnit" Text="&#176;C" Style="{StaticResource MetricUnit}"/>

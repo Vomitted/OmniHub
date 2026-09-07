@@ -179,7 +179,6 @@ public partial class OptimizeView : UserControl
                 UndoBrightnessBtn.IsEnabled = previous is not null;
 
                 BatteryResult.Text = $"{bright.Detail} {eco.Detail}";
-                BatteryResult.Foreground = (Brush)FindResource(bright.Applied && eco.Applied ? "GoodBrush" : "WarnBrush");
                 BatterySaverBtn.IsEnabled = true;
                 RefreshBattery();
             });
@@ -196,7 +195,6 @@ public partial class OptimizeView : UserControl
             Dispatcher.Invoke(() =>
             {
                 BatteryResult.Text = t.Result.Detail;
-                BatteryResult.Foreground = (Brush)FindResource(t.Result.Applied ? "GoodBrush" : "DangerBrush");
                 // Only the brightness is undone; the Eco profile stays until changed on
                 // purpose, and the label does not claim otherwise.
                 _brightnessBeforeSaver = null;
@@ -247,7 +245,6 @@ public partial class OptimizeView : UserControl
             Dispatcher.Invoke(() =>
             {
                 BatteryResult.Text = t.Result.Detail;
-                BatteryResult.Foreground = (Brush)FindResource(t.Result.Applied ? "GoodBrush" : "DangerBrush");
             });
         }, TaskScheduler.Default);
     }
@@ -280,7 +277,6 @@ public partial class OptimizeView : UserControl
             Dispatcher.Invoke(() =>
             {
                 MemResult.Text = t.Result.Detail;
-                MemResult.Foreground = (Brush)FindResource(t.Result.Applied ? "GoodBrush" : "DangerBrush");
                 PurgeBtn.IsEnabled = true;
                 RefreshMemory();
             });
@@ -362,7 +358,6 @@ public partial class OptimizeView : UserControl
                     : t.Result;
 
                 GamingResult.Text = r.Detail;
-                GamingResult.Foreground = (Brush)FindResource(r.Applied ? "GoodBrush" : "DangerBrush");
                 cb.IsEnabled = true;
 
                 // Put the switch back if the machine refused, so it never shows a state the
@@ -433,7 +428,6 @@ public partial class OptimizeView : UserControl
                 {
                     var r = t.IsFaulted ? new TuningResult(false, t.Exception?.GetBaseException().Message ?? "Failed.") : t.Result;
                     ProcessResult.Text = r.Detail;
-                    ProcessResult.Foreground = (Brush)FindResource(r.Applied ? "GoodBrush" : "DangerBrush");
                     PrioritiseBtn.IsEnabled = true;
                     RefreshForeground();
                 });
@@ -454,7 +448,6 @@ public partial class OptimizeView : UserControl
                 ProcessResult.Text = r.ProcessesTrimmed == 0
                     ? "Nothing had a working set worth trimming."
                     : $"Trimmed {r.ProcessesTrimmed} process(es), releasing {ShaderCache.FormatBytes(r.BytesReleased)} to the standby list.";
-                ProcessResult.Foreground = (Brush)FindResource("GoodBrush");
                 TrimBtn.IsEnabled = true;
                 RefreshMemory();
             });
@@ -516,7 +509,6 @@ public partial class OptimizeView : UserControl
             Dispatcher.Invoke(() =>
             {
                 CacheResult.Text = t.Result.Detail;
-                CacheResult.Foreground = (Brush)FindResource(t.Result.Applied ? "GoodBrush" : "DangerBrush");
                 ClearCacheBtn.IsEnabled = true;
                 RescanCaches();
             });
@@ -593,7 +585,6 @@ public partial class OptimizeView : UserControl
             Dispatcher.Invoke(() =>
             {
                 DiskResult.Text = t.Result.Detail;
-                DiskResult.Foreground = (Brush)FindResource(t.Result.Applied ? "GoodBrush" : "DangerBrush");
                 CleanDiskBtn.IsEnabled = true;
                 RescanDisk();
             });
@@ -649,7 +640,6 @@ public partial class OptimizeView : UserControl
             Dispatcher.Invoke(() =>
             {
                 PlanResult.Text = t.Result.Detail;
-                PlanResult.Foreground = (Brush)FindResource(t.Result.Applied ? "GoodBrush" : "DangerBrush");
             });
         }, TaskScheduler.Default);
     }
@@ -753,7 +743,6 @@ public partial class OptimizeView : UserControl
             {
                 CreatePlanBtn.IsEnabled = true;
                 BuilderResult.Text = t.Result.Detail;
-                BuilderResult.Foreground = (Brush)FindResource(t.Result.Id is null ? "DangerBrush" : "GoodBrush");
 
                 // The list above now has a new entry; leaving it stale would make the plan look
                 // as though it had not been created.

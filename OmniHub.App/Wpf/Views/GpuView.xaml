@@ -126,7 +126,7 @@
                 <Grid>
                     <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource DangerBrush}" CornerRadius="5,0,0,5"/>
                     <StackPanel Margin="17,13,14,13">
-                        <TextBlock Text="READ BEFORE SWITCHING MODE" Style="{StaticResource TileLabel}" Foreground="{StaticResource DangerBrush}" Margin="0,0,0,5"/>
+                        <TextBlock Text="READ BEFORE SWITCHING MODE" Style="{StaticResource TileLabel}" Margin="0,0,0,5"/>
                         <TextBlock Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap" MaxWidth="700"
                                    Text="This is not Advanced Optimus, and it takes effect only after a reboot. Switching to Discrete on a laptop where the dGPU is not wired to the internal display can leave you with no video output at all, recoverable only by booting into Safe Mode and switching back. If you are unsure which applies to your machine, leave this alone and use App GPU Routing instead."/>
                     </StackPanel>
