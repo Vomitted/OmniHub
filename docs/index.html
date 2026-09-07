@@ -4,719 +4,491 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OmniHub — fan and power control for Windows laptops</title>
-<meta name="description" content="A replacement for Omen Gaming Hub. Fan curve control with a safety floor, GPU power and mode, and AMD CPU tuning — with the measurements to back it up.">
+<meta name="description" content="Fan curve control with a safety floor, GPU power and mode, and AMD CPU tuning for Windows laptops. Talks to the same HP BIOS interface Omen Gaming Hub uses, and reads every write back.">
 <link rel="icon" href="favicon.ico">
 <meta property="og:title" content="OmniHub">
-<meta property="og:description" content="Your fan stops while the laptop is still hot. Here is the fix, and the measurements.">
+<meta property="og:description" content="Your fan stops while the laptop is still hot. OmniHub puts a floor under it.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://vomitted.github.io/OmniHub/img/fans.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 /* ============================================================================
-   OmniHub — machined chassis, recessed screens.
+   OmniHub — tool documentation, not a product pitch.
 
-   The inversion is deliberate. Every generated dev-tool page is a dark ground
-   with lighter cards floating on it. This is a light milled-aluminium chassis
-   with dark instrument screens sunk INTO it, which is also literally what the
-   product is: a laptop, and a readout in it.
-
-   Signal colour is heat. Counterpart is airflow. Nothing else gets a colour.
+   Flat surfaces, solid borders, real tables. No mesh gradients, no glass, no
+   decorative icons, no capsule badges. A low-level firmware utility should read
+   like a datasheet, and the people who would trust it are the people who read
+   datasheets.
    ========================================================================= */
 :root{
-  --paper:#e7e9ee;         /* cool machined ground */
-  --riser:#f4f5f8;         /* raised chassis face */
-  --edge:#cfd3dc;          /* milled edge */
-  --edge-soft:#dee1e8;
+  --bg:#0d0d0d;
+  --panel:#161616;
+  --panel-2:#1c1c1c;
+  --line:#282828;
+  --line-soft:#1f1f1f;
 
-  --ink:#101219;
-  --muted:#565c6b;
-  --faint:#878d9c;
+  --ink:#e6e6e6;
+  --muted:#9c9c9c;
+  --faint:#6b6b6b;
 
-  --screen:#0a0c11;        /* recessed readout */
-  --screen-2:#12151d;
-  --screen-line:#1e232e;
-  --screen-ink:#e6e8ee;
-  --screen-muted:#7d8494;
+  --accent:#e0511e;        /* one signal colour: heat */
+  --ok:#3fa662;
+  --partial:#4a8fd4;
+  --no:#5c5c5c;
 
-  --hot:#dc4318;           /* the signal: heat */
-  --cool:#0b9fb4;          /* airflow */
-  --good:#137a45;
-
-  --r:20px;
-  --pad:6px;
-  --r-in:calc(var(--r) - var(--pad));
-
-  --display:"Bricolage Grotesque",Georgia,serif;
-  --body:"Instrument Sans","Segoe UI",system-ui,sans-serif;
-  --mono:"JetBrains Mono","Cascadia Mono",Consolas,ui-monospace,monospace;
-
-  --spring:cubic-bezier(.32,.72,0,1);
-  --glide:cubic-bezier(.16,1,.3,1);
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono","Cascadia Mono",Consolas,ui-monospace,monospace;
+  --ease:cubic-bezier(.32,.72,0,1);
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 body{
-  margin:0;background:var(--paper);color:var(--ink);overflow-x:hidden;
-  font:400 16px/1.6 var(--body);-webkit-font-smoothing:antialiased;
+  margin:0;background:var(--bg);color:var(--ink);
+  font:400 15px/1.65 var(--sans);-webkit-font-smoothing:antialiased;
 }
-a{color:var(--hot);text-decoration:none}
-:focus-visible{outline:2px solid var(--hot);outline-offset:3px;border-radius:4px}
-.wrap{max-width:1140px;margin:0 auto;padding:0 32px;position:relative}
-@media(max-width:768px){.wrap{padding:0 16px}}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(224,81,30,.35)}
+a:hover{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+code,kbd,.m{font-family:var(--mono);font-size:.88em}
+code{background:var(--panel-2);border:1px solid var(--line-soft);padding:1px 5px;border-radius:3px}
+.wrap{max-width:880px;margin:0 auto;padding:0 24px}
+@media(max-width:640px){.wrap{padding:0 16px}}
 
-/* fixed grain, never on a scroller */
-.grain{
-  position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.035;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
-}
+/* ---------------- header: a plain bar, not a floating island ---------------- */
+header{border-bottom:1px solid var(--line);background:var(--bg)}
+header .wrap{display:flex;align-items:center;gap:20px;height:54px}
+.name{font-weight:600;font-size:.98rem;color:var(--ink);border:none}
+.name span{color:var(--faint);font-family:var(--mono);font-size:.8rem;font-weight:400;margin-left:9px}
+header nav{margin-left:auto;display:flex;gap:18px;font-size:.85rem}
+header nav a{color:var(--muted);border:none}
+header nav a:hover{color:var(--ink)}
+@media(max-width:760px){header nav a:not(.repo){display:none}}
 
-/* ---------- type scale ---------- */
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.label{
-  font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--faint);
+/* ---------------- title block ---------------- */
+.title{padding:56px 0 40px;border-bottom:1px solid var(--line)}
+h1{font-size:clamp(1.9rem,4vw,2.6rem);font-weight:700;letter-spacing:-.02em;line-height:1.15;margin:0 0 14px}
+.summary{color:var(--muted);font-size:1.04rem;max-width:68ch;margin:0 0 26px}
+/* Four columns exactly, because there are eight facts: auto-fit gave five per row
+   and left two empty cells showing the divider colour as a dead block. */
+.facts{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:var(--line);border:1px solid var(--line);margin:0 0 26px;
 }
-h1{
-  font-family:var(--display);font-optical-sizing:auto;
-  font-size:clamp(2.6rem,5.4vw,4.1rem);font-weight:700;line-height:.98;letter-spacing:-.035em;
-  margin:0 0 22px;text-wrap:balance;
+@media(max-width:720px){.facts{grid-template-columns:repeat(2,1fr)}}
+.fact{background:var(--panel);padding:12px 14px}
+.fact dt{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin:0 0 5px}
+.fact dd{margin:0;font-family:var(--mono);font-size:.84rem;color:var(--ink)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{
+  display:inline-block;padding:10px 18px;font-size:.9rem;font-weight:500;border-radius:4px;
+  border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
+  transition:background .25s var(--ease),border-color .25s var(--ease);
 }
-h2{
-  font-family:var(--display);font-size:clamp(1.7rem,3.2vw,2.35rem);font-weight:700;
-  line-height:1.06;letter-spacing:-.03em;margin:0 0 14px;max-width:24ch;text-wrap:balance;
-}
-h3{font-family:var(--display);font-size:1.05rem;font-weight:700;letter-spacing:-.015em;margin:0 0 8px}
-.lede{color:var(--muted);max-width:64ch;margin:0 0 40px;font-size:1.04rem}
-.small{color:var(--muted);font-size:.93rem}
+.btn:hover{background:#242424;border-color:#3a3a3a}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#f05c26;border-color:#f05c26}
+.dlnote{font-family:var(--mono);font-size:.76rem;color:var(--faint);margin:14px 0 0}
+#unpub{display:none;margin:14px 0 0;padding:10px 14px;border:1px solid var(--line);
+  background:var(--panel);font-size:.85rem;color:var(--muted);border-left:2px solid var(--accent)}
 
-/* ---------- chassis: raised tray + recessed screen ---------- */
-.tray{
-  background:linear-gradient(180deg,#fbfcfd,var(--riser));
-  border:1px solid var(--edge-soft);border-radius:var(--r);padding:var(--pad);
-  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 18px 40px -28px rgba(16,18,25,.4);
-  transition:transform .7s var(--spring),box-shadow .7s var(--spring);
-}
-.screen{
-  background:linear-gradient(180deg,var(--screen-2),var(--screen));
-  border-radius:var(--r-in);color:var(--screen-ink);
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.75),inset 0 0 0 1px rgba(255,255,255,.05);
-  padding:26px 28px;
-}
-.panel{
-  background:var(--riser);border:1px solid var(--edge-soft);border-radius:var(--r);
-  padding:26px 28px;
-  box-shadow:0 1px 0 rgba(255,255,255,.9) inset;
-}
-@media(max-width:768px){.screen,.panel{padding:20px 18px}}
+/* ---------------- sections ---------------- */
+section{padding:52px 0;border-bottom:1px solid var(--line)}
+h2{font-size:1.3rem;font-weight:600;letter-spacing:-.015em;margin:0 0 10px;line-height:1.25}
+h2 .num{font-family:var(--mono);font-size:.78rem;color:var(--faint);font-weight:400;margin-right:12px}
+h3{font-size:.98rem;font-weight:600;margin:28px 0 8px}
+p{margin:0 0 14px;max-width:74ch}
+p.lead{color:var(--muted)}
+.muted{color:var(--muted)}
+ul,ol{max-width:74ch;padding-left:20px;color:var(--muted)}
+li{margin:8px 0}
+li strong{color:var(--ink);font-weight:600}
 
-/* ---------- nav ---------- */
-.navwrap{position:sticky;top:0;z-index:60;padding:20px 16px 0;pointer-events:none}
-nav{
-  pointer-events:auto;margin:0 auto;width:max-content;max-width:100%;
-  display:flex;align-items:center;gap:24px;padding:7px 7px 7px 20px;border-radius:999px;
-  background:rgba(244,245,248,.82);backdrop-filter:blur(18px) saturate(180%);
-  border:1px solid var(--edge);
-  box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 14px 32px -22px rgba(16,18,25,.55);
+/* ---------------- tables: the primary content type ---------------- */
+.tw{overflow-x:auto;border:1px solid var(--line);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.87rem}
+caption{caption-side:bottom;text-align:left;padding:10px 14px;color:var(--faint);
+  font-size:.78rem;border-top:1px solid var(--line-soft)}
+th{
+  background:var(--panel-2);text-align:left;padding:10px 14px;font-family:var(--mono);
+  font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:500;
+  border-bottom:1px solid var(--line);
 }
-.brand{display:flex;align-items:center;gap:9px;font-family:var(--display);font-weight:700;
-  font-size:1rem;letter-spacing:-.02em;color:var(--ink)}
-.brand .dot{width:7px;height:7px;border-radius:50%;background:var(--hot);flex:none;
-  box-shadow:0 0 0 3px rgba(220,67,24,.15);animation:pulse 2.8s var(--glide) infinite}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
-.navlinks{display:flex;gap:22px;font-size:.87rem}
-.navlinks a{color:var(--muted);transition:color .5s var(--spring)}
-.navlinks a:hover{color:var(--ink)}
-
-.cta{
-  display:inline-flex;align-items:center;gap:10px;padding:8px 8px 8px 20px;border-radius:999px;
-  background:var(--ink);color:#fff;font-weight:500;font-size:.9rem;
-  box-shadow:0 1px 0 rgba(255,255,255,.22) inset,0 10px 22px -12px rgba(16,18,25,.9);
-  transition:transform .6s var(--spring),box-shadow .6s var(--spring);
-}
-.cta .knob{
-  width:28px;height:28px;border-radius:999px;flex:none;display:grid;place-items:center;
-  background:rgba(255,255,255,.14);transition:transform .6s var(--spring),background .6s var(--spring);
-}
-.cta:hover{transform:translateY(-2px);box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 18px 30px -14px rgba(16,18,25,1)}
-.cta:hover .knob{transform:translate(3px,-1px) scale(1.07);background:var(--hot)}
-.cta:active{transform:scale(.98)}
-.cta.big{font-size:1rem;padding:10px 10px 10px 26px}
-.cta.big .knob{width:32px;height:32px}
-.ghost{
-  display:inline-flex;align-items:center;gap:9px;height:50px;padding:0 22px;border-radius:999px;
-  border:1px solid var(--edge);background:rgba(255,255,255,.6);color:var(--ink);
-  font-weight:500;font-size:.94rem;
-  transition:transform .6s var(--spring),background .6s var(--spring),border-color .6s var(--spring);
-}
-.ghost:hover{transform:translateY(-2px);background:#fff;border-color:var(--faint)}
-.burger{display:none;width:36px;height:36px;border-radius:999px;border:1px solid var(--edge);
-  background:rgba(255,255,255,.6);position:relative;cursor:pointer;flex:none;padding:0}
-.burger span{position:absolute;left:10px;width:16px;height:1.5px;background:var(--ink);border-radius:2px;
-  transition:transform .6s var(--spring)}
-.burger span:nth-child(1){top:14px}.burger span:nth-child(2){top:20px}
-body.nav-open .burger span:nth-child(1){transform:translateY(3px) rotate(45deg)}
-body.nav-open .burger span:nth-child(2){transform:translateY(-3px) rotate(-45deg)}
-.sheet{position:fixed;inset:0;z-index:55;display:grid;place-content:center;text-align:center;
-  background:rgba(231,233,238,.88);backdrop-filter:blur(30px) saturate(160%);
-  opacity:0;visibility:hidden;transition:opacity .6s var(--spring),visibility .6s}
-body.nav-open .sheet{opacity:1;visibility:visible}
-.sheet a{font-family:var(--display);font-size:2rem;font-weight:700;color:var(--ink);padding:10px 0;
-  opacity:0;transform:translateY(40px);transition:opacity .7s var(--spring),transform .7s var(--spring)}
-body.nav-open .sheet a{opacity:1;transform:none}
-body.nav-open .sheet a:nth-child(1){transition-delay:.08s}
-body.nav-open .sheet a:nth-child(2){transition-delay:.14s}
-body.nav-open .sheet a:nth-child(3){transition-delay:.20s}
-body.nav-open .sheet a:nth-child(4){transition-delay:.26s}
-body.nav-open .sheet a:nth-child(5){transition-delay:.32s}
-@media(max-width:920px){.navlinks{display:none}.burger{display:block}
-  nav{width:100%;justify-content:space-between;padding-left:18px}}
-
-/* ---------- hero: editorial split ---------- */
-.hero{padding:70px 0 96px}
-.split{display:grid;grid-template-columns:1.02fr .98fr;gap:52px;align-items:center}
-@media(max-width:940px){.split{grid-template-columns:1fr;gap:36px}.hero{padding:48px 0 64px}}
-.tag{
-  display:inline-flex;align-items:center;gap:9px;margin-bottom:24px;padding:5px 13px 5px 5px;
-  border-radius:999px;background:rgba(255,255,255,.75);border:1px solid var(--edge);
-  font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
-}
-.tag b{background:var(--hot);color:#fff;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.1em}
-.hero .lede{margin-bottom:32px}
-.actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-.meta{margin-top:20px;font-family:var(--mono);font-size:.75rem;color:var(--faint);letter-spacing:.01em}
-#nope{display:none;margin-top:16px;padding:11px 16px;border-radius:12px;font-size:.85rem;
-  background:rgba(220,67,24,.07);border:1px solid rgba(220,67,24,.22);color:var(--muted)}
-
-/* ---------- instrument screen contents ---------- */
-.readout{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
-.readout .name{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase}
-.bad .name{color:var(--hot)} .ok .name{color:#2fbf7a}
-.readout .verdict{font-family:var(--mono);font-size:10px;color:var(--screen-muted)}
-.screen p.note{margin:0 0 14px;font-size:.83rem;color:var(--screen-muted);line-height:1.5}
-.screen svg{display:block;width:100%;height:auto}
-.screen .rule{height:1px;background:var(--screen-line);margin:22px 0}
-.keys{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;
-  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--screen-muted)}
-.keys i{display:inline-block;width:12px;height:2px;border-radius:2px;margin-right:7px;vertical-align:middle}
-.spark{stroke-dasharray:640;stroke-dashoffset:640;animation:draw 1.8s var(--glide) forwards}
-.spark.d2{animation-delay:.2s}
-@keyframes draw{to{stroke-dashoffset:0}}
-.fade{opacity:0;animation:fadein .8s var(--glide) .8s forwards}
-@keyframes fadein{to{opacity:1}}
-.alarm rect{animation:blink 1.9s steps(1) 2.6s infinite}
-@keyframes blink{0%,72%{opacity:1}73%,100%{opacity:.3}}
-
-/* ---------- sections ---------- */
-section{padding:104px 0;position:relative;z-index:2}
-@media(max-width:768px){section{padding:68px 0}}
-.rule-top{border-top:1px solid var(--edge-soft)}
-.headgroup{margin-bottom:44px}
-.headgroup .label{display:block;margin-bottom:14px;color:var(--hot)}
-
-/* screenshots: a dark app screen sitting in the light chassis, same bezel rule as everywhere */
-.shots{display:flex;flex-direction:column;gap:34px}
-.shot{margin:0}
-.shot .cap{display:flex;align-items:baseline;gap:14px;margin-bottom:12px;flex-wrap:wrap}
-.shot .cap .label{color:var(--hot)}
-.shot .cap span.t{font-family:var(--display);font-weight:700;font-size:1.05rem;letter-spacing:-.015em}
-.shot img{display:block;width:100%;height:auto;border-radius:var(--r-in);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
-.shotnotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-top:18px}
-.shotnote{font-size:.87rem;color:var(--muted);line-height:1.5}
-.shotnote b{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--ink);margin-bottom:6px;font-weight:500}
-
-/* measured figures */
-.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:16px}
-.fig{padding:24px 26px}
-.fig .n{font-family:var(--mono);font-size:2rem;font-weight:700;letter-spacing:-.04em;line-height:1;
-  color:var(--ink);display:block;margin-bottom:10px}
-.fig .n small{font-size:1rem;font-weight:500;color:var(--muted);letter-spacing:0}
-.fig .k{font-size:.88rem;color:var(--muted);line-height:1.5}
-.fig .arrow{color:var(--hot)}
-
-.provenance{
-  margin-top:22px;padding:16px 20px;border-radius:14px;background:rgba(255,255,255,.6);
-  border:1px dashed var(--edge);font-size:.87rem;color:var(--muted);
-}
-.provenance b{color:var(--ink);font-weight:600}
-
-/* data table */
-.tablewrap{overflow-x:auto;border-radius:var(--r-in)}
-table{border-collapse:collapse;width:100%;min-width:460px;font-size:.9rem}
-th,td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--screen-line)}
-th{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--screen-muted);font-weight:500}
-td{font-family:var(--mono);color:var(--screen-ink);font-variant-numeric:tabular-nums}
+td{padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top;background:var(--panel)}
 tr:last-child td{border-bottom:none}
-tr.peak td{color:#fff}
-tr.peak td:last-child{color:#ff7a4d;font-weight:700}
-.off{color:var(--screen-muted)}
+td.m,th.m{font-family:var(--mono);font-variant-numeric:tabular-nums}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+tr.hi td{background:var(--panel-2);color:#fff}
+tr.hi td.num{color:var(--accent);font-weight:600}
+.st{font-family:var(--mono);font-size:.8rem;white-space:nowrap}
+.st.y{color:var(--ok)} .st.p{color:var(--partial)} .st.n{color:var(--no)}
+tr.off td:not(.st){color:var(--faint)}
+.req{font-size:.82rem;color:var(--muted)}
 
-/* compatibility checker */
-.checker{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start}
-@media(max-width:860px){.checker{grid-template-columns:1fr}}
-.pickers{display:flex;flex-direction:column;gap:18px}
-.picker .label{display:block;margin-bottom:9px}
-.opts{display:flex;flex-wrap:wrap;gap:7px}
-.opt{
-  font-family:var(--mono);font-size:11px;letter-spacing:.04em;padding:8px 13px;border-radius:999px;
-  border:1px solid var(--edge);background:rgba(255,255,255,.6);color:var(--muted);cursor:pointer;
-  transition:background .45s var(--spring),color .45s var(--spring),border-color .45s var(--spring),transform .45s var(--spring);
+/* filter row above the compatibility table */
+.filter{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 4px}
+.filter .label{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint);margin-right:4px}
+.filter button{
+  font-family:var(--mono);font-size:.78rem;padding:6px 11px;border-radius:3px;cursor:pointer;
+  border:1px solid var(--line);background:var(--panel);color:var(--muted);
+  transition:background .25s var(--ease),color .25s var(--ease),border-color .25s var(--ease);
 }
-.opt:hover{transform:translateY(-1px);border-color:var(--faint)}
-.opt[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
-.caps{display:flex;flex-direction:column;gap:2px}
-.cap{
-  display:flex;align-items:center;gap:14px;padding:14px 4px;
-  border-bottom:1px solid var(--screen-line);
-  transition:opacity .5s var(--spring);
+.filter button:hover{border-color:#3a3a3a;color:var(--ink)}
+.filter button[aria-pressed="true"]{background:var(--panel-2);color:var(--ink);border-color:#454545}
+
+/* ---------------- screenshots ---------------- */
+figure{margin:22px 0 0}
+figure img{display:block;width:100%;height:auto;border:1px solid var(--line)}
+figcaption{margin-top:10px;font-size:.83rem;color:var(--faint);max-width:74ch}
+figcaption b{color:var(--muted);font-weight:500}
+
+/* ---------------- terminal / code ---------------- */
+pre{
+  background:#0a0a0a;border:1px solid var(--line);padding:16px 18px;overflow-x:auto;
+  font-family:var(--mono);font-size:.82rem;line-height:1.75;margin:14px 0;color:var(--ink);
 }
-.cap:last-child{border-bottom:none}
-.cap .what{flex:1;font-size:.9rem;line-height:1.4}
-.cap .why{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--screen-muted);margin-top:5px}
-.state{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
-  padding:5px 11px;border-radius:999px;white-space:nowrap;flex:none}
-.on{background:rgba(47,191,122,.14);color:#4bd894;border:1px solid rgba(47,191,122,.3)}
-.no{background:rgba(255,255,255,.04);color:var(--screen-muted);border:1px solid var(--screen-line)}
-.cap.dim{opacity:.5}
-.tally{margin-top:20px;padding-top:18px;border-top:1px solid var(--screen-line);
-  font-family:var(--mono);font-size:11px;color:var(--screen-muted)}
-.tally b{color:var(--screen-ink)}
+pre .c{color:var(--faint)}
+pre .k{color:var(--accent)}
+pre .v{color:var(--muted)}
+.hash{font-family:var(--mono);font-size:.76rem;word-break:break-all;color:var(--muted);
+  background:#0a0a0a;border:1px solid var(--line);padding:12px 14px;margin:0 0 14px}
 
-/* mechanism */
-.mech{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-.mech .panel{padding:26px 28px}
-.mech code,.inline{font-family:var(--mono);font-size:.85em;background:rgba(16,18,25,.06);
-  padding:2px 6px;border-radius:5px}
-.mech p{margin:0;color:var(--muted);font-size:.92rem}
-.mech .spec{margin-top:16px;padding-top:14px;border-top:1px solid var(--edge-soft);
-  font-family:var(--mono);font-size:11px;color:var(--faint);line-height:1.9}
-.mech .spec b{color:var(--ink);font-weight:500}
+.note{border-left:2px solid var(--line);padding:2px 0 2px 16px;margin:18px 0;color:var(--muted);font-size:.92rem}
+.note.warn{border-left-color:var(--accent)}
+.note strong{color:var(--ink)}
 
-/* prose */
-pre{background:var(--screen);color:var(--screen-ink);border-radius:14px;padding:18px 22px;
-  overflow-x:auto;font-family:var(--mono);font-size:.82rem;margin:12px 0;line-height:1.8;
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
-.hash{font-family:var(--mono);font-size:.73rem;word-break:break-all;color:var(--muted);
-  background:rgba(16,18,25,.05);border-radius:10px;padding:12px 16px;margin:0}
-ol.steps{padding-left:22px;margin:0;color:var(--muted)}
-ol.steps li{margin:0 0 18px}ol.steps li:last-child{margin:0}
-ol.steps strong,ul.plain strong{color:var(--ink);font-weight:600}
-ul.plain{padding-left:20px;color:var(--muted);font-size:.93rem}
-ul.plain li{margin:10px 0}
-.warn{border-left:3px solid var(--hot);background:rgba(220,67,24,.05);padding:18px 22px;
-  border-radius:0 14px 14px 0;margin:22px 0;font-size:.93rem;color:var(--muted)}
-.warn strong{color:var(--ink)}
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-@media(max-width:860px){.cols{grid-template-columns:1fr}}
-footer{padding:60px 0 80px;color:var(--faint);font-size:.85rem;border-top:1px solid var(--edge-soft)}
-footer a{color:var(--muted)}footer p{max-width:66ch;margin:0 0 12px}
+/* ---------------- changelog ---------------- */
+#log{margin:0}
+.rel{border:1px solid var(--line);background:var(--panel);padding:16px 18px;margin:0 0 12px}
+.rel h4{margin:0 0 4px;font-family:var(--mono);font-size:.92rem;font-weight:600;display:flex;
+  align-items:baseline;gap:12px;flex-wrap:wrap}
+.rel .when{font-family:var(--mono);font-size:.76rem;color:var(--faint);font-weight:400}
+.rel .cur{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;color:var(--ok)}
+.rel .body{margin:8px 0 0;white-space:pre-wrap;font-size:.86rem;color:var(--muted);line-height:1.6}
+.rel .body:empty::before{content:"No notes were published with this release.";color:var(--faint)}
 
-/* entry motion: transform + opacity only */
-.rise{opacity:0;transform:translateY(34px);transition:opacity .85s var(--glide),transform .85s var(--glide)}
-.rise.in{opacity:1;transform:none}
-.figs .rise:nth-child(2){transition-delay:.08s}
-.figs .rise:nth-child(3){transition-delay:.16s}
-.figs .rise:nth-child(4){transition-delay:.24s}
-@media(prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto}
-  .rise{opacity:1;transform:none;transition:none}
-  .spark{animation:none;stroke-dashoffset:0}
-  .fade{animation:none;opacity:1}
-  .alarm rect,.brand .dot{animation:none}
-  .tray:hover,.cta:hover,.ghost:hover,.opt:hover{transform:none}
-  .cta:hover .knob{transform:none}
-  .sheet a{transition:none}
-}
+footer{padding:40px 0 64px;color:var(--faint);font-size:.83rem}
+footer p{max-width:74ch;margin:0 0 10px}
+footer a{color:var(--muted);border-bottom-color:#333}
+
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
 </style>
 </head>
 <body>
-<div class="grain" aria-hidden="true"></div>
 
-<div class="navwrap"><nav>
-  <span class="brand"><span class="dot"></span>OmniHub</span>
-  <span class="navlinks">
-    <a href="#app">The app</a>
-    <a href="#evidence">Evidence</a>
-    <a href="#tgp">GPU ceiling</a>
-    <a href="#fit">Will it fit</a>
-    <a href="#how">Mechanism</a>
+<header><div class="wrap">
+  <a class="name" href="#">OmniHub<span>v1.0.0</span></a>
+  <nav>
+    <a href="#problem">Problem</a>
+    <a href="#compat">Compatibility</a>
+    <a href="#measured">Measured</a>
     <a href="#install">Install</a>
-  </span>
-  <a class="cta" href="https://github.com/Vomitted/OmniHub/releases/download/v1.0.0/OmniHub-v1.0.0-win-x64.zip">
-    Download
-    <span class="knob"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v13"/><path d="m6 12 6 6 6-6"/></svg></span>
-  </a>
-  <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false"><span></span><span></span></button>
-</nav></div>
+    <a href="#changelog">Changelog</a>
+    <a class="repo" href="https://github.com/Vomitted/OmniHub">Repository</a>
+  </nav>
+</div></header>
 
-<div class="sheet" id="sheet">
-  <a href="#evidence">Evidence</a><a href="#tgp">GPU ceiling</a><a href="#fit">Will it fit</a>
-  <a href="#how">Mechanism</a><a href="#install">Install</a>
-</div>
+<div class="title"><div class="wrap">
+  <h1>Fan and power control for Windows laptops</h1>
+  <p class="summary">
+    A replacement for Omen Gaming Hub. Fan curve control with a safety floor, GPU power and
+    mode, and AMD CPU tuning — through the same <code>hpqBIntM</code> BIOS interface the
+    vendor's own software uses. Every write is read back; nothing is estimated.
+  </p>
 
-<!-- ============================ HERO ============================ -->
-<div class="hero"><div class="wrap"><div class="split">
-  <div>
-    <span class="tag"><b>v1.0.0</b> Free · source available · no telemetry</span>
-    <h1>Your fan stops while the laptop is still hot.</h1>
-    <p class="lede">
-      On some HP Omen and Victus laptops the stock BIOS fan table has a 0% idle entry it can
-      reach while the machine is genuinely hot. OmniHub puts a floor under it — and then reads
-      the hardware back to prove the floor took.
-    </p>
-    <div class="actions">
-      <a class="cta big" id="dl" href="https://github.com/Vomitted/OmniHub/releases/download/v1.0.0/OmniHub-v1.0.0-win-x64.zip">
-        Download for Windows
-        <span class="knob"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v13"/><path d="m6 12 6 6 6-6"/></svg></span>
-      </a>
-      <a class="ghost" href="#fit">Will it work on mine?</a>
-    </div>
-    <p class="meta" id="meta">v1.0.0 · 63 MB · Windows 10 / 11 · x64 · runs as Administrator</p>
-    <div id="nope"></div>
+  <dl class="facts">
+    <div class="fact"><dt>Version</dt><dd id="fVer">1.0.0</dd></div>
+    <div class="fact"><dt>Released</dt><dd id="fDate">6 Sep 2026</dd></div>
+    <div class="fact"><dt>Size</dt><dd id="fSize">63 MB</dd></div>
+    <div class="fact"><dt>Platform</dt><dd>Windows 10/11 x64</dd></div>
+    <div class="fact"><dt>Runtime</dt><dd>none (self-contained)</dd></div>
+    <div class="fact"><dt>Privileges</dt><dd>Administrator</dd></div>
+    <div class="fact"><dt>Licence</dt><dd>source available</dd></div>
+    <div class="fact"><dt>Telemetry</dt><dd>none</dd></div>
+  </dl>
+
+  <div class="actions">
+    <a class="btn primary" id="dl" href="https://github.com/Vomitted/OmniHub/releases/download/v1.0.0/OmniHub-v1.0.0-win-x64.zip">Download .zip</a>
+    <a class="btn" href="https://github.com/Vomitted/OmniHub">Source</a>
+    <a class="btn" href="https://github.com/Vomitted/OmniHub/releases">All releases</a>
+  </div>
+  <p class="dlnote" id="dlnote">Unsigned build — SmartScreen will warn. SHA-256 below.</p>
+  <div id="unpub"></div>
+</div></div>
+
+<!-- ==================================================================== -->
+<section id="problem"><div class="wrap">
+  <h2><span class="num">01</span>The problem: HP firmware 0% fan bug</h2>
+  <p class="lead">
+    On some HP Omen and Victus laptops, the Default/Balanced BIOS fan table contains a 0% idle
+    entry that can be reached while the machine is still genuinely hot. The fan stops. Nothing
+    brings it back until the next threshold is crossed, and the heat has nowhere to go in the
+    meantime.
+  </p>
+  <p>
+    OmniHub's Auto (Curve) mode adds a floor: past a temperature you choose, 0% stops being a
+    value the curve is permitted to return, whatever the stock table asks for. The curve is
+    re-applied every two seconds, because the firmware does not stop trying.
+  </p>
+  <div class="note warn">
+    <strong>The floor holds only while OmniHub is running.</strong> Closed, crashed, or not yet
+    started after a reboot, the laptop is back on the stock curve. Enable <em>Launch when you
+    sign in</em> so the protection is the default rather than something you remember.
   </div>
 
-  <!-- Recessed instrument screen. Illustration of the failure mode's shape, labelled as
-       such -- this project does not draw curves it did not measure. -->
-  <div class="tray"><div class="screen">
-    <div class="readout bad"><span class="name">Stock BIOS table</span><span class="verdict">runaway</span></div>
-    <p class="note">Fan reaches the 0% idle entry while still hot. Nothing brings it back until the next threshold.</p>
-    <svg viewBox="0 0 300 116" role="img" aria-label="Illustration: fan drops to zero while temperature climbs">
-      <defs><linearGradient id="gb" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#dc4318" stop-opacity=".3"/>
-        <stop offset="100%" stop-color="#dc4318" stop-opacity="0"/></linearGradient></defs>
-      <g stroke="#1e232e" stroke-width="1"><line x1="8" y1="28" x2="292" y2="28"/>
-        <line x1="8" y1="62" x2="292" y2="62"/><line x1="8" y1="96" x2="292" y2="96"/></g>
-      <path class="fade" d="M8 100 L44 98 L80 82 L116 62 L150 48 L164 46 L166 100 Z" fill="url(#gb)"/>
-      <g class="fade alarm"><rect x="166" y="8" width="126" height="92" fill="rgba(220,67,24,.09)"/>
-        <text x="229" y="21" fill="#ff7a4d" font-size="7.5" font-family="ui-monospace,monospace" text-anchor="middle" letter-spacing=".6">FAN 0% · STILL HOT</text></g>
-      <path class="spark" d="M8 100 L44 98 L80 82 L116 62 L150 48 L164 46 L166 100 L292 100"
-            fill="none" stroke="#dc4318" stroke-width="1.9" stroke-linejoin="round"/>
-      <path class="spark d2" d="M8 86 L44 82 L80 74 L116 66 L150 61 L164 60 L196 42 L228 27 L260 18 L292 13"
-            fill="none" stroke="#0b9fb4" stroke-width="2" stroke-linejoin="round"/>
-    </svg>
-
-    <div class="rule"></div>
-
-    <div class="readout ok"><span class="name">OmniHub · Auto (Curve)</span><span class="verdict">held</span></div>
-    <p class="note">Past a temperature you set, 0% stops being a value the curve is allowed to return.</p>
-    <svg viewBox="0 0 300 116" role="img" aria-label="Illustration: fan holds a floor and temperature stays flat">
-      <defs><linearGradient id="gg" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#2fbf7a" stop-opacity=".26"/>
-        <stop offset="100%" stop-color="#2fbf7a" stop-opacity="0"/></linearGradient></defs>
-      <g stroke="#1e232e" stroke-width="1"><line x1="8" y1="28" x2="292" y2="28"/>
-        <line x1="8" y1="62" x2="292" y2="62"/><line x1="8" y1="96" x2="292" y2="96"/></g>
-      <path class="fade" d="M8 100 L44 98 L80 82 L116 62 L160 50 L220 48 L292 47 L292 100 Z" fill="url(#gg)"/>
-      <line x1="8" y1="53" x2="292" y2="53" stroke="#2fbf7a" stroke-width="1" stroke-dasharray="3 4" opacity=".5"/>
-      <text x="11" y="48" fill="#2fbf7a" font-size="7" font-family="ui-monospace,monospace" letter-spacing=".8">SAFETY FLOOR</text>
-      <path class="spark" d="M8 100 L44 98 L80 82 L116 62 L160 50 L220 48 L292 47"
-            fill="none" stroke="#2fbf7a" stroke-width="1.9" stroke-linejoin="round"/>
-      <path class="spark d2" d="M8 86 L44 82 L80 74 L116 66 L160 63 L220 62 L292 61"
-            fill="none" stroke="#0b9fb4" stroke-width="2" stroke-linejoin="round"/>
-    </svg>
-
-    <div class="keys">
-      <span><i style="background:#0b9fb4"></i>Temperature</span>
-      <span><i style="background:#dc4318"></i>Fan, stock</span>
-      <span><i style="background:#2fbf7a"></i>Fan, floored</span>
-    </div>
-    <p class="note" style="margin:14px 0 0;font-size:.75rem">Shape of the failure, drawn — not a plot of logged samples.</p>
-  </div></div>
-</div></div></div>
-
-<!-- ============================ THE APP ============================ -->
-<section id="app" class="rule-top"><div class="wrap">
-  <div class="headgroup rise">
-    <span class="label">The actual application</span>
-    <h2>Not a mockup — this is the running app</h2>
-    <p class="lede">
-      Captured from the build on this page, on the machine every figure here was measured on.
-      The readings in these two screens are live values, not placeholders.
-    </p>
-  </div>
-
-  <div class="shots">
-    <figure class="shot rise">
-      <div class="cap"><span class="label">Fans</span><span class="t">Where the fix lives</span></div>
-      <div class="tray"><img src="img/fans.png" width="1086" height="733"
-           alt="OmniHub's Fans tab: a known-issue notice about the 0% idle entry, live temperature and fan level, an editable temperature-to-fan-level curve, and a safety floor set to never drop below 15% above 55 °C."></div>
-      <div class="shotnotes">
-        <div class="shotnote"><b>The floor, as a control</b>Above 55 °C, never drop below 15% — the entire fix, exposed as two numbers you set and a button that applies them.</div>
-        <div class="shotnote"><b>Honest fan units</b>"Now 2700/0 RPM — curve wants 1900 RPM (RAW 19)". Commanded and actual are shown separately, because they disagree and pretending otherwise would hide a fault.</div>
-        <div class="shotnote"><b>Re-applied every tick</b>Not set once and trusted. The mode line says floor-protected, re-applied every tick, because firmware overwrites it.</div>
-      </div>
-    </figure>
-
-    <figure class="shot rise">
-      <div class="cap"><span class="label">Dashboard</span><span class="t">What it is watching</span></div>
-      <div class="tray"><img src="img/dashboard.png" width="1086" height="733"
-           alt="OmniHub's Dashboard: CPU 63.4 °C at 18% load, 4.3 GHz across 12 logical cores, 17.3 of 31.2 GB memory, GPU thermal 51 °C with TGP and Boost on, a thermal headroom gauge and a live temperature history chart."></div>
-      <div class="shotnotes">
-        <div class="shotnote"><b>CPU and GPU, separately</b>63.4 °C die and 51 °C GPU side by side. One number for a laptop with two heat sources is a number that hides something.</div>
-        <div class="shotnote"><b>The unlock, visible</b>"Hybrid · TGP On / BOOST On" — the two flags from the ceiling table below, read back from the BIOS rather than assumed.</div>
-        <div class="shotnote"><b>History, not just now</b>A rolling temperature trace, so a spike that already happened is still something you can see.</div>
-      </div>
-    </figure>
-  </div>
+  <figure>
+    <img src="img/fans.png" width="1086" height="733"
+         alt="OmniHub's Fans tab, showing a notice about the 0% idle entry, live temperature 59 °C and fan level 19%, an editable temperature-to-fan-level curve, and a safety floor configured to never drop below 15% above 55 °C.">
+    <figcaption>
+      <b>Fans tab.</b> The floor is two fields and a button — above 55 °C, never drop below 15%.
+      Note the fan line: <span class="m">now 2700/0 RPM — curve wants 1900 RPM (RAW 19)</span>.
+      Commanded and actual are separate fields because they disagree, and a single merged number
+      would hide a fan that has stopped responding.
+    </figcaption>
+  </figure>
 </div></section>
 
-<!-- ============================ EVIDENCE ============================ -->
-<section id="evidence" class="rule-top"><div class="wrap">
-  <div class="headgroup rise">
-    <span class="label">What it actually did</span>
-    <h2>Four numbers, measured rather than claimed</h2>
-    <p class="lede">
-      Landing pages assert. This is a tool that talks to firmware, so here is what came back
-      when it did — including the part where the firmware fought it.
-    </p>
+<!-- ==================================================================== -->
+<section id="compat"><div class="wrap">
+  <h2><span class="num">02</span>Compatibility</h2>
+  <p class="lead">
+    OmniHub starts and runs on any Windows laptop. What it can <em>drive</em> depends on the
+    interfaces your machine exposes. Controls the hardware cannot support are disabled and
+    named, never left live and silently ignored.
+  </p>
+
+  <div class="filter" role="group" aria-label="Filter by hardware">
+    <span class="label">Your hardware</span>
+    <button data-k="v" data-val="hp" aria-pressed="true">HP Omen / Victus</button>
+    <button data-k="v" data-val="other" aria-pressed="false">Other brand</button>
+    <button data-k="c" data-val="amd" aria-pressed="true">AMD Ryzen</button>
+    <button data-k="c" data-val="intel" aria-pressed="false">Intel</button>
+    <button data-k="g" data-val="nvidia" aria-pressed="true">NVIDIA</button>
+    <button data-k="g" data-val="other" aria-pressed="false">AMD / Intel GPU</button>
   </div>
 
-  <div class="figs">
-    <div class="tray rise"><div class="panel fig" style="border:none;box-shadow:none;background:none">
-      <span class="n">82.8 <span class="arrow">→</span> 72<small> °C</small></span>
-      <span class="k">Average die temperature after dropping the SMU thermal limit from 85&nbsp;°C to 80. The one tuning knob on this platform that the firmware actually enforces.</span>
-    </div></div>
-    <div class="tray rise"><div class="panel fig" style="border:none;box-shadow:none;background:none">
-      <span class="n">75<small> W</small></span>
-      <span class="k">GPU ceiling with Custom TGP and Dynamic Boost both on — up from 60&nbsp;W with both off. The card's maximum, and it takes both flags to reach it.</span>
-    </div></div>
-    <div class="tray rise"><div class="panel fig" style="border:none;box-shadow:none;background:none">
-      <span class="n">~90<small> s</small></span>
-      <span class="k">How long the firmware waits before quietly reverting the power unlock. A 5-second re-assert holds it; 6 of 8 samples stayed at the ceiling.</span>
-    </div></div>
-    <div class="tray rise"><div class="panel fig" style="border:none;box-shadow:none;background:none">
-      <span class="n">0.3–1.1<small> %</small></span>
-      <span class="k">CPU used by OmniHub itself, around 200&nbsp;MB resident, 2.45&nbsp;s from launch to first reading. It watches the machine without becoming the load.</span>
-    </div></div>
-  </div>
+  <div class="tw"><table>
+    <caption>Status updates with the selection above. These are the same availability rules the application applies at runtime.</caption>
+    <thead><tr><th>Capability</th><th>Requires</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr data-cap="sensors"><td>Temperature, load, clocks, memory, battery health</td><td class="req">ACPI + WMI</td><td class="st y">✓ Supported</td></tr>
+      <tr data-cap="windows"><td>Power plans, scheduling, MMCSS, timer resolution, process priority</td><td class="req">Windows</td><td class="st y">✓ Supported</td></tr>
+      <tr data-cap="gpuname"><td>GPU name and 3D utilisation</td><td class="req">Win32_VideoController + engine counters</td><td class="st y">✓ Supported</td></tr>
+      <tr data-cap="gputherm"><td>GPU temperature, power draw, clock</td><td class="req">nvidia-smi (NVIDIA driver)</td><td class="st y">✓ Supported</td></tr>
+      <tr data-cap="cputune"><td>CPU power limits, thermal limit, curve optimizer</td><td class="req">AMD SMU via PawnIO driver</td><td class="st p">⚠ Requires PawnIO</td></tr>
+      <tr data-cap="fans"><td>Fan curve, safety floor, GPU TGP unlock, BIOS power limits</td><td class="req">HP <span class="m">hpqBIntM</span></td><td class="st y">✓ Supported</td></tr>
+    </tbody>
+  </table></div>
 
-  <div class="provenance rise">
-    <b>Measured on one machine</b> — an HP Victus 15 fb2999ax: Ryzen 5 8645HS, RTX 4060 Laptop.
-    Not a fleet, not a benchmark suite, not a claim about your hardware. Different silicon and a
-    different BIOS will answer differently, which is exactly why the app reads every value back
-    instead of assuming the write landed.
-  </div>
+  <p class="muted" id="verdict"></p>
+
+  <h3>Why other vendors are not supported</h3>
+  <p>
+    Lenovo, Dell and ASUS each expose a completely different ACPI/WMI interface, and there is no
+    cross-vendor standard. The vendor layer sits behind a single availability check so another
+    backend can slot in beside the HP one — but none ships unverified, because untested code
+    that writes to unknown ACPI methods on someone else's laptop should not exist.
+  </p>
 </div></section>
 
-<!-- ============================ TGP MATRIX ============================ -->
-<section id="tgp" class="rule-top"><div class="wrap">
-  <div class="cols">
-    <div class="rise">
-      <span class="label" style="display:block;margin-bottom:14px;color:var(--hot)">The GPU ceiling</span>
-      <h2>Two flags, four ceilings, and they stack</h2>
-      <p class="lede" style="margin-bottom:22px">
-        HP exposes Custom TGP and Dynamic Boost as separate switches with no documentation of
-        what either is worth. Sweeping all four combinations and reading the sustained power
-        back gives the answer: <strong>+5&nbsp;W and +10&nbsp;W, and they add.</strong>
-      </p>
-      <p class="small">
-        This is why the app latches the unlock rather than setting it once. The firmware reverts
-        <span class="inline">CustomTgp</span> on its own after about ninety seconds, so every
-        preset, profile and mode button is clamped while the latch is on, and the value is
-        re-asserted on a five-second interval.
-      </p>
-    </div>
-    <div class="tray rise"><div class="screen">
-      <div class="tablewrap"><table>
-        <thead><tr><th>Custom TGP</th><th>Dynamic Boost</th><th>Sustained</th></tr></thead>
-        <tbody>
-          <tr><td class="off">off</td><td class="off">off</td><td>60 W</td></tr>
-          <tr><td>on</td><td class="off">off</td><td>65 W</td></tr>
-          <tr><td class="off">off</td><td>on</td><td>70 W</td></tr>
-          <tr class="peak"><td>on</td><td>on</td><td>75 W</td></tr>
-        </tbody>
-      </table></div>
-      <p class="note" style="margin:16px 0 0">RTX 4060 Laptop, sustained load, read back from the BIOS rather than requested.</p>
-    </div></div>
-  </div>
+<!-- ==================================================================== -->
+<section id="app"><div class="wrap">
+  <h2><span class="num">03</span>The application</h2>
+  <p class="lead">Captured from the build linked above, on the machine every measurement in the next section came from.</p>
+  <figure>
+    <img src="img/dashboard.png" width="1086" height="733"
+         alt="OmniHub's Dashboard: CPU 63.4 °C at 18% load, 4.3 GHz across 12 logical cores, 17.3 of 31.2 GB memory used, GPU thermal 51 °C with TGP and Boost on, a thermal headroom gauge, and a live temperature history chart.">
+    <figcaption>
+      <b>Dashboard.</b> CPU die and GPU temperature are separate readouts — one figure for a
+      machine with two heat sources hides whichever is cooler. <span class="m">Hybrid · TGP On /
+      BOOST On</span> is read back from the BIOS, not assumed from what was last written; those
+      are the two flags the power ceiling table below is about.
+    </figcaption>
+  </figure>
 </div></section>
 
-<!-- ============================ FIT CHECKER ============================ -->
-<section id="fit" class="rule-top"><div class="wrap">
-  <div class="headgroup rise">
-    <span class="label">Before you download 63 MB</span>
-    <h2>Exactly what you get on your laptop</h2>
-    <p class="lede">
-      OmniHub runs anywhere. How much of it does anything depends entirely on what your machine
-      exposes. Pick your hardware and see the real answer — the same rules the app uses to
-      decide which controls to disable.
-    </p>
-  </div>
+<!-- ==================================================================== -->
+<section id="measured"><div class="wrap">
+  <h2><span class="num">04</span>Measured results</h2>
+  <p class="lead">
+    What came back when the tool talked to firmware — including where the firmware fought it.
+  </p>
 
-  <div class="checker rise">
-    <div class="pickers">
-      <div class="picker">
-        <span class="label">Laptop brand</span>
-        <div class="opts" id="pv">
-          <button class="opt" data-v="hp" aria-pressed="true">HP Omen / Victus</button>
-          <button class="opt" data-v="other" aria-pressed="false">Anything else</button>
-        </div>
-      </div>
-      <div class="picker">
-        <span class="label">Processor</span>
-        <div class="opts" id="pc">
-          <button class="opt" data-c="amd" aria-pressed="true">AMD Ryzen</button>
-          <button class="opt" data-c="intel" aria-pressed="false">Intel</button>
-        </div>
-      </div>
-      <div class="picker">
-        <span class="label">Graphics</span>
-        <div class="opts" id="pg">
-          <button class="opt" data-g="nvidia" aria-pressed="true">NVIDIA</button>
-          <button class="opt" data-g="amd" aria-pressed="false">AMD</button>
-          <button class="opt" data-g="intel" aria-pressed="false">Intel only</button>
-        </div>
-      </div>
-    </div>
+  <div class="tw"><table>
+    <caption>Measured on one machine: HP Victus 15-fb2999ax, Ryzen 5 8645HS, RTX 4060 Laptop. Not a fleet and not a benchmark suite. Different silicon and BIOS will answer differently — which is why the application reads every value back instead of assuming a write landed.</caption>
+    <thead><tr><th>Measurement</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Average die temperature, SMU thermal limit 85 °C → 80 °C</td><td class="num">82.8 → 72 °C</td></tr>
+      <tr><td>GPU ceiling, Custom TGP + Dynamic Boost both enabled</td><td class="num">60 → 75 W</td></tr>
+      <tr><td>Time before firmware silently reverts the power unlock</td><td class="num">≈ 90 s</td></tr>
+      <tr><td>Unlock retained by a 5 s re-assert</td><td class="num">6 / 8 samples</td></tr>
+      <tr><td>OmniHub's own CPU use</td><td class="num">0.3 – 1.1 %</td></tr>
+      <tr><td>Resident memory</td><td class="num">≈ 200 MB</td></tr>
+      <tr><td>Launch to first hardware reading</td><td class="num">2.45 s</td></tr>
+    </tbody>
+  </table></div>
 
-    <div class="tray"><div class="screen">
-      <div class="caps" id="caps">
-        <div class="cap" data-cap="sensors"><span class="what">Temperature, load, clocks, memory, battery health<span class="why">ACPI + WMI · every machine</span></span><span class="state on">Works</span></div>
-        <div class="cap" data-cap="windows"><span class="what">Power plans, scheduling, MMCSS, timer resolution, process priority<span class="why">Windows APIs · every machine</span></span><span class="state on">Works</span></div>
-        <div class="cap" data-cap="gpuname"><span class="what">GPU name and 3D load<span class="why">Win32_VideoController + engine counters</span></span><span class="state on">Works</span></div>
-        <div class="cap" data-cap="gputhermal"><span class="what">GPU temperature, power draw and clock<span class="why">nvidia-smi · no generic Windows sensor exists</span></span><span class="state on">Works</span></div>
-        <div class="cap" data-cap="cputune"><span class="what">CPU power limits, thermal limit, curve optimizer<span class="why">AMD SMU via the PawnIO driver</span></span><span class="state on">Works</span></div>
-        <div class="cap" data-cap="fans"><span class="what">Fan curve control, safety floor, GPU TGP unlock, BIOS power limits<span class="why">HP hpqBIntM WMI interface</span></span><span class="state on">Works</span></div>
-      </div>
-      <div class="tally" id="tally"></div>
-    </div></div>
-  </div>
-
-  <div class="warn rise" id="verdict" style="display:none"></div>
+  <h3>GPU power ceiling</h3>
+  <p>
+    HP exposes Custom TGP and Dynamic Boost as two undocumented switches. Sweeping all four
+    combinations and reading sustained power back gives +5 W and +10 W respectively — and they
+    stack. Reaching the card's 75 W maximum requires both.
+  </p>
+  <div class="tw"><table>
+    <caption>RTX 4060 Laptop under sustained load, read back from the BIOS rather than requested.</caption>
+    <thead><tr><th class="m">Custom TGP</th><th class="m">Dynamic Boost</th><th>Sustained</th></tr></thead>
+    <tbody>
+      <tr><td class="m">off</td><td class="m">off</td><td class="num">60 W</td></tr>
+      <tr><td class="m">on</td><td class="m">off</td><td class="num">65 W</td></tr>
+      <tr><td class="m">off</td><td class="m">on</td><td class="num">70 W</td></tr>
+      <tr class="hi"><td class="m">on</td><td class="m">on</td><td class="num">75 W</td></tr>
+    </tbody>
+  </table></div>
 </div></section>
 
-<!-- ============================ MECHANISM ============================ -->
-<section id="how" class="rule-top"><div class="wrap">
-  <div class="headgroup rise">
-    <span class="label">Mechanism</span>
-    <h2>What it is actually talking to</h2>
-    <p class="lede">
-      No abstraction layer invented for a landing page. These are the interfaces, and they are
-      the same ones OmenMon, OmenCore and Omen Gaming Hub itself use.
-    </p>
-  </div>
+<!-- ==================================================================== -->
+<section id="interfaces"><div class="wrap">
+  <h2><span class="num">05</span>Interfaces</h2>
+  <p class="lead">
+    No abstraction invented for a landing page. These are the same interfaces OmenMon, OmenCore
+    and Omen Gaming Hub itself use.
+  </p>
+  <div class="tw"><table>
+    <thead><tr><th>Subsystem</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>BIOS control</td><td class="m">root\wmi · hpqBIntM · ACPI\PNP0C14\0_0</td></tr>
+      <tr><td>Fan level encoding</td><td class="m">raw × 100 = RPM; usable band ≈ 20–55</td></tr>
+      <tr><td>Tachometer readback</td><td class="m">not exposed by this interface</td></tr>
+      <tr><td>Die temperature</td><td class="m">THM_TCON_CUR_TMP 0x00059800 · 0.125 °C</td></tr>
+      <tr><td>Ring-0 access</td><td class="m">PawnIO (signed, optional)</td></tr>
+      <tr><td>Settings</td><td class="m">%AppData%\OmniHub\settings.json</td></tr>
+    </tbody>
+  </table></div>
 
-  <div class="mech">
-    <div class="panel rise">
-      <h3>The BIOS</h3>
-      <p>HP's WMI method, reached through an elevated session. Fan mode, fan level, GPU power flags and mode all go through it.</p>
-      <div class="spec">
-        namespace <b>root\wmi</b><br>
-        class <b>hpqBIntM</b><br>
-        instance <b>ACPI\PNP0C14\0_0</b>
-      </div>
-    </div>
-    <div class="panel rise">
-      <h3>The fan units</h3>
-      <p>The byte sent to the EC is a speed target in hundreds of RPM, not a 0–255 duty cycle. The UI's percentages map onto the usable band, not onto the byte's full span.</p>
-      <div class="spec">
-        raw × 100 = <b>RPM</b><br>
-        usable band <b>~20–55</b> (2000–5500 rpm)<br>
-        tachometer readback: <b>not exposed</b>
-      </div>
-    </div>
-    <div class="panel rise">
-      <h3>The die sensor</h3>
-      <p>Read from the SMU through PawnIO, a signed ring-0 driver. Finer and more honest than the single coarse ACPI zone, which on this board reports a malformed critical point.</p>
-      <div class="spec">
-        THM_TCON_CUR_TMP <b>0x00059800</b><br>
-        resolution <b>0.125 °C</b><br>
-        driver <b>PawnIO</b> (optional)
-      </div>
-    </div>
-  </div>
+  <h3>Verifying an unchecked laptop</h3>
+  <p>
+    Before trusting curve control on a model nobody has confirmed, run the probe from an
+    elevated terminal. It prints what the BIOS returns with nothing interpreted on top.
+  </p>
+  <pre><span class="c"># elevated terminal</span>
+OmniHub.exe -Probe
 
-  <div class="provenance rise" style="border-style:solid;background:rgba(255,255,255,.5)">
-    <b>Where it refuses.</b> Curve Optimizer returns <span class="inline">0xFF</span> on this
-    machine even at an offset of zero, while invalid command IDs return
-    <span class="inline">0xFE</span> — so the mailbox recognises the command and specifically
-    declines it, because PBO is disabled in firmware. The app reports that as refused rather than
-    showing an undervolt it did not apply. Nothing here writes to an ACPI method it has not
-    verified, which is also why Lenovo, Dell and ASUS backends do not ship.
-  </div>
+<span class="c">=== OmniHub Hardware Probe ===</span>
+<span class="k">Manufacturer</span>    <span class="v">…</span>
+<span class="k">Product</span>         <span class="v">…</span>
+<span class="k">Baseboard</span>       <span class="v">…</span>
+<span class="k">Fan count</span>       <span class="v">…</span>
+<span class="k">Fan types</span>       <span class="v">… hex bytes</span>
+<span class="k">Fan levels</span>      <span class="v">… hex bytes</span>
+<span class="k">Fan table (32B)</span> <span class="v">… hex bytes</span>
+<span class="k">Temperature</span>     <span class="v">… C (via ACPI thermal zones, not hpqBIntM)</span>
+<span class="k">Max fan active</span>  <span class="v">…</span>
+<span class="k">Throttling</span>      <span class="v">…</span>
+<span class="k">GPU mode</span>        <span class="v">…</span>
+<span class="k">GPU power</span>       <span class="v">…</span></pre>
+  <p class="muted" style="font-size:.83rem">
+    Field layout only — the values are whatever your BIOS returns, and no sample output is
+    reproduced here because a plausible-looking one would be indistinguishable from an invented
+    one.
+  </p>
+
+  <h3>What it will not report</h3>
+  <ul>
+    <li><strong>No synthesized telemetry.</strong> No invented fan RPM, no workload
+      classification, no plausible figure standing in for a reading the hardware could not give.</li>
+    <li><strong>GPU temperature on non-NVIDIA hardware.</strong> Windows exposes no generic
+      thermal sensor for a GPU; name and load are reported, temperature is marked unavailable.</li>
+    <li><strong>Video memory size.</strong> <span class="m">AdapterRAM</span> is a uint32 that
+      saturates at 4 GB, so on an 8 GB card it is simply wrong. It is skipped rather than shown.</li>
+    <li><strong>Curve Optimizer</strong> on this platform. The SMU returns
+      <span class="m">0xFF</span> where an invalid command returns <span class="m">0xFE</span> —
+      the mailbox recognises the command and specifically declines it, because PBO is disabled in
+      firmware. Reported as refused, not as an applied undervolt.</li>
+  </ul>
 </div></section>
 
-<!-- ============================ INSTALL ============================ -->
-<section id="install" class="rule-top"><div class="wrap">
-  <div class="headgroup rise">
-    <span class="label">Getting it running</span>
-    <h2>Install, and check what you downloaded</h2>
+<!-- ==================================================================== -->
+<section id="install"><div class="wrap">
+  <h2><span class="num">06</span>Install</h2>
+
+  <div class="note warn">
+    <strong>Windows will warn about this download.</strong> The build is not code-signed, so
+    SmartScreen shows "Windows protected your PC". That warning means Microsoft has not seen the
+    file vouched for — not that it has been inspected and cleared. Verifying the checksum proves
+    the file arrived intact; it does not tell you to trust it. Building from source settles both.
   </div>
 
-  <div class="cols">
-    <div class="rise">
-      <div class="warn" style="margin-top:0">
-        <strong>Windows will warn you about this file.</strong> It is not code-signed — a
-        certificate costs money this project does not have — so SmartScreen shows "Windows
-        protected your PC". That warning means Microsoft has not seen this file vouched for, not
-        that it has been inspected and cleared. Verifying the checksum below tells you the file
-        arrived intact; it does not tell you to trust it. Building from source settles both.
-      </div>
-      <p class="small" style="margin:0 0 8px"><strong>SHA-256</strong> of <span class="inline">OmniHub-v1.0.0-win-x64.zip</span>, built from commit <span class="inline">b3bb84f</span>:</p>
-      <p class="hash">fde03a7c3078c42643abd41f1502a627b9ca8b029f66bc6e0b7f5efaecb0faf6</p>
-      <pre>Get-FileHash .\OmniHub-v1.0.0-win-x64.zip -Algorithm SHA256</pre>
-    </div>
+  <p class="muted" style="margin-bottom:8px;font-size:.86rem">
+    SHA-256 of <span class="m">OmniHub-v1.0.0-win-x64.zip</span>, built from commit
+    <span class="m">b3bb84f</span>:
+  </p>
+  <p class="hash">fde03a7c3078c42643abd41f1502a627b9ca8b029f66bc6e0b7f5efaecb0faf6</p>
+  <pre>Get-FileHash .\OmniHub-v1.0.0-win-x64.zip -Algorithm SHA256</pre>
 
-    <div class="rise">
-      <ol class="steps">
-        <li>Extract somewhere permanent — it runs from where you put it, no installer.</li>
-        <li>Run <span class="inline">OmniHub.exe</span> and accept the UAC prompt.
-          <strong>Elevation is not optional:</strong> the WMI session needs it and the SMU driver
-          refuses unelevated callers.</li>
-        <li>In <strong>Settings</strong>, turn on <em>Launch when you sign in</em>. This matters
-          more than it sounds — closed or not yet started, you are back on the stock curve,
-          including the behaviour at the top of this page.</li>
-        <li>On Ryzen, the dashboard offers <strong>Install the PawnIO driver</strong> when it is
-          missing, or <span class="inline">winget install namazso.PawnIO</span>. No restart; the
-          app retries every ten seconds and tuning comes online by itself.</li>
-      </ol>
-      <h3 style="margin-top:30px">Or build it</h3>
-      <pre>winget install Microsoft.DotNet.SDK.10
+  <ol>
+    <li>Extract somewhere permanent. There is no installer; it runs from where you put it.</li>
+    <li>Run <code>OmniHub.exe</code> and accept the UAC prompt. <strong>Elevation is not
+      optional</strong> — the WMI session requires it and the SMU driver refuses unelevated
+      callers.</li>
+    <li>Open <strong>Settings</strong> and enable <em>Launch when you sign in</em>.</li>
+    <li>On Ryzen, install the PawnIO driver for the Tuning tab — the dashboard offers it when
+      missing, or <code>winget install namazso.PawnIO</code>. No restart needed; the app retries
+      every ten seconds.</li>
+  </ol>
+
+  <h3>Build from source</h3>
+  <pre>winget install Microsoft.DotNet.SDK.10
 git clone https://github.com/Vomitted/OmniHub.git
 cd OmniHub
 dotnet build OmniHub.slnx -c Release</pre>
-      <p class="small">Install the <strong>current</strong> SDK, not 8.0 — the solution uses the newer <span class="inline">.slnx</span> format that the .NET 8 SDK cannot parse. It still builds the <span class="inline">net8.0</span> target.</p>
-    </div>
-  </div>
+  <p class="muted" style="font-size:.86rem">
+    Install the <strong>current</strong> SDK, not 8.0 — the solution uses the newer
+    <code>.slnx</code> format the .NET 8 SDK cannot parse. It still builds the
+    <code>net8.0</code> target.
+  </p>
 
-  <div class="provenance rise" style="border-style:solid;background:rgba(255,255,255,.5)">
-    <b>On hardware nobody has checked.</b> Run <span class="inline">OmniHub.exe -Probe</span>
-    from an elevated terminal before trusting curve control. It dumps raw fan count, type, level,
-    table, temperature, throttling state and GPU mode exactly as the BIOS returns them, with
-    nothing interpreted on top — the ground truth for confirming the command layout matches your
-    board before you rely on it.
-  </div>
+  <h3>Updating</h3>
+  <p>
+    The application checks for new releases itself: <strong>Settings → Updates</strong> shows the
+    installed version, the notes for anything newer, and downloads it with progress. It stops at
+    revealing the file rather than unpacking over the running install — OmniHub holds the fan
+    service and runs elevated, and replacing its own binary underneath itself to save one manual
+    extract is not a trade worth making here.
+  </p>
 </div></section>
 
-<!-- ============================ LIMITS ============================ -->
-<section class="rule-top"><div class="wrap">
-  <div class="headgroup rise">
-    <span class="label">Not solved</span>
-    <h2>What this does not do</h2>
-    <p class="lede">A tool that writes to your firmware should be specific about its edges.</p>
-  </div>
-  <div class="cols rise">
-    <ul class="plain">
-      <li><strong>The protection is not persistent.</strong> It holds only while the app runs. Crashed, closed, or pre-login, the stock curve is back.</li>
-      <li><strong>No per-model preset database.</strong> Curve tuning is manual, via the Fans tab or the built-in calibration sweep.</li>
-      <li><strong>The 20–55 raw band is borrowed</strong>, a well-sourced community bound for this HP EC family — not measured on your unit. The calibration tool exists to find yours.</li>
-    </ul>
-    <ul class="plain">
-      <li><strong>Curve Optimizer is refused by firmware</strong> on this machine, and the app says so rather than pretending an undervolt applied.</li>
-      <li><strong><span class="inline">PawnIoAccess.cs</span> is a deliberate stub.</strong> MSR package temperature needs the PawnIO SDK wired against your installed version.</li>
-      <li><strong>Throttling detection is unverified</strong> against known-good hardware.</li>
-    </ul>
-  </div>
+<!-- ==================================================================== -->
+<section id="changelog"><div class="wrap">
+  <h2><span class="num">07</span>Changelog</h2>
+  <p class="lead">
+    Read live from the published releases, which is the same list the application's Settings tab
+    reads. There is no separate feed to fall out of date. Full history in
+    <a href="https://github.com/Vomitted/OmniHub/blob/main/CHANGELOG.md">CHANGELOG.md</a>.
+  </p>
+  <div id="log"><p class="muted">Loading releases…</p></div>
+</div></section>
+
+<!-- ==================================================================== -->
+<section id="limits"><div class="wrap">
+  <h2><span class="num">08</span>Known limitations</h2>
+  <ul>
+    <li>The safety floor protects only while the application is running.</li>
+    <li>Curve tuning is manual. There is no bundled per-model preset database.</li>
+    <li>The 20–55 raw fan band is a well-sourced community bound for this HP EC family, not a
+      measurement of your unit. The Fans tab includes a calibration sweep to find yours.</li>
+    <li><code>PawnIoAccess.cs</code> is an intentional stub — MSR package temperature needs the
+      PawnIO SDK wired against your installed version.</li>
+    <li>Throttling detection is not independently verified against known-good hardware.</li>
+  </ul>
 </div></section>
 
 <footer><div class="wrap">
   <p>
-    <a href="https://github.com/Vomitted/OmniHub">Source</a> ·
-    <a href="https://github.com/Vomitted/OmniHub/releases/tag/v1.0.0">Release</a> ·
+    <a href="https://github.com/Vomitted/OmniHub">Repository</a> ·
+    <a href="https://github.com/Vomitted/OmniHub/releases">Releases</a> ·
+    <a href="https://github.com/Vomitted/OmniHub/blob/main/CHANGELOG.md">Changelog</a> ·
     <a href="https://github.com/Vomitted/OmniHub/blob/main/README.md">README</a> ·
     <a href="https://github.com/namazso/PawnIO.Modules">PawnIO modules</a> (LGPL-2.1-or-later)
   </p>
@@ -728,124 +500,119 @@ dotnet build OmniHub.slnx -c Release</pre>
 </div></footer>
 
 <script>
-/* ---- nav sheet ---- */
-var burger = document.getElementById('burger');
-burger.addEventListener('click', function () {
-  var open = document.body.classList.toggle('nav-open');
-  burger.setAttribute('aria-expanded', open ? 'true' : 'false');
-});
-document.getElementById('sheet').addEventListener('click', function (e) {
-  if (e.target.tagName === 'A') { document.body.classList.remove('nav-open'); burger.setAttribute('aria-expanded','false'); }
-});
-addEventListener('keydown', function (e) { if (e.key === 'Escape') document.body.classList.remove('nav-open'); });
-
-/* ---- entry motion. IntersectionObserver, never a scroll listener ---- */
-if ('IntersectionObserver' in window) {
-  var io = new IntersectionObserver(function (es) {
-    es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-  }, { threshold: .1, rootMargin: '0px 0px -6% 0px' });
-  document.querySelectorAll('.rise').forEach(function (el) { io.observe(el); });
-} else {
-  document.querySelectorAll('.rise').forEach(function (el) { el.classList.add('in'); });
-}
-
-/* ---- compatibility checker ----
-   The same rules the application uses at runtime to decide which controls to enable,
-   so the page cannot promise something the app then greys out. */
+/* ---- compatibility filter -------------------------------------------------
+   Mirrors the availability rules the application applies at runtime, so the page
+   cannot advertise a control the app then disables. */
 var pick = { v: 'hp', c: 'amd', g: 'nvidia' };
 
-function evaluate() {
-  return {
-    sensors:    true,
-    windows:    true,
-    gpuname:    true,
-    gputhermal: pick.g === 'nvidia',
-    cputune:    pick.c === 'amd',
-    fans:       pick.v === 'hp'
-  };
-}
-
 function render() {
-  var r = evaluate(), live = 0, total = 0;
-  Object.keys(r).forEach(function (k) {
+  var on = {
+    sensors: true, windows: true, gpuname: true,
+    gputherm: pick.g === 'nvidia',
+    cputune:  pick.c === 'amd',
+    fans:     pick.v === 'hp'
+  };
+  var live = 0, total = 0;
+
+  Object.keys(on).forEach(function (k) {
     var row = document.querySelector('[data-cap="' + k + '"]');
-    var badge = row.querySelector('.state');
+    var cell = row.querySelector('.st');
     total++;
-    if (r[k]) {
+    if (on[k]) {
       live++;
-      row.classList.remove('dim');
-      badge.className = 'state on';
-      badge.textContent = 'Works';
+      row.classList.remove('off');
+      cell.className = k === 'cputune' ? 'st p' : 'st y';
+      cell.textContent = k === 'cputune' ? '⚠ Requires PawnIO' : '✓ Supported';
     } else {
-      row.classList.add('dim');
-      badge.className = 'state no';
-      badge.textContent = 'Disabled';
+      row.classList.add('off');
+      cell.className = 'st n';
+      cell.textContent = '✕ Not supported';
     }
   });
 
-  document.getElementById('tally').innerHTML =
-    '<b>' + live + ' of ' + total + '</b> capability groups active on this configuration.';
-
   var v = document.getElementById('verdict');
-  if (!r.fans) {
-    v.style.display = 'block';
-    v.innerHTML = '<strong>The fan fix will not work on your laptop.</strong> It needs HP\'s ' +
-      '<span class="inline">hpqBIntM</span> interface, and Lenovo, Dell and ASUS each expose a ' +
-      'completely different one with no cross-vendor standard. The vendor layer sits behind a ' +
-      'single availability check so another backend can slot in — but none ships unverified, ' +
-      'because untested code writing to unknown ACPI methods on someone else\'s laptop should ' +
-      'not exist. You would be downloading a monitor, not a fix.';
-  } else if (!r.cputune && !r.gputhermal) {
-    v.style.display = 'block';
-    v.innerHTML = '<strong>The fan fix works; the tuning tab will not.</strong> Power limits and ' +
-      'die temperature need an AMD SMU, and GPU thermals need nvidia-smi. You get curve control, ' +
-      'the safety floor and BIOS power limits — which is the part that matters here.';
+  if (!on.fans) {
+    v.textContent = live + ' of ' + total + ' capability groups active. The fan fix is not among '
+      + 'them — on a non-HP laptop this is a monitor, not a fix.';
+  } else if (!on.cputune && !on.gputherm) {
+    v.textContent = live + ' of ' + total + ' capability groups active. Fan control, the safety '
+      + 'floor and BIOS power limits all work; the Tuning tab and GPU thermals do not.';
   } else {
-    v.style.display = 'none';
+    v.textContent = live + ' of ' + total + ' capability groups active.';
   }
 }
 
-['pv', 'pc', 'pg'].forEach(function (id) {
-  document.getElementById(id).addEventListener('click', function (e) {
-    var btn = e.target.closest('.opt');
-    if (!btn) return;
-    this.querySelectorAll('.opt').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); });
-    btn.setAttribute('aria-pressed', 'true');
-    if (btn.dataset.v) pick.v = btn.dataset.v;
-    if (btn.dataset.c) pick.c = btn.dataset.c;
-    if (btn.dataset.g) pick.g = btn.dataset.g;
-    render();
-  });
+document.querySelector('.filter').addEventListener('click', function (e) {
+  var b = e.target.closest('button');
+  if (!b) return;
+  this.querySelectorAll('button[data-k="' + b.dataset.k + '"]')
+      .forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+  b.setAttribute('aria-pressed', 'true');
+  pick[b.dataset.k] = b.dataset.val;
+  render();
 });
 render();
 
-/* ---- the download link is static; this only corrects the size and flags a missing asset ----
-   Pinned to the v1.0.0 tag: /releases/latest on this repository resolves to v9.0.0, which is
-   OmniControl Suite -- a different application sharing the repo. */
+/* ---- releases: download metadata and the changelog, from one request -------
+   Pinned to the OmniHub releases specifically. /releases/latest on this repository
+   resolves to v9.0.0, which is OmniControl Suite -- a different application that
+   happens to share the repo. A release counts as OmniHub only if it ships an
+   OmniHub-*.zip asset, which is the same rule the application's updater uses. */
 (function () {
   var TAG = 'v1.0.0';
-  fetch('https://api.github.com/repos/Vomitted/OmniHub/releases/tags/' + TAG)
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  fetch('https://api.github.com/repos/Vomitted/OmniHub/releases')
     .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (rel) {
-      var a = rel && rel.assets && rel.assets.filter(function (x) { return /\.zip$/i.test(x.name); })[0];
-      if (a) {
-        document.getElementById('dl').href = a.browser_download_url;
-        // download_count, not downloadCount -- the REST API is snake_case, and the camelCase
-        // guess rendered "undefined downloads" on the live page. Omitted entirely at zero: on a
-        // release published an hour ago the count is not yet information about anything.
-        var n = a.download_count;
-        document.getElementById('meta').textContent =
-          TAG + ' · ' + (a.size / 1048576).toFixed(0) + ' MB · ' +
-          (n > 0 ? n + (n === 1 ? ' download · ' : ' downloads · ') : '') +
-          'Windows 10 / 11 · x64 · runs as Administrator';
+    .then(function (all) {
+      if (!Array.isArray(all)) throw 0;
+
+      var rels = all.filter(function (r) {
+        return (r.assets || []).some(function (a) { return /^OmniHub.*\.zip$/i.test(a.name); });
+      });
+      if (!rels.length) throw 0;
+
+      // changelog
+      document.getElementById('log').innerHTML = rels.map(function (r) {
+        var d = r.published_at
+          ? new Date(r.published_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+          : '';
+        var here = r.tag_name === TAG ? '<span class="cur">ON THIS PAGE</span>' : '';
+        return '<div class="rel"><h4>' + esc(r.tag_name) +
+               '<span class="when">' + esc(d) + '</span>' + here + '</h4>' +
+               '<div class="body">' + esc((r.body || '').trim()) + '</div></div>';
+      }).join('');
+
+      // download metadata for the pinned release
+      var cur = rels.filter(function (r) { return r.tag_name === TAG; })[0];
+      var asset = cur && (cur.assets || []).filter(function (a) { return /\.zip$/i.test(a.name); })[0];
+      if (!asset) {
+        var n = document.getElementById('unpub');
+        n.textContent = 'The ' + TAG + ' build is not attached to a release yet, so that link will not resolve.';
+        n.style.display = 'block';
         return;
       }
-      var n = document.getElementById('nope');
-      n.textContent = 'The ' + TAG + ' build is not attached to a release yet, so that button ' +
-                      'will not resolve. Building from source works today.';
-      n.style.display = 'block';
+      document.getElementById('dl').href = asset.browser_download_url;
+      document.getElementById('fSize').textContent = (asset.size / 1048576).toFixed(0) + ' MB';
+      if (cur.published_at) {
+        document.getElementById('fDate').textContent =
+          new Date(cur.published_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+      if (asset.download_count > 0) {
+        document.getElementById('dlnote').textContent =
+          asset.download_count + ' downloads · unsigned build, SmartScreen will warn · SHA-256 below.';
+      }
     })
-    .catch(function () {});
+    .catch(function () {
+      document.getElementById('log').innerHTML =
+        '<p class="muted">Could not load the release list. It is on ' +
+        '<a href="https://github.com/Vomitted/OmniHub/releases">GitHub</a>.</p>';
+    });
 })();
 </script>
 </body>

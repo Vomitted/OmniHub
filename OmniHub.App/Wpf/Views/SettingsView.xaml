@@ -171,6 +171,62 @@
                 </Grid>
             </Border>
 
+            <TextBlock Text="UPDATES" Style="{StaticResource SubHeadingText}"/>
+            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                <TextBlock x:Name="VersionText" Style="{StaticResource SettingTitle}" Text="OmniHub"/>
+                                <TextBlock x:Name="UpdateStatus" Style="{StaticResource SettingNote}"
+                                           Text="Checked against the releases published on GitHub. Nothing is sent -- it reads a public list."/>
+                            </StackPanel>
+                            <Button Grid.Column="1" x:Name="CheckUpdateBtn" Content="Check Now"
+                                    Style="{StaticResource FlatButtonStyle}" VerticalAlignment="Center"
+                                    Click="CheckUpdateBtn_Click"/>
+                        </Grid>
+
+                        <!-- Shown only once a newer stable release actually exists. Collapsed
+                             rather than disabled: a permanently greyed download button invites
+                             clicking to find out what it does. -->
+                        <Border x:Name="UpdateBanner" Visibility="Collapsed" Margin="0,14,0,0"
+                                Background="{StaticResource PanelAltBrush}"
+                                BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                                CornerRadius="6" Padding="14">
+                            <StackPanel>
+                                <TextBlock x:Name="UpdateHeadline" Style="{StaticResource SettingTitle}"
+                                           TextWrapping="Wrap"/>
+                                <TextBlock x:Name="UpdateNotes" Style="{StaticResource SettingNote}"
+                                           Margin="0,6,0,0" MaxWidth="640"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Button x:Name="DownloadBtn" Content="Download Update"
+                                            Style="{StaticResource PrimaryButtonStyle}" Click="DownloadBtn_Click"/>
+                                    <Button x:Name="ReleasePageBtn" Content="Open Release Page"
+                                            Style="{StaticResource FlatButtonStyle}" Margin="8,0,0,0"
+                                            Click="ReleasePageBtn_Click"/>
+                                </StackPanel>
+                                <ProgressBar x:Name="DownloadProgress" Height="3" Margin="0,12,0,0"
+                                             Minimum="0" Maximum="1" Visibility="Collapsed"
+                                             Background="{StaticResource PanelBrush}"
+                                             Foreground="{StaticResource AccentBrush}" BorderThickness="0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="WHAT CHANGED" Style="{StaticResource SubHeadingText}" Margin="0,18,0,0"/>
+                        <TextBlock Style="{StaticResource SettingNote}" Margin="0,0,0,10"
+                                   Text="Read from the published releases themselves, so this list and the website cannot disagree about what shipped."/>
+                        <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl x:Name="ChangelogList"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <TextBlock Text="DIAGNOSTICS" Style="{StaticResource SubHeadingText}"/>
             <Border Style="{StaticResource CardBorderStyle}" Padding="16">
                 <Grid>

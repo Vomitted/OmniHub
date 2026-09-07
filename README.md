@@ -156,13 +156,25 @@ driver, no NVIDIA GPU. It stays hidden when everything is present.
 
 ### Updating later
 
+**Settings → Updates** shows the installed version, checks the published releases,
+lists what changed in each, and downloads a newer build with progress before
+revealing it in Explorer. It deliberately stops there rather than unpacking over
+the running install: OmniHub runs elevated and holds the fan service, and an app
+that replaces its own binary underneath itself — while it is the only thing
+keeping a curve applied — is a bad trade for saving one manual extract.
+
+Exit OmniHub, extract the new zip over your copy, and start it again.
+
+If you built from source instead:
+
 ```
 git pull
 dotnet build OmniHub.slnx -c Release
 ```
 
-Your settings live in `%AppData%\OmniHub\settings.json` and are untouched by a
-rebuild.
+Your settings live in `%AppData%\OmniHub\settings.json` and are untouched by
+either route. Release history is in [CHANGELOG.md](CHANGELOG.md), which mirrors
+the published releases the app and website both read.
 
 ### First run on a new laptop model
 

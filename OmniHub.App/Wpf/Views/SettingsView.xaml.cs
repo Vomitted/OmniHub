@@ -37,6 +37,10 @@ public partial class SettingsView : UserControl
         InitialiseOverlayControls();
         _suppressEvents = false;
 
+        // After the suppression flag clears: this one starts a network call whose completion
+        // touches controls, and it must not run while the view is still wiring itself up.
+        InitialiseUpdateControls();
+
         RefreshLoggingChip();
 
         BuildThemeSwatches();
@@ -375,5 +379,191 @@ public partial class SettingsView : UserControl
             System.Windows.MessageBox.Show(ex.Message, "Could not open the log folder",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    // ---------------------------------------------------------------- updates
+
+    private OmniHub.Core.Update.ReleaseInfo? _available;
+    private bool _checking;
+
+    /// <summary>
+    /// Fills in the version line and pulls the release list once the tab is first built.
+    ///
+    /// Fire-and-forget on purpose: this is a network call, and the Settings tab must open at
+    /// once whether or not GitHub answers. Everything it touches is set back on the dispatcher.
+    /// </summary>
+    private void InitialiseUpdateControls()
+    {
+        VersionText.Text = $"OmniHub {OmniHub.Core.Update.UpdateCheck.CurrentVersion}";
+        _ = RefreshReleasesAsync(userAsked: false);
+    }
+
+    private void CheckUpdateBtn_Click(object sender, RoutedEventArgs e) =>
+        _ = RefreshReleasesAsync(userAsked: true);
+
+    private async Task RefreshReleasesAsync(bool userAsked)
+    {
+        if (_checking) return;
+        _checking = true;
+        CheckUpdateBtn.IsEnabled = false;
+        if (userAsked) UpdateStatus.Text = "Checking...";
+
+        var releases = await OmniHub.Core.Update.UpdateCheck.FetchAsync().ConfigureAwait(true);
+        var current = OmniHub.Core.Update.UpdateCheck.CurrentVersion;
+        _available = OmniHub.Core.Update.UpdateCheck.NewerThan(releases, current);
+
+        RenderChangelog(releases, current);
+
+        if (_available is { } up)
+        {
+            UpdateStatus.Text = $"Version {up.Version} is available.";
+            UpdateHeadline.Text = $"{up.Title} -- {up.DownloadSize / 1048576} MB";
+            UpdateNotes.Text = Summarise(up.Notes);
+            UpdateBanner.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            UpdateBanner.Visibility = Visibility.Collapsed;
+
+            // "Could not check" and "nothing newer" are different answers, and reporting the
+            // first as the second would quietly tell someone they are current when the check
+            // never happened.
+            UpdateStatus.Text = releases.Count == 0
+                ? "Could not reach GitHub. No update information -- this is not a claim that you are up to date."
+                : "You are on the newest release.";
+        }
+
+        CheckUpdateBtn.IsEnabled = true;
+        _checking = false;
+    }
+
+    /// <summary>First paragraph only; the full text is one click away on the release page.</summary>
+    private static string Summarise(string notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return "No notes were published with this release.";
+        int split = notes.IndexOf("\n\n", StringComparison.Ordinal);
+        string head = split > 0 ? notes[..split] : notes;
+        return head.Length > 400 ? head[..400].TrimEnd() + "..." : head.Trim();
+    }
+
+    private void RenderChangelog(IReadOnlyList<OmniHub.Core.Update.ReleaseInfo> releases, Version current)
+    {
+        ChangelogList.Items.Clear();
+
+        if (releases.Count == 0)
+        {
+            ChangelogList.Items.Add(new TextBlock
+            {
+                Text = "The release list could not be read. It needs a network connection.",
+                Style = (Style)FindResource("MutedText"),
+                FontSize = 11,
+                TextWrapping = TextWrapping.Wrap,
+            });
+            return;
+        }
+
+        foreach (var r in releases)
+        {
+            var header = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
+            header.Children.Add(new TextBlock
+            {
+                Text = r.Tag,
+                Style = (Style)FindResource("SettingTitle"),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+            header.Children.Add(new TextBlock
+            {
+                Text = r.PublishedAt == DateTimeOffset.MinValue
+                    ? ""
+                    : r.PublishedAt.ToLocalTime().ToString("d MMM yyyy"),
+                Style = (Style)FindResource("MutedText"),
+                FontSize = 10.5,
+                Margin = new Thickness(10, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+
+            // The running build is marked rather than left for the reader to work out by
+            // comparing a version string in one place against a tag in another.
+            if (r.Version == current)
+            {
+                header.Children.Add(new TextBlock
+                {
+                    Text = "INSTALLED",
+                    Style = (Style)FindResource("DataLabelText"),
+                    Foreground = (Brush)FindResource("GoodBrush"),
+                    Margin = new Thickness(10, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                });
+            }
+
+            var block = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };
+            block.Children.Add(header);
+            block.Children.Add(new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(r.Notes) ? "No notes were published." : r.Notes,
+                Style = (Style)FindResource("MutedText"),
+                FontSize = 11,
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 640,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            });
+            ChangelogList.Items.Add(block);
+        }
+    }
+
+    /// <summary>
+    /// Downloads the release zip and shows it in Explorer.
+    ///
+    /// It stops at revealing the file rather than unpacking over the running install. OmniHub
+    /// holds the fan service and runs elevated; swapping its own binary underneath itself to
+    /// save one manual extract is not a trade worth making in an app whose absence puts the
+    /// laptop back on the stock curve.
+    /// </summary>
+    private async void DownloadBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_available is not { } up) return;
+
+        DownloadBtn.IsEnabled = false;
+        DownloadProgress.Visibility = Visibility.Visible;
+        DownloadProgress.Value = 0;
+
+        var progress = new Progress<double>(p => DownloadProgress.Value = p);
+        string? path = await OmniHub.Core.Update.UpdateCheck.DownloadAsync(up, progress).ConfigureAwait(true);
+
+        DownloadProgress.Visibility = Visibility.Collapsed;
+        DownloadBtn.IsEnabled = true;
+
+        if (path is null)
+        {
+            UpdateStatus.Text = "The download did not complete. The release page has the file if you would rather fetch it yourself.";
+            return;
+        }
+
+        UpdateStatus.Text = "Downloaded. Exit OmniHub, extract it over your current copy, and start it again.";
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"/select,\"{path}\"",
+                UseShellExecute = true,
+            });
+        }
+        catch { /* the path is already in the status line if Explorer will not open */ }
+    }
+
+    private void ReleasePageBtn_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = _available?.Tag is { } tag
+                    ? $"{OmniHub.Core.Update.UpdateCheck.ReleasesPage}/tag/{tag}"
+                    : OmniHub.Core.Update.UpdateCheck.ReleasesPage,
+                UseShellExecute = true,
+            });
+        }
+        catch { }
     }
 }
