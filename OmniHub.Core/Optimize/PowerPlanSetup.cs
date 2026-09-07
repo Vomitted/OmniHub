@@ -132,6 +132,67 @@ public static class PowerPlanSetup
         }
     }
 
+    /// <summary>
+    /// Builds a plan from a recipe: duplicates Balanced, names it, and writes the resolved
+    /// values for every knob this machine exposes.
+    ///
+    /// Reuses an existing scheme of the same name rather than making a second one with the same
+    /// label, so re-creating a plan after moving the slider updates it instead of littering the
+    /// power menu with near-identical entries.
+    ///
+    /// As everywhere in this file, it only ever writes to a scheme it created.
+    /// </summary>
+    public static (Guid? Id, string Detail) CreateFromRecipe(
+        PowerPlanRecipe recipe, IReadOnlyList<PowerKnob> knobs)
+    {
+        if (string.IsNullOrWhiteSpace(recipe.Name))
+            return (null, "The plan needs a name.");
+
+        try
+        {
+            Guid? id = Find(PowerPlan.List(), recipe.Name) ?? Duplicate(recipe.Name);
+            if (id is not { } scheme)
+                return (null, "Windows would not create the scheme. Administrator rights are required.");
+
+            int written = 0, attempted = 0;
+            foreach (var (knob, ac, dc) in recipe.Resolve(knobs))
+            {
+                var sub = knob.Sub;
+                var setting = knob.Id;
+                attempted += 2;
+                if (PowerWriteACValueIndex(IntPtr.Zero, ref scheme, ref sub, ref setting, ac) == ErrorSuccess) written++;
+                if (PowerWriteDCValueIndex(IntPtr.Zero, ref scheme, ref sub, ref setting, dc) == ErrorSuccess) written++;
+            }
+
+            // Reported as a fraction rather than a bare success. A scheme can be created while
+            // individual settings are refused by policy, and "created" alone would hide that.
+            return (scheme, written == attempted
+                ? $"\"{recipe.Name}\" created with {written / 2} settings."
+                : $"\"{recipe.Name}\" created, but only {written} of {attempted} values were accepted.");
+        }
+        catch (Exception ex)
+        {
+            return (null, $"Could not create the plan: {ex.Message}");
+        }
+    }
+
+    /// <summary>Deletes one scheme by name, refusing while it is the active one.</summary>
+    public static string RemoveByName(string name)
+    {
+        var active = PowerPlan.GetActiveSchemeId();
+        foreach (var s in PowerPlan.List())
+        {
+            if (!string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase)) continue;
+            if (s.Id == active) return "That plan is currently active. Switch to another plan first.";
+
+            var id = s.Id;
+            return PowerDeleteScheme(IntPtr.Zero, ref id) == ErrorSuccess
+                ? $"Deleted \"{name}\"."
+                : $"Windows would not delete \"{name}\".";
+        }
+        return $"No plan named \"{name}\".";
+    }
+
     private static Guid? Find(IReadOnlyList<PowerScheme> schemes, string name)
     {
         foreach (var s in schemes)

@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using OmniHub.Core.Hardware;
 using OmniHub.Core.Optimize;
@@ -31,6 +31,7 @@ public partial class OptimizeView : UserControl
         RefreshForeground();
         BuildGamingToggles();
         BuildPowerPlans();
+        InitialisePlanBuilder();
 
         // Scanning the caches walks several directory trees, which is real disk I/O. Kept off
         // the UI thread for the same reason every BIOS call in this app is: doing that work in
@@ -649,6 +650,128 @@ public partial class OptimizeView : UserControl
             {
                 PlanResult.Text = t.Result.Detail;
                 PlanResult.Foreground = (Brush)FindResource(t.Result.Applied ? "GoodBrush" : "DangerBrush");
+            });
+        }, TaskScheduler.Default);
+    }
+
+    // ----------------------------------------------------------- plan builder
+
+    /// <summary>
+    /// The settings this machine actually exposes, read once.
+    ///
+    /// Read from Windows rather than listed here, so a machine with a different set of boost
+    /// modes -- or no PCI Express control at all -- gets a builder that matches it instead of
+    /// one that writes values the machine will ignore. This project has already been caught out
+    /// by an assumed index once.
+    /// </summary>
+    private IReadOnlyList<PowerKnob> _knobs = Array.Empty<PowerKnob>();
+
+    private void InitialisePlanBuilder()
+    {
+        _knobs = PowerKnobReader.Read();
+
+        if (_knobs.Count == 0)
+        {
+            BuilderResult.Text = "Windows did not report any adjustable power settings, so a plan cannot be built here.";
+            CreatePlanBtn.IsEnabled = false;
+            DeletePlanBtn.IsEnabled = false;
+            return;
+        }
+
+        RefreshPreview();
+    }
+
+    private PowerPlanRecipe CurrentRecipe() =>
+        new(PlanName.Text.Trim(), (int)Math.Round(PlanBias.Value));
+
+    private void PlanBias_Changed(object sender, RoutedPropertyChangedEventArgs<double> e) => RefreshPreview();
+    private void PlanName_Changed(object sender, TextChangedEventArgs e) => RefreshPreview();
+
+    /// <summary>
+    /// Shows exactly what pressing Create would write, both rails, before it writes anything.
+    ///
+    /// A power plan is not self-evident from a slider position, and this feature exists to be
+    /// trusted with processor settings. Showing the resolved values first is the difference
+    /// between a control and a wish.
+    /// </summary>
+    private void RefreshPreview()
+    {
+        // ValueChanged fires while the XAML is still being parsed, before the later-declared
+        // elements exist.
+        if (PlanPreview is null || PlanBiasLabel is null || _knobs.Count == 0) return;
+
+        int bias = (int)Math.Round(PlanBias.Value);
+        PlanBiasLabel.Text = bias switch
+        {
+            <= 10 => "Maximum battery life",
+            < 40 => $"Leaning towards battery ({bias})",
+            <= 60 => $"Balanced ({bias})",
+            < 90 => $"Leaning towards performance ({bias})",
+            _ => "Maximum performance",
+        };
+
+        PlanPreview.Items.Clear();
+        PlanPreview.Items.Add(Row("", "PLUGGED IN", "ON BATTERY", "DataLabelText", "DataLabelText"));
+
+        foreach (var (knob, ac, dc) in CurrentRecipe().Resolve(_knobs))
+            PlanPreview.Items.Add(Row(knob.Label, knob.Describe(ac), knob.Describe(dc), "MutedText", "BodyText"));
+
+        Grid Row(string label, string ac, string dc, string labelStyle, string valueStyle)
+        {
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 5) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+            row.Children.Add(Cell(label, 0, labelStyle));
+            row.Children.Add(Cell(ac, 1, valueStyle));
+            row.Children.Add(Cell(dc, 2, "MutedText"));
+            return row;
+        }
+
+        TextBlock Cell(string text, int column, string style)
+        {
+            var t = new TextBlock
+            {
+                Text = text,
+                Style = (Style)FindResource(style),
+                FontSize = 11.5,
+                TextWrapping = TextWrapping.NoWrap,
+            };
+            Grid.SetColumn(t, column);
+            return t;
+        }
+    }
+
+    private void CreatePlanBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var recipe = CurrentRecipe();
+        CreatePlanBtn.IsEnabled = false;
+
+        Task.Run(() => PowerPlanSetup.CreateFromRecipe(recipe, _knobs)).ContinueWith(t =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                CreatePlanBtn.IsEnabled = true;
+                BuilderResult.Text = t.Result.Detail;
+                BuilderResult.Foreground = (Brush)FindResource(t.Result.Id is null ? "DangerBrush" : "GoodBrush");
+
+                // The list above now has a new entry; leaving it stale would make the plan look
+                // as though it had not been created.
+                if (t.Result.Id is not null) BuildPowerPlans();
+            });
+        }, TaskScheduler.Default);
+    }
+
+    private void DeletePlanBtn_Click(object sender, RoutedEventArgs e)
+    {
+        string name = PlanName.Text.Trim();
+        Task.Run(() => PowerPlanSetup.RemoveByName(name)).ContinueWith(t =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                BuilderResult.Text = t.Result;
+                BuilderResult.Foreground = (Brush)FindResource("TextMutedBrush");
+                BuildPowerPlans();
             });
         }, TaskScheduler.Default);
     }

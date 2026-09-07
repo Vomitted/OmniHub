@@ -207,6 +207,55 @@
                 </Grid>
             </Border>
 
+            <TextBlock Text="CREATE A POWER PLAN" Style="{StaticResource SubHeadingText}" Margin="0,18,0,0"/>
+            <Border Style="{StaticResource CardBorderStyle}" Padding="16">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,14" MaxWidth="620" TextWrapping="Wrap"
+                                   Text="Makes a new plan from one decision: battery life at the left, performance at the right. Every setting below is derived from that, and the available values come from what Windows reports this machine supports rather than from a fixed table. Your existing plans are never modified -- this only adds new ones."/>
+
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Name" Style="{StaticResource MutedText}" FontSize="11.5"
+                                       VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBox Grid.Column="1" x:Name="PlanName" Style="{StaticResource NumericTextBoxStyle}"
+                                     HorizontalAlignment="Left" Width="320" HorizontalContentAlignment="Left"
+                                     Text="My Plan" TextChanged="PlanName_Changed"/>
+                        </Grid>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Battery" Style="{StaticResource MutedText}" FontSize="10.5" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" x:Name="PlanBias" Minimum="0" Maximum="100" Value="50"
+                                    TickFrequency="25" TickPlacement="BottomRight" IsSnapToTickEnabled="False"
+                                    Margin="12,0" VerticalAlignment="Center" ValueChanged="PlanBias_Changed"/>
+                            <TextBlock Grid.Column="2" Text="Performance" Style="{StaticResource MutedText}" FontSize="10.5" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock x:Name="PlanBiasLabel" Style="{StaticResource MutedText}" FontSize="11.5"
+                                   HorizontalAlignment="Center" Margin="0,6,0,14"/>
+
+                        <TextBlock Text="WHAT THIS WILL WRITE" Style="{StaticResource DataLabelText}" Margin="0,0,0,8"/>
+                        <ItemsControl x:Name="PlanPreview"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                            <Button x:Name="CreatePlanBtn" Content="Create Plan" Style="{StaticResource PrimaryButtonStyle}"
+                                    Click="CreatePlanBtn_Click"/>
+                            <Button x:Name="DeletePlanBtn" Content="Delete This Plan" Style="{StaticResource FlatButtonStyle}"
+                                    Margin="8,0,0,0" Click="DeletePlanBtn_Click"/>
+                        </StackPanel>
+                        <TextBlock x:Name="BuilderResult" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,12,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
         </StackPanel>
     </ScrollViewer>
 </UserControl>
