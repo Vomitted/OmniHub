@@ -1,3 +1,6 @@
+// Explicit since this project enabled UseWPF: that changes the implicit-using set, and
+// System.IO no longer arrives on its own.
+using System.IO;
 using OmniHub.Core.Optimize;
 
 namespace OmniHub.Tests;

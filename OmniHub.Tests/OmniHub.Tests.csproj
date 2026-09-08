@@ -8,6 +8,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+
+    <!-- For the WPF framework types only, ResourceDictionary and XamlReader, so the style layer
+         can be constructed and checked rather than merely read as text. A style whose trigger
+         names a property that does not exist, or a template that cannot be built, is not a
+         compiler error: it throws when the dictionary is parsed, which until now meant when
+         somebody opened the application.
+
+         This is NOT a reference to OmniHub.App. The note on the ProjectReference below still
+         stands, and the tests using these types create their own STA thread rather than letting
+         one into the host. -->
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup>
