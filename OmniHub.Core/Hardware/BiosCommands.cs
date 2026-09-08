@@ -7,15 +7,65 @@ public sealed class GpuController
     private readonly BiosInterop _bios;
     public GpuController(BiosInterop bios) => _bios = bios;
 
+    /// <summary>
+    /// How long a GPU read is reused.
+    ///
+    /// Short on purpose. The point is only to collapse the readers that land in the same poll
+    /// tick -- the dashboard's mode panel and the re-assertion loop both hang off OnReading and
+    /// arrive milliseconds apart, and each was a separate BIOS round trip queued behind the same
+    /// send lock. It must stay well under the five-second re-assertion interval, because that
+    /// loop exists to notice the firmware quietly dropping the GPU power ceiling, and a cache as
+    /// long as its period could hand it back the value from before the drop.
+    /// </summary>
+    private static readonly TimeSpan ReadCacheLife = TimeSpan.FromSeconds(1);
+
+    private readonly object _cacheLock = new();
+    private GpuMode? _cachedMode;
+    private DateTime _cachedModeAtUtc = DateTime.MinValue;
+    private GpuPowerData? _cachedPower;
+    private DateTime _cachedPowerAtUtc = DateTime.MinValue;
+
+    /// <summary>
+    /// Drops both cached reads. Called after every write here.
+    ///
+    /// Not optional, and not defensive. Writing a value and reading it straight back is how this
+    /// application tells a setting the firmware accepted from one it merely acknowledged, and a
+    /// cache that survives the write inverts that check -- the same failure that made the
+    /// adaptive controller stop itself reporting locked power limits on hardware which had
+    /// accepted every command it was sent.
+    /// </summary>
+    private void InvalidateReads()
+    {
+        lock (_cacheLock)
+        {
+            _cachedModeAtUtc = DateTime.MinValue;
+            _cachedPowerAtUtc = DateTime.MinValue;
+        }
+    }
+
     /// <summary>Current hybrid/discrete/Optimus mode. Read is safe on all devices (errors reported as Hybrid).</summary>
     public GpuMode GetMode()
     {
+        lock (_cacheLock)
+        {
+            if (_cachedMode is { } cached && DateTime.UtcNow - _cachedModeAtUtc < ReadCacheLife)
+                return cached;
+        }
+
+        GpuMode mode;
         try
         {
             var data = _bios.Send(BiosCmdGroup.Legacy, SysCmd.GetGpuMode, null, 4);
-            return (GpuMode)data[0];
+            mode = (GpuMode)data[0];
         }
-        catch { return GpuMode.Hybrid; }
+        catch { return GpuMode.Hybrid; }   // not cached: a failed read should be retried, not remembered
+
+        lock (_cacheLock)
+        {
+            _cachedMode = mode;
+            _cachedModeAtUtc = DateTime.UtcNow;
+        }
+        return mode;
     }
 
     /// <summary>
@@ -24,13 +74,29 @@ public sealed class GpuController
     /// output can leave you without video until you boot into safe mode and revert. Confirm
     /// with the user before calling this from UI.
     /// </summary>
-    public void SetMode(GpuMode mode) =>
+    public void SetMode(GpuMode mode)
+    {
         _bios.Send(BiosCmdGroup.GpuMode, SysCmd.SetGpuMode, new byte[] { (byte)mode, 0, 0, 0 }, 4);
+        InvalidateReads();
+    }
 
     public GpuPowerData GetPower()
     {
+        lock (_cacheLock)
+        {
+            if (_cachedPower is { } cached && DateTime.UtcNow - _cachedPowerAtUtc < ReadCacheLife)
+                return cached;
+        }
+
         var data = _bios.Send(BiosCmdGroup.Default, SysCmd.GetGpuPower, new byte[4], 4);
-        return GpuPowerData.FromBytes(data);
+        var power = GpuPowerData.FromBytes(data);
+
+        lock (_cacheLock)
+        {
+            _cachedPower = power;
+            _cachedPowerAtUtc = DateTime.UtcNow;
+        }
+        return power;
     }
 
     /// <summary>
@@ -53,6 +119,7 @@ public sealed class GpuController
             data = new GpuPowerData(GpuCustomTgp.On, GpuPpab.On, data.DState, data.PeakTemperatureC);
 
         _bios.Send(BiosCmdGroup.Default, SysCmd.SetGpuPower, data.ToBytes(), 4);
+        InvalidateReads();
     }
 
     public void SetPowerPreset(GpuPowerLevel level) => SetPower(new GpuPowerData(level));

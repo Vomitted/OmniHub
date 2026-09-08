@@ -1392,16 +1392,60 @@ public partial class TuningView : UserControl, IDisposable
         // Re-apply live while adaptive is running. Without this the target only took effect on
         // the next start, which is precisely why moving the slider appeared to do nothing.
         if (_adaptive is { IsRunning: true } && _tuning is not null)
+            QueueThermalLimit(target);
+
+        _settings.Save();
+    }
+
+    // Debounce for the adaptive target slider.
+    //
+    // ValueChanged fires for every intermediate position of a drag, and this applied the thermal
+    // limit inline on the UI thread. That is an SMU mailbox transaction, which spins on
+    // Thread.Sleep(1) up to a thousand times, twice, waiting for the mailbox to answer -- so
+    // dragging the slider issued one of those per pixel of travel and froze the window.
+    //
+    // Same shape as OptimizeView's brightness debounce, and for the same reason: only the value
+    // the user settles on is written. The difference is that the write also leaves the UI thread,
+    // because a single one of these can block for seconds by itself.
+    private System.Windows.Threading.DispatcherTimer? _targetDebounce;
+    private int _pendingTarget = -1;
+
+    private void QueueThermalLimit(int target)
+    {
+        _pendingTarget = target;
+
+        _targetDebounce ??= new System.Windows.Threading.DispatcherTimer
         {
-            var r = _tuning.SetThermalLimitC(target);
+            Interval = TimeSpan.FromMilliseconds(250),
+        };
+        _targetDebounce.Stop();
+        _targetDebounce.Tick -= ApplyPendingTarget;
+        _targetDebounce.Tick += ApplyPendingTarget;
+        _targetDebounce.Start();
+    }
+
+    private void ApplyPendingTarget(object? sender, EventArgs e)
+    {
+        _targetDebounce?.Stop();
+        if (_tuning is not { } tuning) return;
+
+        int target = _pendingTarget;
+
+        Task.Run(() => tuning.SetThermalLimitC(target)).ContinueWith(t =>
+        {
+            // A faulted call is reported as a refusal rather than swallowed: the whole point of
+            // this tab is telling a limit the firmware accepted from one it did not.
+            var r = t.IsFaulted
+                ? new TuningResult(false, t.Exception?.GetBaseException().Message ?? "the call failed")
+                : t.Result;
+
             _settings.ThermalLimitC = target;
             Set("tctl", target);
             ResultText.Text = r.Applied
                 ? $"Holding {target} C via the thermal limit."
                 : $"Thermal limit {target} C refused: {r.Detail}";
-        }
-
-        _settings.Save();
+            _settings.Save();
+        }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
     /// <summary>
