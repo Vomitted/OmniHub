@@ -335,8 +335,13 @@
         <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="5"/>
-        <Setter Property="Padding" Value="18"/>
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusMd}"/>
+
+        <!-- 16, which is what every card actually uses. This said 18 and was overridden at all
+             fifty-eight call sites, so the value here had never once reached the screen. Now
+             that the default is the real one, the thirty-eight borders that were repeating
+             Padding="16" do not have to say anything at all. -->
+        <Setter Property="Padding" Value="{StaticResource CardPadding}"/>
 
         <!-- Hover warms the edge. It used to also lift the card 1.5px, and that CRASHED the
              app: a Freezable put in a Style.Setter value is frozen when the style is sealed,

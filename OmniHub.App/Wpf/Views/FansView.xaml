@@ -105,7 +105,7 @@
             </Border>
 
             <TextBlock Text="SAFETY FLOOR" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -124,7 +124,7 @@
             </Border>
 
             <TextBlock Text="CURVE POINTS" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <StackPanel>
                     <DataGrid x:Name="CurveGrid" Style="{StaticResource OmniDataGridStyle}" Height="212" Margin="0,0,0,12"
                               CanUserAddRows="True" CanUserDeleteRows="True" CanUserResizeRows="False">
@@ -147,7 +147,7 @@
             </Border>
 
             <TextBlock Text="MANUAL CALIBRATION" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16">
+            <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>

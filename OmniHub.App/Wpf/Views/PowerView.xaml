@@ -66,7 +66,7 @@
             </Grid>
 
             <TextBlock Text="IDLE MODE" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <Grid>

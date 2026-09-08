@@ -106,7 +106,7 @@
                  an empty set of bars would read as "no constraints" rather than "not measured".
                  Rows are built once and only their values move, so this costs nothing per tick. -->
             <Border x:Name="LimitsCard" Visibility="Collapsed"
-                    Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,16">
+                    Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>

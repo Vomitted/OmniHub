@@ -10,7 +10,7 @@
                        Text="The full AMD SMU command set for this processor, applied through the PawnIO kernel driver. Every apply reads the hardware back afterwards and tells you whether the limits actually moved, because on this platform some of them do not."/>
 
             <TextBlock Text="PROCESSOR" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -27,7 +27,7 @@
             </Border>
 
             <TextBlock Text="LIVE" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -39,7 +39,7 @@
             </Border>
 
             <TextBlock Text="PRESETS" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -61,7 +61,7 @@
             </Border>
 
             <TextBlock Text="PER-GAME PROFILES" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -86,7 +86,7 @@
             </Border>
 
             <TextBlock Text="POWER LIMITS" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel x:Name="PowerRows"/>
@@ -94,7 +94,7 @@
             </Border>
 
             <TextBlock Text="THERMAL" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel x:Name="ThermalRows"/>
@@ -102,7 +102,7 @@
             </Border>
 
             <TextBlock Text="GRAPHICS AND VOLTAGE" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -114,7 +114,7 @@
             </Border>
 
             <TextBlock Text="ADAPTIVE" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -130,7 +130,7 @@
             </Border>
 
             <TextBlock Text="AUTO ECO" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -144,7 +144,7 @@
             </Border>
 
             <TextBlock Text="ON STARTUP" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -157,7 +157,7 @@
             </Border>
 
             <TextBlock Text="ON CHARGE AND ON BATTERY" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -171,7 +171,7 @@
             </Border>
 
             <TextBlock Text="APPLY" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -183,7 +183,7 @@
             </Border>
 
             <TextBlock Text="WHAT THIS FIRMWARE ACCEPTS" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>

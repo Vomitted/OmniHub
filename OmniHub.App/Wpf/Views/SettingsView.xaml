@@ -27,7 +27,7 @@
             </StackPanel>
 
             <TextBlock Text="THEME" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -43,7 +43,7 @@
             </Border>
 
             <TextBlock Text="STARTUP" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
 
@@ -89,7 +89,7 @@
             </Border>
 
             <TextBlock Text="OVERLAY" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -132,7 +132,7 @@
             </Border>
 
             <TextBlock Text="CLOSE BEHAVIOR" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -151,7 +151,7 @@
             </Border>
 
             <TextBlock Text="PREDICTIVE COOLING" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -172,7 +172,7 @@
             </Border>
 
             <TextBlock Text="POWER PLAN" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -229,7 +229,7 @@
             </Border>
 
             <TextBlock Text="UPDATES" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -288,7 +288,7 @@
             </Border>
 
             <TextBlock Text="DIAGNOSTICS" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16">
+            <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>

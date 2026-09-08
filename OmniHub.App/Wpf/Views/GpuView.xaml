@@ -64,7 +64,7 @@
             </Grid>
 
             <TextBlock Text="POWER UNLOCK" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -78,7 +78,7 @@
             </Border>
 
             <TextBlock Text="POWER PRESET" Style="{StaticResource SubHeadingText}"/>
-            <Border x:Name="PresetCard" Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border x:Name="PresetCard" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
@@ -103,7 +103,7 @@
             </Border>
 
             <TextBlock Text="MUX / GRAPHICS MODE" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>

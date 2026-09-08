@@ -93,4 +93,13 @@
     <CornerRadius x:Key="RadiusMd">5</CornerRadius>
     <CornerRadius x:Key="RadiusPill">999</CornerRadius>
 
+    <!-- One spacing scale, to go beside the radius one above.
+         There was no such thing: card geometry was written out at every call site, the same
+         Padding of 16 repeated on thirty-eight separate borders, while CardBorderStyle's own
+         default sat at 18, overridden everywhere and therefore never once used. A default no
+         caller accepts is not a default, it is a second value to keep in sync. -->
+    <Thickness x:Key="CardPadding">16</Thickness>
+    <Thickness x:Key="CardPaddingTight">16,13</Thickness>
+    <Thickness x:Key="CardGap">0,0,0,18</Thickness>
+
 </ResourceDictionary>
