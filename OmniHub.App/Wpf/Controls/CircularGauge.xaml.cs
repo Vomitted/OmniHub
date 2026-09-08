@@ -26,8 +26,9 @@ public partial class CircularGauge : UserControl
         set => SetValue(ArcValueProperty, value);
     }
 
+    // Only the arc moves per frame. See RedrawArc for why this is not Redraw().
     private static void OnArcValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        => ((CircularGauge)d).Redraw();
+        => ((CircularGauge)d).RedrawArc();
 
     /// <summary>The latest value handed in, independent of where the animation currently is.</summary>
     public double Value { get; private set; } = 100;
@@ -146,6 +147,10 @@ public partial class CircularGauge : UserControl
         }
     }
 
+    /// <summary>
+    /// Everything whose size depends on the control's size. Runs on load and on resize, not on
+    /// every value change.
+    /// </summary>
     private void Redraw()
     {
         double size = Math.Min(Root.ActualWidth, Root.ActualHeight);
@@ -171,7 +176,36 @@ public partial class CircularGauge : UserControl
         TrackEllipse.VerticalAlignment = System.Windows.VerticalAlignment.Top;
 
         ProgressPath.StrokeThickness = strokeWidth;
-        ProgressPath.Data = BuildArcGeometry(center, radius, ArcValue);
+
+        RedrawArc();
+    }
+
+    /// <summary>
+    /// The part that actually changes as the needle sweeps: the arc, and the dot on its leading
+    /// edge.
+    ///
+    /// Separated from <see cref="Redraw"/> because the value is animated over 750ms and WPF
+    /// raises the property-changed callback once per frame. Doing the whole redraw there meant
+    /// roughly nineteen times a second writing eight Width/Height/Margin properties whose values
+    /// had not changed since the last resize -- each one invalidating layout for a measure and
+    /// arrange pass that could only arrive at the same answer.
+    ///
+    /// The geometry is frozen before it is assigned. It is rebuilt from scratch every frame and
+    /// never mutated afterwards, so there is nothing for WPF to gain by tracking it for changes,
+    /// and freezing lets it skip the change-notification machinery entirely.
+    /// </summary>
+    private void RedrawArc()
+    {
+        double size = Math.Min(Root.ActualWidth, Root.ActualHeight);
+        if (size <= 0) return;
+
+        double strokeWidth = Math.Max(6, size * 0.055);
+        double radius = (size - strokeWidth) / 2.0;
+        var center = new Point(Root.ActualWidth / 2.0, Root.ActualHeight / 2.0);
+
+        var arc = BuildArcGeometry(center, radius, ArcValue);
+        arc.Freeze();
+        ProgressPath.Data = arc;
 
         // Park the tip dot on the arc's leading edge.
         double tipDeg = -90 + Math.Clamp(ArcValue / 100.0 * 360.0, 1.0, 359.9);

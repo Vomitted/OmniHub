@@ -354,6 +354,15 @@ public partial class DashboardView : UserControl
         if (_ctx.Smu is null)
             missing.Add(("Processor tuning and die temperature", _ctx.SmuUnavailableReason ?? "The SMU could not be opened."));
 
+        // Named rather than silently ignored. The curve drives two fans, which is baked into the
+        // command payload and every readout here; a chassis reporting more would have been driven
+        // as though it had two, with nothing on screen admitting the difference.
+        if (_ctx.HasUndrivenFans)
+            missing.Add(($"Fans 3 to {_ctx.FanCount}",
+                $"This board reports {_ctx.FanCount} fans and OmniHub drives two. The extra fans stay "
+                + "under BIOS control. Extending the command payload has not been verified on any "
+                + "machine, and guessing at it is not worth the risk to your cooling."));
+
         // Two different degrees of unavailable, and conflating them was misleading on every
         // non-NVIDIA machine: those get a name and a load figure, they just get no thermal
         // sensor, because Windows exposes none generically for a GPU.

@@ -31,6 +31,16 @@ internal static class Program
     public static void RunProbeCli()
     {
         AttachVisibleConsole();
+
+        // Captured as well as printed. The probe is the only evidence anyone has about a board
+        // nobody here owns, and "copy this whole block back" asks someone to select the right
+        // part of a console window without missing a line. A file they can attach is a better
+        // request, and it is the mechanism per-model support has to grow from -- ModelProfile
+        // has anticipated exactly this since it was written.
+        var captured = new StringWriter();
+        var console = Console.Out;
+        Console.SetOut(new TeeWriter(console, captured));
+
         try
         {
             RunProbe();
@@ -41,10 +51,45 @@ internal static class Program
         }
         finally
         {
+            Console.SetOut(console);
+            Console.WriteLine(SaveProbe(captured.ToString()));
             Console.WriteLine();
             Console.WriteLine("Press Enter to close...");
             Console.ReadLine();
         }
+    }
+
+    /// <summary>Writes the probe text beside the logs, and says where it went.</summary>
+    static string SaveProbe(string text)
+    {
+        try
+        {
+            Directory.CreateDirectory(ThermalLog.LogDirectory);
+            string path = Path.Combine(ThermalLog.LogDirectory, $"probe-{DateTime.Now:yyyy-MM-dd-HHmmss}.txt");
+            File.WriteAllText(path, text);
+            return $"Saved to        : {path}";
+        }
+        catch (Exception ex)
+        {
+            // Never let a failed save look like a failed probe: the output is already on screen.
+            return $"(could not save a copy: {ex.Message})";
+        }
+    }
+
+    /// <summary>
+    /// Writes to two places at once, so the probe can be shown and kept without every WriteLine
+    /// in it having to know about both.
+    /// </summary>
+    private sealed class TeeWriter : TextWriter
+    {
+        private readonly TextWriter _a, _b;
+        public TeeWriter(TextWriter a, TextWriter b) { _a = a; _b = b; }
+
+        public override System.Text.Encoding Encoding => _a.Encoding;
+        public override void Write(char value) { _a.Write(value); _b.Write(value); }
+        public override void Write(string? value) { _a.Write(value); _b.Write(value); }
+        public override void WriteLine(string? value) { _a.WriteLine(value); _b.WriteLine(value); }
+        public override void Flush() { _a.Flush(); _b.Flush(); }
     }
 
     public static void RunCalibrateCli()

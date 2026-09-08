@@ -140,7 +140,29 @@ public sealed class HardwareContext : IDisposable
         // encoding at its default.
         if (Capabilities is { LooksUnreported: false } caps)
             Fan.Encoding = caps.ThermalPolicy;
+
+        // Asked once, for the same reason as the capability block: it describes the chassis.
+        try { FanCount = Fan.GetFanCount(); } catch { /* no vendor interface: stays unknown */ }
     }
+
+    /// <summary>
+    /// How many fans the firmware reports, or null when it would not say.
+    ///
+    /// This application drives two, and that is baked into the command payload, the reading
+    /// record, the log schema and every readout. The count was being read for the probe printout
+    /// and nowhere else, so a chassis with a different number would have been driven as though it
+    /// had two, silently and with no indication anywhere that anything had been left out.
+    ///
+    /// Reported rather than acted on. The payload has two spare bytes that LOOK like room for
+    /// fans three and four, but that is an inference from a layout, not a measurement, and
+    /// guessing a wire format for hardware nobody here can test is the exact mistake this
+    /// project exists not to make. Saying "this board reports four fans and only two are being
+    /// driven" is honest and costs nothing; writing a speculative payload to find out is not.
+    /// </summary>
+    public byte? FanCount { get; private set; }
+
+    /// <summary>True when the firmware reports more fans than this application drives.</summary>
+    public bool HasUndrivenFans => FanCount is > 2;
 
     /// <summary>
     /// What the firmware says this board can do, or null when it would not say.
