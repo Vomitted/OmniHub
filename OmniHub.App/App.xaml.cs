@@ -105,6 +105,17 @@ public partial class App : Application
             return;
         }
 
+        // Above the guard for the same reason as -Probe: it only reads. It loads the CPU, but it
+        // never commands a fan or writes a power limit, so it cannot race the running instance
+        // for control -- and running it WHILE the application is up is the intended use, since
+        // the point is to measure the machine as it normally behaves.
+        if (e.Args.Length > 0 && e.Args[0].Equals("-LoadTest", StringComparison.OrdinalIgnoreCase))
+        {
+            Program.RunLoadTestCli(e.Args);
+            Shutdown();
+            return;
+        }
+
         if (e.Args.Length > 0 && e.Args[0].Equals("-Calibrate", StringComparison.OrdinalIgnoreCase))
         {
             Program.RunCalibrateCli();
