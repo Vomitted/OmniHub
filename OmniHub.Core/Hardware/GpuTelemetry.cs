@@ -58,7 +58,21 @@ public static class GpuTelemetry
     private static GpuReading? _cached;
     private static DateTime _cachedAtUtc = DateTime.MinValue;
 
-    private static bool HasNvidiaSmi => File.Exists(ExePath);
+    /// <summary>The refresh in flight, if any. Guarded by <see cref="Gate"/>; see Read().</summary>
+    private static Task? _refresh;
+
+    /// <summary>
+    /// Whether nvidia-smi is installed.
+    ///
+    /// Cached for the process lifetime rather than re-tested per call. This was a file-system
+    /// probe on every access, and it is reached from IsAvailable, HasThermalSource and every
+    /// Query() -- several times a second, forever, to answer a question whose answer does not
+    /// change while the app is running. Same reasoning as AnyAdapter below.
+    /// </summary>
+    private static readonly Lazy<bool> NvidiaSmiPresent = new(
+        () => File.Exists(ExePath), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+
+    private static bool HasNvidiaSmi => NvidiaSmiPresent.Value;
 
     /// <summary>
     /// Whether any GPU can be described at all.
@@ -91,10 +105,37 @@ public static class GpuTelemetry
     {
         lock (Gate)
         {
-            if (DateTime.UtcNow - _cachedAtUtc < CacheLife) return _cached;
-            _cached = Query();
-            _cachedAtUtc = DateTime.UtcNow;
+            // Refresh in the BACKGROUND and return what is already held. Never run Query() while
+            // holding Gate.
+            //
+            // Query() launches nvidia-smi and waits up to three seconds for it. Doing that inside
+            // the lock meant every other caller queued behind it -- and the callers are the 2s
+            // fan control loop and the hardware poll thread, which holds its own re-entrancy
+            // interlock while it runs. One slow GPU query therefore stalled the temperature poll
+            // and the fan curve together, on a machine whose entire purpose is not letting the
+            // fan curve stall. Measured from the thermal logs: the poll's nominal 2s period
+            // actually lands at 2.33s, and this sat on that critical path.
+            //
+            // Single-flight, so the four independent timers that ask for this (2s, 2.33s, 4s and
+            // 5s) collapse into one process launch instead of racing to start their own.
+            if (DateTime.UtcNow - _cachedAtUtc >= CacheLife && (_refresh is null || _refresh.IsCompleted))
+                _refresh = Task.Run(RefreshCache);
+
+            // Before the first refresh completes this is null, which callers already render as
+            // unavailable. That is honest for a reading not yet taken, and it corrects itself on
+            // the next tick -- a far better trade than blocking the fan loop to avoid one "--"
+            // at startup.
             return _cached;
+        }
+    }
+
+    private static void RefreshCache()
+    {
+        var reading = Query();   // deliberately outside Gate
+        lock (Gate)
+        {
+            _cached = reading;
+            _cachedAtUtc = DateTime.UtcNow;
         }
     }
 

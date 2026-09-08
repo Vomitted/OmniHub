@@ -134,7 +134,12 @@ public sealed class HardwareContext : IDisposable
 
     /// <summary>How many poll ticks pass between refreshes of the slow-moving BIOS flags.</summary>
     private const int SlowTickEvery = 5;
-    private int _slowTick;
+
+    // Seeded one short of the threshold so the very first poll refreshes these immediately,
+    // rather than leaving the flags at their defaults for five ticks. This replaces a
+    // "|| _slowTick == 1" special case that fired on tick one but also reset the counter to 1
+    // instead of 0 -- which quietly made the real period four ticks, not the five named here.
+    private int _slowTick = SlowTickEvery - 1;
     private bool _lastMaxFan;
     private ThrottlingState _lastThrottle = ThrottlingState.Unknown;
 
@@ -224,9 +229,9 @@ public sealed class HardwareContext : IDisposable
                 // this firmware, since a diagnostic sweep showed the response echoing back the
                 // selector byte it was sent. Paying for two BIOS calls a second to refresh a
                 // flag that rarely moves and a flag we do not fully trust is the wrong trade.
-                if (++_slowTick >= SlowTickEvery || _slowTick == 1)
+                if (++_slowTick >= SlowTickEvery)
                 {
-                    _slowTick = 1;
+                    _slowTick = 0;
                     try
                     {
                         _lastMaxFan = System.GetMaxFanActive();

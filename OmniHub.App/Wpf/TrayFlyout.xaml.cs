@@ -20,15 +20,22 @@ public partial class TrayFlyout : Window
         ModelLabel.Text = $"{ctx.Model.Manufacturer} {ctx.Model.Product}".Trim().ToUpperInvariant();
         RefreshModeText();
 
-        // Paired, for the reason given in DashboardView: this window is hidden and re-shown
-        // rather than recreated, and an unsubscribe with no matching re-subscribe leaves the
-        // flyout showing whatever it last saw.
-        Loaded += (_, _) =>
+        // Paired on VISIBILITY, not on load.
+        //
+        // The pairing itself is right, for the reason given in DashboardView: this window is
+        // hidden and re-shown rather than recreated, so an unsubscribe with no matching
+        // re-subscribe would leave the flyout showing whatever it last saw. But it hung off
+        // Loaded/Unloaded, and WPF does not raise Unloaded when a Window is merely Hide()n --
+        // which is exactly how this flyout closes. So after the first tray click it stayed
+        // subscribed for the rest of the session, marshalling to the UI thread on every poll
+        // tick to update three TextBlocks on a window nobody could see.
+        //
+        // IsVisibleChanged is the event that actually tracks Show()/Hide().
+        IsVisibleChanged += (_, e) =>
         {
             ctx.OnReading -= OnReading;
-            ctx.OnReading += OnReading;
+            if (e.NewValue is true) ctx.OnReading += OnReading;
         };
-        Unloaded += (_, _) => ctx.OnReading -= OnReading;
     }
 
     public void ShowNearTray()
