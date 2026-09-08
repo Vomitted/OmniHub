@@ -69,6 +69,7 @@ public partial class DashboardView : UserControl
             // every launch that lost the race with PawnIO's service, and never correct itself.
             // Loaded fires on each return to the tab, so the card re-states current truth.
             BuildReadiness();
+            RefreshLimits();
         };
         Unloaded += (_, _) => ctx.OnReading -= OnReading;
 
@@ -97,6 +98,107 @@ public partial class DashboardView : UserControl
         // on is not a warning, it is just the colour of the app. Normal until genuinely hot
         // keeps the red meaning something.
         return (Brush)FindResource("TextPrimaryBrush");
+    }
+
+    /// <summary>One constraint's row: built once, then only its value and bar move.</summary>
+    private sealed record LimitRowUi(TextBlock Name, TextBlock Percent, Grid Bar);
+
+    private readonly List<LimitRowUi> _limitRows = new();
+
+    /// <summary>
+    /// Shows which limit the processor is up against, and how much room the others have.
+    ///
+    /// PowerSnapshot has computed this since the SMU layer was written and nothing displayed it,
+    /// so the app could report a wattage but not what the wattage meant. Knowing you are at 99%
+    /// of core current and 60% of the power limit is what says raising the power limit would
+    /// change nothing -- a conclusion no single figure on this page supports.
+    ///
+    /// The whole card hides without an SMU. With no PM table there is nothing measured, and five
+    /// empty bars would read as "no constraints" rather than "not known".
+    /// </summary>
+    private void RefreshLimits()
+    {
+        // The cached read: cheap, and shared with everything else that wants the table.
+        var snapshot = _ctx.Smu?.ReadPowerSnapshot();
+        if (snapshot is null)
+        {
+            LimitsCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var limits = snapshot.Limits();
+
+        // Built on first use only. Rebuilding five rows per poll would be the same churn the
+        // gauge was just cured of.
+        if (_limitRows.Count != limits.Length)
+        {
+            _limitRows.Clear();
+            LimitRows.Children.Clear();
+            foreach (var (name, _) in limits) _limitRows.Add(BuildLimitRow(name));
+        }
+
+        for (int i = 0; i < limits.Length; i++)
+        {
+            double pct = limits[i].Percent;
+            _limitRows[i].Percent.Text = $"{pct:0}%";
+            SetBar(_limitRows[i].Bar, pct);
+        }
+
+        var tightest = snapshot.TightestLimit();
+        LimitsHeadline.Text = tightest.Percent >= 95
+            ? $"Held back by {tightest.Name.ToLowerInvariant()}, at {tightest.Percent:0}% of its limit. "
+              + "Raising anything with room to spare below will not change this."
+            : $"Nothing is close to its limit. The tightest is {tightest.Name.ToLowerInvariant()} "
+              + $"at {tightest.Percent:0}%.";
+
+        LimitsCard.Visibility = Visibility.Visible;
+    }
+
+    private LimitRowUi BuildLimitRow(string name)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 7) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(148) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) });
+
+        var label = new TextBlock
+        {
+            Text = name,
+            Style = (Style)FindResource("TileFoot"),
+            Margin = new Thickness(0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+        };
+        Grid.SetColumn(label, 0);
+
+        // Same two-column star rail as the metric cards, so SetBar drives it unchanged.
+        var bar = new Grid { Height = 3, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 10, 0) };
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Star) });
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100, GridUnitType.Star) });
+
+        var filled = new Border { Background = (Brush)FindResource("MetricCpuBrush"), CornerRadius = new CornerRadius(2) };
+        Grid.SetColumn(filled, 0);
+        var rest = new Border { Background = (Brush)FindResource("PanelAltBrush"), CornerRadius = new CornerRadius(2) };
+        Grid.SetColumn(rest, 1);
+        bar.Children.Add(filled);
+        bar.Children.Add(rest);
+        Grid.SetColumn(bar, 1);
+
+        var percent = new TextBlock
+        {
+            Style = (Style)FindResource("TileFoot"),
+            Margin = new Thickness(0),
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            Text = "--",
+        };
+        Grid.SetColumn(percent, 2);
+
+        grid.Children.Add(label);
+        grid.Children.Add(bar);
+        grid.Children.Add(percent);
+        LimitRows.Children.Add(grid);
+
+        return new LimitRowUi(label, percent, bar);
     }
 
     // Fills a two-column progress rail from a real 0-100 percent value. Star widths rather
@@ -652,6 +754,10 @@ public partial class DashboardView : UserControl
             }
 
             TrendChart.Push(tempC);
+
+            // Reads the SMU's own 5-second cache, so this is a dictionary lookup on most ticks
+            // rather than a PM table refresh.
+            RefreshLimits();
         });
 
         RefreshPerf();

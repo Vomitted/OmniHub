@@ -55,20 +55,35 @@ public sealed record PowerSnapshot(
     /// </summary>
     public (string Name, double Percent) TightestLimit()
     {
-        (string Name, double Percent)[] candidates =
-        {
-            ("Sustained power", Ratio(StapmWatts, StapmLimitWatts)),
-            ("Boost power", Ratio(FastWatts, FastLimitWatts)),
-            ("Core current (EDC)", Ratio(EdcVddAmps, EdcVddLimitAmps)),
-            ("Core current (TDC)", Ratio(TdcVddAmps, TdcVddLimitAmps)),
-            ("Temperature", Ratio(CoreTempC, ThermalLimitC)),
-        };
-
-        var tightest = candidates.MaxBy(c => c.Percent);
+        var tightest = Limits().MaxBy(c => c.Percent);
         return (tightest.Name, tightest.Percent);
-
-        static double Ratio(double value, double limit) => limit > 0 ? value / limit * 100.0 : 0;
     }
+
+    /// <summary>
+    /// Every constraint the processor is under, each as a percentage of its own limit, in a
+    /// fixed order.
+    ///
+    /// The tightest one alone answers "what is holding this back". All five answer "and how much
+    /// room is left in the others", which is the difference between knowing the machine is
+    /// throttled and knowing which knob would change it: being at 99% of core current and 60% of
+    /// the power limit says plainly that raising the power limit will do nothing, and that is
+    /// exactly the conclusion nobody can reach from a wattage on its own.
+    ///
+    /// The order is stable, so a caller can build one row per entry once and afterwards only
+    /// update the values rather than rebuilding its display on every refresh.
+    /// </summary>
+    public (string Name, double Percent)[] Limits() => new[]
+    {
+        ("Sustained power", Ratio(StapmWatts, StapmLimitWatts)),
+        ("Boost power", Ratio(FastWatts, FastLimitWatts)),
+        ("Core current (EDC)", Ratio(EdcVddAmps, EdcVddLimitAmps)),
+        ("Core current (TDC)", Ratio(TdcVddAmps, TdcVddLimitAmps)),
+        ("Temperature", Ratio(CoreTempC, ThermalLimitC)),
+    };
+
+    // A limit of zero means the table reported none, so there is no ratio to take. Zero is
+    // returned rather than a division by zero, and it reads as "no constraint measured here".
+    private static double Ratio(double value, double limit) => limit > 0 ? value / limit * 100.0 : 0;
 }
 
 /// <summary>
