@@ -4,37 +4,11 @@
              xmlns:controls="clr-namespace:OmniHub.App.Wpf.Controls"
              Background="{StaticResource BackgroundBrush}">
     <UserControl.Resources>
-        <!-- Same metric-card vocabulary as the Dashboard: coloured mono label, oversized value
-             with a small unit beside it, faint footer. Defined locally rather than shared
-             because this view wants different sizes, and a shared style overridden four ways
-             at every call site reads worse than the definition. -->
-        <Style x:Key="TileLabel" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
-            <Setter Property="FontSize" Value="10.5"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-        </Style>
-        <Style x:Key="TileValue" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource UiFontSemibold}"/>
-            <Setter Property="FontSize" Value="34"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-            <Setter Property="LineHeight" Value="38"/>
-        </Style>
-        <Style x:Key="TileUnit" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
-            <Setter Property="VerticalAlignment" Value="Bottom"/>
-            <Setter Property="Margin" Value="4,0,0,5"/>
-        </Style>
-        <Style x:Key="TileFoot" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
-            <Setter Property="FontSize" Value="9.5"/>
-            <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}"/>
-            <Setter Property="Margin" Value="0,6,0,0"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-        </Style>
+        <!-- Same metric-tile vocabulary as the Dashboard, now shared from Styles.xaml. It used
+             to live here on the grounds that this view wants different sizes, but the four
+             definitions were byte-identical to PowerView's, so the sizes were never actually
+             different and both copies were maintaining the same numbers twice. A view that does
+             want its own size overrides one Setter with BasedOn instead. -->
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,20,26,24">

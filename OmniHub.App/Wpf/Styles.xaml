@@ -624,6 +624,46 @@
         <Setter Property="Margin" Value="0,0,0,8"/>
     </Style>
 
+    <!-- The metric-tile vocabulary: coloured mono label, oversized value with a small unit
+         beside it, faint footer. Four views grew a private copy of these, and two of those
+         copies were byte-identical to each other, which is the case this replaces.
+
+         The original reason for keeping them local was that a view may want different sizes, and
+         "a shared style overridden four ways at every call site reads worse than the
+         definition". That still holds, so the answer is BasedOn with a single Setter for the
+         size that differs, rather than a fresh copy of all four. Where a view's local key shares
+         a name with one of these, the local one shadows it and nothing about that view changes. -->
+    <Style x:Key="TileLabel" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+        <Setter Property="FontSize" Value="10.5"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+
+    <Style x:Key="TileValue" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFontSemibold}"/>
+        <Setter Property="FontSize" Value="34"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="LineHeight" Value="38"/>
+    </Style>
+
+    <Style x:Key="TileUnit" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Bottom"/>
+        <Setter Property="Margin" Value="4,0,0,5"/>
+    </Style>
+
+    <Style x:Key="TileFoot" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+        <Setter Property="FontSize" Value="9.5"/>
+        <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}"/>
+        <Setter Property="Margin" Value="0,6,0,0"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
     <Style x:Key="BodyText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
         <Setter Property="FontSize" Value="13"/>
