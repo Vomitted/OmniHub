@@ -25,28 +25,42 @@ public static class SystemPerfReader
     {
         try
         {
+            // Named columns, not SELECT *.
+            //
+            // This runs on the hardware poll's back, once per tick for as long as the dashboard
+            // is open -- measured at 1.29 WMI queries a second. SELECT * makes the provider
+            // populate and marshal a whole instance across the WMI boundary to read one
+            // property, and Win32_Processor is a notoriously expensive provider to do that to.
+            //
+            // Worth knowing, since this codebase has been bitten once already: ModelProfile
+            // deliberately uses SELECT * because Win32_ComputerSystemProduct rejects a property
+            // list with "Invalid query" on some HP systems. That quirk is specific to that
+            // class; these two take a column list normally. If one ever stops doing so, Read
+            // returns null and the readouts say unavailable, which is the honest failure.
             double clockMHz = 0, loadPercent = 0;
-            using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PerfFormattedData_PerfOS_Processor WHERE Name='_Total'"))
+            using (var searcher = new ManagementObjectSearcher(
+                "SELECT PercentProcessorTime FROM Win32_PerfFormattedData_PerfOS_Processor WHERE Name='_Total'"))
                 foreach (ManagementObject mo in searcher.Get())
                     using (mo) loadPercent = Convert.ToDouble(mo["PercentProcessorTime"] ?? 0.0);
 
-            using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_Processor"))
+            using (var searcher = new ManagementObjectSearcher("SELECT CurrentClockSpeed FROM Win32_Processor"))
                 foreach (ManagementObject mo in searcher.Get())
                     using (mo) clockMHz = Convert.ToDouble(mo["CurrentClockSpeed"] ?? 0.0);
 
-            double totalKB = 0, freeKB = 0;
-            using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_OperatingSystem"))
-            {
-                foreach (ManagementObject mo in searcher.Get())
-                {
-                    using var _ = mo;
-                    totalKB = Convert.ToDouble(mo["TotalVisibleMemorySize"] ?? 0.0);
-                    freeKB = Convert.ToDouble(mo["FreePhysicalMemory"] ?? 0.0);
-                }
-            }
+            // Memory comes from GlobalMemoryStatusEx rather than a third WMI query. It is the
+            // same pair of numbers Win32_OperatingSystem reports, from the same kernel counters,
+            // through a P/Invoke that costs effectively nothing -- and MemoryTools already wraps
+            // it for the System tab, so this removes a round trip per tick and adds no new code.
+            ulong totalBytes = Optimize.MemoryTools.TotalPhysicalBytes();
+            ulong availableBytes = Optimize.MemoryTools.AvailablePhysicalBytes();
 
-            double totalGB = totalKB / 1024.0 / 1024.0;
-            double usedGB = (totalKB - freeKB) / 1024.0 / 1024.0;
+            // Both return 0 when the call fails. A zero total would make every derived figure
+            // nonsense, so treat it as a failed read rather than report a machine with no RAM.
+            if (totalBytes == 0) return null;
+
+            const double BytesPerGB = 1024.0 * 1024.0 * 1024.0;
+            double totalGB = totalBytes / BytesPerGB;
+            double usedGB = (totalBytes - availableBytes) / BytesPerGB;
 
             return new SystemPerf(clockMHz / 1000.0, loadPercent, usedGB, totalGB);
         }

@@ -17,6 +17,14 @@ public partial class MainWindow : Window
     private readonly FanService _service;
     private readonly AppSettings _settings;
     private readonly Dictionary<string, UserControl> _views = new();
+
+    /// <summary>
+    /// How to build the tabs that are not needed until someone opens them. A key lives here or
+    /// in <see cref="_views"/>, never both -- <see cref="ResolveView"/> moves it across on first
+    /// use. Anything still here has never been constructed, which is also why Cleanup can keep
+    /// iterating _views and dispose only what actually exists.
+    /// </summary>
+    private readonly Dictionary<string, Func<UserControl>> _viewFactories = new();
     private WinForms.NotifyIcon? _trayIcon;
     private TrayFlyout? _flyout;
     private FansView _fansView = null!;
@@ -52,14 +60,25 @@ public partial class MainWindow : Window
 
         _fansView = new FansView(_ctx, _service, _settings);
         _fansView.ModeChanged += UpdateActiveModeLabel;
+        // Built now, because each does something at startup that must not wait for a click:
+        // the dashboard is the landing tab, FansView drives the saved fan mode through
+        // ApplySavedMode below, and GpuView's constructor applies the TGP unlock (see the
+        // comment on that constructor, which relies on being built here).
         _views["dashboard"] = new DashboardView(_ctx, _service, _settings);
         _views["fans"] = _fansView;
         _views["gpu"] = new GpuView(_ctx, _settings);
-        _views["power"] = new PowerView(_ctx);
-        _views["apps"] = new AppRoutingView();
-        _views["tuning"] = new TuningView(_ctx, _settings);
-        _views["optimize"] = new OptimizeView(_settings, _ctx);
-        _views["settings"] = new SettingsView(_settings);
+
+        // Built on first visit. All eight were constructed before the first frame, so launching
+        // the app paid for every tab whether or not it was ever opened -- and two of these are
+        // expensive: TuningView builds roughly forty controls imperatively and opens the SMU,
+        // and SettingsView loads all four palette dictionaries to draw its theme swatches and
+        // fires an HTTPS request to the GitHub releases API. Neither belongs on the path to
+        // showing a window.
+        _viewFactories["power"] = () => new PowerView(_ctx);
+        _viewFactories["apps"] = () => new AppRoutingView();
+        _viewFactories["tuning"] = () => new TuningView(_ctx, _settings);
+        _viewFactories["optimize"] = () => new OptimizeView(_settings, _ctx);
+        _viewFactories["settings"] = () => new SettingsView(_settings);
 
         // Neither the timer resolution nor the MMCSS request survives a process restart, so
         // a saved preference has to be re-asserted here or the toggle would show "on" while
@@ -167,7 +186,26 @@ public partial class MainWindow : Window
     {
         if (sender is not System.Windows.Controls.RadioButton rb) return;
         MoveNavIndicator(rb);
-        if (rb.Tag is string key && _views.TryGetValue(key, out var view)) AnimateTo(view);
+        if (rb.Tag is string key && ResolveView(key) is { } view) AnimateTo(view);
+    }
+
+    /// <summary>
+    /// The view for a nav key, building it on first request and caching it afterwards.
+    ///
+    /// Views are cached rather than rebuilt per visit because they hold live subscriptions and
+    /// per-tab state, and because the entrance animation already depends on reuse -- see
+    /// ResetStaggeredCards, which exists precisely because an abandoned stagger would otherwise
+    /// leave a reused view's cards stuck at zero opacity.
+    /// </summary>
+    private UserControl? ResolveView(string key)
+    {
+        if (_views.TryGetValue(key, out var existing)) return existing;
+        if (!_viewFactories.TryGetValue(key, out var build)) return null;
+
+        var view = build();
+        _views[key] = view;
+        _viewFactories.Remove(key);
+        return view;
     }
 
     /// <summary>
@@ -498,7 +536,9 @@ public partial class MainWindow : Window
         GpuAppRouting.SetPreference(_suggestedAppPath, AppGpuPreference.HighPerformance);
         _suggestedAppPath = null;
 
-        if (_views["apps"] is AppRoutingView appsView) appsView.RefreshList();
+        // Resolve rather than index: the apps tab is built on first use, and accepting a
+        // suggestion from the tray is a path that can reach it before anyone has opened it.
+        if (ResolveView("apps") is AppRoutingView appsView) appsView.RefreshList();
         NavApps.IsChecked = true;
     }
 
