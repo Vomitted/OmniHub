@@ -1,9 +1,14 @@
+using OmniHub.Core.Hardware;
+
 namespace OmniHub.Core.Optimize;
 
 /// <summary>
 /// UXTU's Adaptive mode: instead of pinning one sustained power limit, walk it up and down to
 /// hold a temperature target, so the machine spends its thermal budget on whatever it is
 /// actually doing rather than on a number chosen in advance.
+///
+/// It steers on two inputs, temperature and demand. Temperature alone is not enough -- see
+/// <see cref="Direction"/> for the failure that proves it.
 ///
 /// The control law is deliberately dull -- a bounded single-step nudge, never outside
 /// [MinWatts, MaxWatts]. Anything cleverer would be a PID whose gains nobody can justify
@@ -39,6 +44,17 @@ public sealed class AdaptiveTuning : IDisposable
 
     /// <summary>Degrees either side of the target treated as close enough -- stops hunting.</summary>
     public double DeadbandC { get; init; } = 3.0;
+
+    /// <summary>
+    /// Fraction of the limit in force that the processor must actually be drawing before the
+    /// controller will raise that limit. Below it the chip is work-limited rather than
+    /// power-limited, and more headroom would change nothing.
+    ///
+    /// A calibration knob, not a constant. STAPM is a rolling average whose closeness to its
+    /// own cap under a genuinely power-limited load depends on the platform's averaging window,
+    /// so the right value is a measured property of the machine, not a derivable one.
+    /// </summary>
+    public double DemandThreshold { get; init; } = 0.85;
 
     /// <summary>The limit the controller last commanded, or null before its first tick.</summary>
     public int? CommandedWatts { get; private set; }
@@ -79,6 +95,41 @@ public sealed class AdaptiveTuning : IDisposable
         CommandedWatts = null;
     }
 
+    /// <summary>
+    /// Which way to move the sustained limit: -1 down, 0 hold, +1 up.
+    ///
+    /// Steering on temperature alone is the bug this function exists to fix. "Below target, so
+    /// add power" is true of an idle machine at every tick, so the limit ratcheted up to
+    /// MaxWatts during idle and stayed there -- and the next piece of work, however trivial,
+    /// then ran at full power and drove the die straight onto the target. A laptop three
+    /// minutes into a boot sat at 85 C with its fans at full speed, held there by the
+    /// controller that was supposed to be protecting it, and the temperature looked like a
+    /// misreading because nothing on screen connected it to a power limit wound up during idle.
+    /// That is integral windup: the loop kept integrating while its output could not act.
+    ///
+    /// The demand term closes it. Headroom is granted only to a processor already using the
+    /// headroom it has, and taken back from one that is not -- which costs nothing, because by
+    /// definition that power was not being spent. Only the sustained (STAPM) limit is steered
+    /// here; the boost limit is untouched, so short interactive bursts keep their full power
+    /// however far this has wound down.
+    /// </summary>
+    /// <param name="drawWatts">Sustained power actually drawn, or null if it cannot be read.</param>
+    public static int Direction(
+        double tempC, int watts, double? drawWatts,
+        int targetC, double deadbandC, double demandThreshold)
+    {
+        // Too hot outranks everything, including a chip that is genuinely asking for more.
+        if (tempC > targetC + deadbandC) return -1;
+
+        // An unreadable draw leaves the demand term with nothing to say, so fall back to
+        // steering on temperature alone rather than freezing at the current limit. Firmware
+        // that cannot read its power table back is caught by the loop's three-strike guard,
+        // which is the right place for it -- silence here is not evidence of a locked limit.
+        if (drawWatts is double draw && draw < watts * demandThreshold) return -1;
+
+        return tempC < targetC - deadbandC ? 1 : 0;
+    }
+
     private async Task RunAsync(CancellationToken token)
     {
         // Seeded on the first tick, INSIDE the try, not before the loop.
@@ -98,22 +149,27 @@ public sealed class AdaptiveTuning : IDisposable
         {
             try
             {
+                // One read per tick, feeding both the seed and the demand term. The snapshot is
+                // cached inside the SMU layer, so this is not an extra mailbox transaction.
+                PowerSnapshot? power = _tuning.ReadPower();
+
                 // Start from whatever the hardware is enforcing now, so the first move is a
                 // nudge rather than a jump away from an assumed value.
                 if (!seeded)
                 {
                     watts = Math.Clamp(
-                        (int)Math.Round(_tuning.ReadPower()?.StapmLimitWatts ?? MaxWatts),
+                        (int)Math.Round(power?.StapmLimitWatts ?? MaxWatts),
                         MinWatts, MaxWatts);
                     seeded = true;
                 }
 
                 double temp = _readTempC();
 
-                int next = watts;
-                if (temp > TargetTempC + DeadbandC) next = watts - StepWatts;
-                else if (temp < TargetTempC - DeadbandC) next = watts + StepWatts;
-                next = Math.Clamp(next, MinWatts, MaxWatts);
+                int next = Math.Clamp(
+                    watts + StepWatts * Direction(
+                        temp, watts, power?.StapmWatts,
+                        TargetTempC, DeadbandC, DemandThreshold),
+                    MinWatts, MaxWatts);
 
                 if (next != watts)
                 {

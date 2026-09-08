@@ -18,6 +18,28 @@ Nothing yet.
 
 ---
 
+## [1.1.1] — 2026-09-08
+
+### Fixed
+
+- **Adaptive tuning no longer heats an idle machine to its target temperature.** The controller
+  steered on temperature alone, and "below target, so add power" is true of an idle laptop at
+  every single tick — so the sustained power limit ratcheted up to the configured maximum while
+  nothing was running, and stayed there. Because that limit is SMU firmware state, it survived
+  the reboot: the next boot ran its startup work at full sustained power and put the die on the
+  85 °C target within thirteen seconds of starting, with the fans at 88% to hold it there. The
+  reading was correct and the fan curve was correct — the temperature was being *caused* by the
+  controller meant to be limiting it. This is integral windup: the loop kept integrating while
+  its output could not act.
+
+  The fix adds a demand term. Headroom is granted only to a processor already using the headroom
+  it has, and handed back by one that is not — which costs nothing, because by definition that
+  power was not being spent. Only the sustained limit is steered, so short interactive bursts
+  keep their full boost power however far it has wound down. Seven tests cover the control law,
+  including the idle sequence that produced the bug.
+
+---
+
 ## [1.1.0] — 2026-09-07
 
 Updates, power plans, and broader hardware support. The theme running through all of it: ask the
@@ -129,6 +151,7 @@ telemetry. If a value cannot be read, the interface says so.
   against your installed version.
 - Throttling detection is not independently verified against known-good hardware.
 
-[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.0.0
