@@ -125,7 +125,46 @@ public sealed class HardwareContext : IDisposable
         Power = new PowerController(_bios);
         System = new SystemController(_bios, Smu);
         Model = ModelProfile.Detect();
+
+        // Read once, here. These bits describe the board, not its current state, so re-reading
+        // them per tick would spend BIOS round trips on an answer that cannot change.
+        Capabilities = System.ReadSystemData();
+
+        // Only a CREDIBLE block may change the fan command encoding.
+        //
+        // LooksUnreported is load-bearing here, not decoration. A failed read comes back as all
+        // zeroes, and byte #3 of zero decodes as ThermalPolicyVersion.Legacy -- so trusting the
+        // field unguarded would switch a Victus onto the Pavilion encoding precisely when the
+        // firmware had told us nothing, and fan control is the one thing in this application
+        // that must not be broken by a bad guess. Anything short of a real answer leaves the
+        // encoding at its default.
+        if (Capabilities is { LooksUnreported: false } caps)
+            Fan.Encoding = caps.ThermalPolicy;
     }
+
+    /// <summary>
+    /// What the firmware says this board can do, or null when it would not say.
+    ///
+    /// This is the answer to "will OmniHub work on a Pavilion / an older Omen / a Victus", asked
+    /// of the machine rather than of a hand-maintained list of model numbers.
+    /// </summary>
+    public HpSystemData? Capabilities { get; private set; }
+
+    /// <summary>
+    /// True unless the firmware positively states this board has no software fan control.
+    /// </summary>
+    public bool SoftwareFanControlAllowed => !FirmwareDenies(c => c.SoftwareFanControl);
+
+    /// <summary>
+    /// True unless the firmware positively states this board cannot switch GPU modes. The GPU
+    /// tab offered Hybrid/Discrete/Optimus unconditionally before this, on every machine.
+    /// </summary>
+    public bool GpuModeSwitchAllowed => !FirmwareDenies(c => c.GpuModeSwitchSupported);
+
+    // The rule itself lives on HpSystemData, where it can be tested without a machine. See
+    // HpSystemData.Denies for why unknown must not disable anything.
+    private bool FirmwareDenies(Func<HpSystemData, bool> capability) =>
+        HpSystemData.Denies(Capabilities, capability);
 
     private byte _lastTemperatureC;
     private TemperatureReading _lastTemperature;

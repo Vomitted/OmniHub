@@ -52,6 +52,86 @@ public class HpCapabilityTests
     }
 
     /// <summary>
+    /// The three-state rule that decides whether a capability actually gates a feature.
+    ///
+    /// Denied and unknown are different answers, and the asymmetry is deliberate: only a
+    /// credible block with the bit clear counts as a denial. A machine that will not describe
+    /// itself keeps its features, because switching off working hardware on the strength of a
+    /// failed read is the silent failure -- and it is the one that already happened here.
+    /// </summary>
+    [Fact]
+    public void UnknownCapabilitiesDenyNothing()
+    {
+        // The command failed outright.
+        Assert.False(HpSystemData.Denies(null, c => c.SoftwareFanControl));
+
+        // A well-formed reply carrying nothing -- the all-zero regression.
+        var blank = HpSystemData.Parse(Payload(support: 0x00, pl4: 0x00, gpuSwitch: 0x00))!.Value;
+        Assert.True(blank.LooksUnreported);
+        Assert.False(HpSystemData.Denies(blank, c => c.SoftwareFanControl));
+        Assert.False(HpSystemData.Denies(blank, c => c.GpuModeSwitchSupported));
+    }
+
+    [Fact]
+    public void ACredibleBlockWithTheBitClearIsADenial()
+    {
+        // Real board, real PL4 reported, fan control bit clear: this machine genuinely says no.
+        var s = HpSystemData.Parse(Payload(support: 0x00, pl4: 0xD7, gpuSwitch: 0x06))!.Value;
+
+        Assert.False(s.LooksUnreported);
+        Assert.True(HpSystemData.Denies(s, c => c.SoftwareFanControl));
+        Assert.False(HpSystemData.Denies(s, c => c.GpuModeSwitchSupported));
+    }
+
+    [Fact]
+    public void ASupportedCapabilityIsNeverDenied()
+    {
+        var s = HpSystemData.Parse(Payload())!.Value;   // the machine this was developed on
+
+        Assert.False(HpSystemData.Denies(s, c => c.SoftwareFanControl));
+        Assert.False(HpSystemData.Denies(s, c => c.GpuModeSwitchSupported));
+    }
+
+    /// <summary>
+    /// The legacy fan-mode encoding, which no hardware here speaks -- so these assertions are
+    /// the only thing standing between the mapping and a board nobody can test it on.
+    /// </summary>
+    [Theory]
+    [InlineData(FanMode.Performance, HpThermalPolicy.Performance)]
+    [InlineData(FanMode.Cool, HpThermalPolicy.Quiet)]
+    [InlineData(FanMode.Default, HpThermalPolicy.Default)]
+    [InlineData(FanMode.LegacyQuiet, HpThermalPolicy.Default)]
+    public void FanModesMapOntoTheLegacyPolicySet(FanMode mode, HpThermalPolicy expected)
+    {
+        Assert.Equal(expected, FanController.ToLegacyPolicy(mode));
+    }
+
+    /// <summary>
+    /// A new FanController must speak the current encoding until something credible says
+    /// otherwise. Defaulting the other way would put every board that fails to describe itself
+    /// onto the untested path -- and a failed read decodes as Legacy, so this is the exact case
+    /// that would go wrong.
+    /// </summary>
+    [Fact]
+    public void FanEncodingDefaultsToCurrent()
+    {
+        Assert.Equal(ThermalPolicyVersion.Current, new FanController(null!).Encoding);
+    }
+
+    /// <summary>
+    /// The zeroed reply decodes as Legacy, which is precisely why the encoding is gated on
+    /// LooksUnreported rather than read straight out of the block.
+    /// </summary>
+    [Fact]
+    public void AZeroedBlockLooksLikeALegacyBoardAndMustNotBeTrusted()
+    {
+        var blank = HpSystemData.Parse(Payload(policy: 0x00, support: 0x00, pl4: 0x00, gpuSwitch: 0x00))!.Value;
+
+        Assert.Equal(ThermalPolicyVersion.Legacy, blank.ThermalPolicy);
+        Assert.True(blank.LooksUnreported);
+    }
+
+    /// <summary>
     /// The bit the whole safety floor depends on. A board that does not set it will not honour
     /// SetFanLevel, and saying otherwise would promise a fix that cannot work there.
     /// </summary>

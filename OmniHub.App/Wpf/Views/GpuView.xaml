@@ -111,8 +111,14 @@
                                    Text="Switches which GPU drives the internal display. Unlike the power preset above, this one requires a restart."/>
                         <WrapPanel>
                             <ComboBox x:Name="ModeCombo" Width="210" Height="34" Margin="0,0,12,0" Style="{StaticResource OmniComboBoxStyle}"/>
-                            <Button Content="Change Graphics Mode" Width="210" Height="34" Style="{StaticResource FlatButtonStyle}" Click="ChangeModeBtn_Click"/>
+                            <Button x:Name="ChangeModeBtn" Content="Change Graphics Mode" Width="210" Height="34" Style="{StaticResource FlatButtonStyle}" Click="ChangeModeBtn_Click"/>
                         </WrapPanel>
+
+                        <!-- Shown only when the firmware states this board cannot switch modes.
+                             Stays collapsed when the firmware declines to answer: unknown is
+                             not a denial. -->
+                        <TextBlock x:Name="ModeUnsupportedNote" Style="{StaticResource MutedText}" FontSize="11.5"
+                                   Margin="0,10,0,0" MaxWidth="640" TextWrapping="Wrap" Visibility="Collapsed"/>
                     </StackPanel>
                 </Grid>
             </Border>

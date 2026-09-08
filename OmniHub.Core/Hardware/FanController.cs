@@ -28,9 +28,55 @@ public sealed class FanController
     public void SetFanLevel(byte fan1, byte fan2) =>
         _bios.Send(BiosCmdGroup.Default, FanCmd.SetFanLevel, new byte[] { fan1, fan2, 0, 0 }, 4);
 
-    /// <summary>Switches BIOS fan operating mode (Default/Performance/Cool/etc).</summary>
-    public void SetFanMode(FanMode mode) =>
+    /// <summary>
+    /// Which performance-mode encoding this board speaks.
+    ///
+    /// Defaults to Current, and only ever moves to Legacy on a firmware report that positively
+    /// says so -- set by HardwareContext once the capability block has been read, in the same
+    /// "handed over after construction" style as SystemController.AttachSmu.
+    ///
+    /// The default matters. A board that will not describe itself keeps the encoding this
+    /// application was developed and measured against, rather than being switched onto an
+    /// untested path on the strength of a failed read. That is not hypothetical: a failed read
+    /// returns a zeroed block, and byte #3 of zero decodes as Legacy.
+    /// </summary>
+    public ThermalPolicyVersion Encoding { get; set; } = ThermalPolicyVersion.Current;
+
+    /// <summary>
+    /// The legacy policy value corresponding to a fan mode.
+    ///
+    /// Pure and static so the mapping can be tested without a machine -- no hardware here speaks
+    /// the legacy encoding, so this is code that cannot be exercised by running the application
+    /// on the laptop it was written on.
+    /// </summary>
+    public static HpThermalPolicy ToLegacyPolicy(FanMode mode) => mode switch
+    {
+        FanMode.Performance => HpThermalPolicy.Performance,
+        FanMode.Cool => HpThermalPolicy.Quiet,
+        // Default, LegacyQuiet and anything unmapped fall back to the BIOS's own default rather
+        // than to a guess -- handing cooling back is always a safe answer.
+        _ => HpThermalPolicy.Default,
+    };
+
+    /// <summary>
+    /// Switches BIOS fan operating mode (Default/Performance/Cool/etc), in whichever encoding
+    /// this board speaks.
+    ///
+    /// Current boards (Omen, Victus) take 0x30-0x50 in byte #1 with byte #2 clear. Legacy boards
+    /// -- Pavilion Gaming and early Omen -- take a small 0/1/2 policy with byte #2 set to 0x01.
+    /// Sending 0x31 to a legacy board is out of range for its firmware, which is what every
+    /// version of this application did before the encoding was selected here.
+    /// </summary>
+    public void SetFanMode(FanMode mode)
+    {
+        if (Encoding == ThermalPolicyVersion.Legacy)
+        {
+            SetThermalPolicy(ToLegacyPolicy(mode));
+            return;
+        }
+
         _bios.Send(BiosCmdGroup.Default, FanCmd.SetFanMode, new byte[] { 0xFF, (byte)mode, 0, 0 }, 4);
+    }
 
     /// <summary>
     /// Same BIOS command as <see cref="SetFanMode"/>, sent with OmniControlSuite's payload

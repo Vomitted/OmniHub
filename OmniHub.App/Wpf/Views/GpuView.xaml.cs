@@ -17,6 +17,23 @@ public partial class GpuView : UserControl
         _settings = settings;
         ModeCombo.ItemsSource = new[] { GpuMode.Hybrid, GpuMode.Discrete, GpuMode.Optimus };
 
+        // Gated on what the firmware says, rather than on the assumption that every HP board has
+        // a MUX. These three options were offered unconditionally on every machine, including
+        // ones with no switchable graphics at all -- and this is the most destructive control in
+        // the application, so offering it where it cannot work matters more here than elsewhere.
+        //
+        // Only a stated denial disables it. A board that does not answer keeps the control; see
+        // HpSystemData.Denies for why unknown must not switch anything off.
+        if (!ctx.GpuModeSwitchAllowed)
+        {
+            ModeCombo.IsEnabled = false;
+            ChangeModeBtn.IsEnabled = false;
+            ModeUnsupportedNote.Visibility = Visibility.Visible;
+            ModeUnsupportedNote.Text =
+                "This machine's firmware reports no switchable graphics, so the mode cannot be "
+                + "changed here. The power preset above is unaffected.";
+        }
+
         // Applied here, in the constructor, rather than from the Tuning tab's startup block.
         // MainWindow builds this view during startup, so the unlock lands without waiting for
         // anyone to open a tab -- and the ForceMaxPower latch means it no longer matters

@@ -102,6 +102,24 @@ public readonly record struct HpSystemData(
     public bool GpuModeSwitchSupported => (GpuModeSwitchFlags & 0x0C) != 0;
 
     /// <summary>
+    /// Whether the firmware DENIED a capability, as distinct from never having answered about it.
+    ///
+    /// Three states, not two, and collapsing them is a mistake this project has already made
+    /// once: a capability counts as denied only when there is a credible block in hand AND the
+    /// bit in it is clear. Null (the command failed, or is not implemented) and
+    /// <see cref="LooksUnreported"/> (a well-formed reply carrying nothing) both mean unknown,
+    /// and unknown must not disable anything.
+    ///
+    /// The asymmetry is deliberate. Offering a control that turns out to do nothing is a small
+    /// harm, and self-evident the moment it is tried; switching off working hardware because the
+    /// firmware would not describe itself is a silent one, and it is what produced a printed
+    /// "this machine supports no fan control" on a laptop whose fans were being driven at that
+    /// moment.
+    /// </summary>
+    public static bool Denies(HpSystemData? data, Func<HpSystemData, bool> capability) =>
+        data is { LooksUnreported: false } d && !capability(d);
+
+    /// <summary>
     /// Decodes the 128-byte system design payload.
     ///
     /// Layout follows OmenMon's BiosData.SystemData, which was derived from HP's own Omen
