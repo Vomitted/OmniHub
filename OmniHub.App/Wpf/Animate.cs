@@ -151,4 +151,27 @@ public static class Animate
         target.SetValue(ValueProperty, double.NaN);
         target.Text = placeholder;
     }
+
+    /// <summary>
+    /// The one way to put a reading on a numeric readout: the number when there is one, the
+    /// unavailable placeholder when there is not.
+    ///
+    /// This exists to make the project's strictest rule structural rather than conventional. "A
+    /// value the hardware did not report is never shown as a number" was held up by roughly forty
+    /// hand-written "--" literals spread across eight files, plus whoever was reviewing at the
+    /// time. Only two sites went through Clear, which is the path that also cancels the animation
+    /// in flight and resets the stored value -- so every site that forgot it left the next real
+    /// reading sweeping up from a stale number, displaying temperatures the machine was never at
+    /// on the way.
+    ///
+    /// NaN and infinity route to the placeholder rather than to the formatter. They arrive from
+    /// arithmetic on a missing input -- a percentage of a zero total, most often -- and "NaN"
+    /// beside a unit reads as an instrument fault rather than as an honest absence.
+    /// </summary>
+    public static void SetReading(TextBlock target, double? value, string format = "0",
+                                  string placeholder = "--")
+    {
+        if (value is double v && !double.IsNaN(v) && !double.IsInfinity(v)) To(target, v, format);
+        else Clear(target, placeholder);
+    }
 }

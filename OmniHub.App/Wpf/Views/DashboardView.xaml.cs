@@ -291,10 +291,27 @@ public partial class DashboardView : UserControl
         Task.Run(() => SystemPerfReader.Read()).ContinueWith(t =>
         {
             _perfRefreshInFlight = false;
-            var perf = t.Result;
-            if (perf is null) return;
+            var perf = t.IsFaulted ? null : t.Result;
             Dispatcher.Invoke(() =>
             {
+                // A failed read used to return here, which left the previous numbers sitting on
+                // screen looking live -- the same "dead reading cannot sit on screen" rule the
+                // overlay already follows. It matters more since SystemPerfReader gained a null
+                // path of its own: it now reports failure rather than describing a machine with
+                // no RAM.
+                if (perf is null)
+                {
+                    CpuClockText.Text = "--";
+                    CpuLoadText.Text = "--";
+                    StripLoad.Text = "--";
+                    MemText.Text = "--";
+                    MemSubText.Text = "UNAVAILABLE";
+                    MemFootRight.Text = "--";
+                    SetBar(CpuLoadBar, 0);
+                    SetBar(MemLoadBar, 0);
+                    return;
+                }
+
                 // The unit suffix lives in its own TextBlock now, so the value is bare.
                 CpuClockText.Text = $"{perf.CpuClockGHz:0.0}";
                 CpuLoadText.Text = $"{perf.CpuLoadPercent:0}%";
