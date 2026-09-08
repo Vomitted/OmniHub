@@ -447,6 +447,13 @@ public sealed class AmdTuning
         try
         {
             uint response = _smu.SendToMailbox(mailbox, command, stackalloc uint[1] { argument }, Span<uint>.Empty);
+
+            // Whatever the SMU made of it, the cached PM table may no longer describe the
+            // hardware, so drop it before anyone reads back. Unconditional on purpose: a
+            // command that reports failure can still have moved something, and a stale cache
+            // is worse than one extra read.
+            _smu.InvalidatePowerCache();
+
             return response switch
             {
                 RyzenSmu.SmuReturnOk => new TuningResult(true, $"Set {what}."),

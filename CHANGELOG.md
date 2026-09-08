@@ -18,6 +18,27 @@ Nothing yet.
 
 ---
 
+## [1.1.2] — 2026-09-08
+
+### Fixed
+
+- **A written power limit is read back from the hardware, not from a cache.** The PM table is
+  cached for five seconds to keep mailbox traffic down, and nothing dropped that cache when a
+  limit was written — so a read taken immediately after a write returned the value from *before*
+  it. That inverts the check this project is built on: writing a limit and reading it straight
+  back is how the app distinguishes a limit the firmware accepted from one it merely
+  acknowledged, and inside the cache window a write that landed perfectly read as one the
+  firmware had ignored.
+
+  Adaptive mode's three-strike guard is driven by that comparison. In 1.1.1 it stopped itself
+  within seconds of launch, reporting "this firmware locks CPU power limits" on hardware that
+  had accepted every command it was sent — leaving the sustained limit frozen wherever it
+  happened to be, with nothing to bring it down when the machine got hot. 1.1.1 should be
+  skipped. The cache is now dropped at the single write path, so every reader benefits, not just
+  the controller.
+
+---
+
 ## [1.1.1] — 2026-09-08
 
 ### Fixed
@@ -151,7 +172,8 @@ telemetry. If a value cannot be read, the interface says so.
   against your installed version.
 - Throttling detection is not independently verified against known-good hardware.
 
-[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.2
 [1.1.1]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.0.0

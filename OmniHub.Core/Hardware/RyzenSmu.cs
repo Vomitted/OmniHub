@@ -483,6 +483,23 @@ public sealed class RyzenSmu : IDisposable
         }
     }
 
+    /// <summary>
+    /// Drops the cached table so the next read goes to the hardware. Call after anything that
+    /// changes a limit.
+    ///
+    /// Without this the cache does not merely serve slightly stale numbers, it inverts the one
+    /// check this project is built on. Writing a limit and reading it straight back is how the
+    /// app tells a limit the firmware ACCEPTED from one it merely acknowledged -- and inside the
+    /// cache window that read returns the value from before the write, so a write that landed
+    /// perfectly reads as one the firmware ignored. Adaptive mode's three-strike guard is driven
+    /// by exactly that comparison, and stopped itself reporting "this firmware locks CPU power
+    /// limits" on hardware that had accepted every command it was sent.
+    /// </summary>
+    public void InvalidatePowerCache()
+    {
+        lock (_powerLock) _cachedPowerAtUtc = DateTime.MinValue;
+    }
+
     private PowerSnapshot? ReadPowerSnapshotUncached()
     {
         try
