@@ -143,7 +143,24 @@ public sealed class HardwareContext : IDisposable
 
         // Asked once, for the same reason as the capability block: it describes the chassis.
         try { FanCount = Fan.GetFanCount(); } catch { /* no vendor interface: stays unknown */ }
+
+        // A per-model fan band, if anyone has measured this board and left a profile for it.
+        // Null means no profile, or one that did not make a usable scale, and the measured
+        // default stands -- which is the behaviour every build so far has had.
+        if (FanProfiles.Load(Model) is { } calibration)
+        {
+            // Fully qualified: this type's own Fan property would otherwise shadow the namespace.
+            OmniHub.Core.Fan.FanService.Calibration = calibration;
+            FanCalibrationSource = $"profile for board {Model.BaseboardProduct}";
+        }
     }
+
+    /// <summary>
+    /// Where the fan band in force came from, for the probe output to state plainly. A profile
+    /// changes how every percentage on the curve is commanded, so which one is loaded is not a
+    /// detail to leave implicit.
+    /// </summary>
+    public string FanCalibrationSource { get; private set; } = "built-in default (board 8C2F)";
 
     /// <summary>
     /// How many fans the firmware reports, or null when it would not say.

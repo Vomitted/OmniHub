@@ -290,6 +290,18 @@ internal static class Program
             Console.WriteLine($"Fan types       : {BitConverter.ToString(fan.GetFanType(), 0, Math.Max(1, (int)count))}");
             Console.WriteLine($"Fan levels      : {BitConverter.ToString(fan.GetFanLevel(), 0, Math.Max(1, (int)count))}");
             Console.WriteLine($"Fan table (32B) : {BitConverter.ToString(fan.GetFanTable(), 0, 32)} ...");
+
+            // Which raw band the curve is scaling into. A profile changes how every percentage
+            // is commanded, so leaving it implicit would make two machines' probe output look
+            // identical while their fans behaved differently.
+            var band = FanProfiles.Load(model);
+            Console.WriteLine($"Fan band        : {(band ?? FanCalibration.Default) switch
+            {
+                var c => $"raw {c.MinRawLevel}-{c.MaxRawLevelFan1}"
+                         + (c.MaxRawLevelFan2 != c.MaxRawLevelFan1 ? $" / {c.MaxRawLevelFan2} (fan 2)" : "")
+                         + (band is null ? "  [built-in default, measured on board 8C2F]"
+                                         : $"  [profile for board {model.BaseboardProduct}]"),
+            }}");
             Console.WriteLine($"Temperature     : {sys.GetTemperatureC()} C (via ACPI thermal zones, not hpqBIntM)");
             Console.WriteLine($"Max fan active  : {sys.GetMaxFanActive()}");
             Console.WriteLine($"Throttling      : {sys.GetThrottling()}");

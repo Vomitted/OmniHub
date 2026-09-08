@@ -323,9 +323,20 @@ public sealed class FanService : IDisposable
     private byte _lastRaw1, _lastRaw2;
     private DateTime _lastFanWriteUtc = DateTime.MinValue;
 
-    private const byte MinRawLevel = 10;
-    private const byte MaxRawLevelFan1 = 56;
-    private const byte MaxRawLevelFan2 = 56;
+    /// <summary>
+    /// The raw band this chassis runs, set once at startup from a per-model profile where one
+    /// exists and left at the measured default where none does.
+    ///
+    /// Static rather than an instance member because the conversions below are static and are
+    /// called from the UI as well as from the loop, and because this describes the machine the
+    /// process is running on, of which there is exactly one. Assigned during startup and not
+    /// afterwards; HardwareContext is the only writer.
+    /// </summary>
+    public static FanCalibration Calibration { get; set; } = FanCalibration.Default;
+
+    private static byte MinRawLevel => Calibration.MinRawLevel;
+    private static byte MaxRawLevelFan1 => Calibration.MaxRawLevelFan1;
+    private static byte MaxRawLevelFan2 => Calibration.MaxRawLevelFan2;
 
     // percent==0 must map to raw 0, not MinRawLevel -- the whole point of the
     // curve's flat 0% segment through true idle (<=40C, see FanCurve.CreateDefault)
