@@ -202,11 +202,40 @@ public partial class MainWindow : Window
         if (_views.TryGetValue(key, out var existing)) return existing;
         if (!_viewFactories.TryGetValue(key, out var build)) return null;
 
-        var view = build();
+        UserControl view;
+        try
+        {
+            view = build();
+        }
+        catch (Exception ex)
+        {
+            // A tab that cannot be built must not take the application down with it.
+            //
+            // This process holds fan control. If it dies the laptop reverts to the stock BIOS
+            // curve, including the 0%-while-hot behaviour this application exists to prevent --
+            // so losing the process is a worse outcome than losing a tab. Building every view up
+            // front used to mean such a failure surfaced at launch; deferring construction moved
+            // it to a click, and an exception out of a click handler reaches the dispatcher
+            // unhandled. Caught here, and shown in place of the tab.
+            view = FailedTab(key, ex);
+        }
+
         _views[key] = view;
         _viewFactories.Remove(key);
         return view;
     }
+
+    /// <summary>Stands in for a tab whose constructor threw, naming what happened.</summary>
+    private static UserControl FailedTab(string key, Exception ex) => new()
+    {
+        Content = new TextBlock
+        {
+            Margin = new Thickness(24),
+            TextWrapping = TextWrapping.Wrap,
+            Text = $"The {key} tab could not be opened.\n\n{ex.Message}\n\n"
+                 + "Everything else, including fan control, is still running.",
+        },
+    };
 
     /// <summary>
     /// Slides the sidebar's selection rail to the chosen item.
