@@ -1475,6 +1475,15 @@ public partial class TuningView : UserControl, IDisposable
             TargetTempC = (int)_sliders["adaptiveTarget"].Value,
             MinWatts = (int)_sliders["adaptiveMin"].Value,
             MaxWatts = (int)_sliders["adaptiveMax"].Value,
+
+            // The discrete GPU shares this chassis' heatpipe and fans, so the CPU limit is not
+            // the CPU's business alone. Read through GpuTelemetry's cache, which is refreshed in
+            // the background, so the controller's tick never waits on a process launch.
+            ReadGpu = () =>
+            {
+                var g = GpuTelemetry.Read();
+                return new GpuDemand(g?.UtilisationPercent, g?.TempC, g?.PowerWatts);
+            },
         };
 
         _adaptive.OnTick += (temp, watts) => Dispatcher.Invoke(() =>

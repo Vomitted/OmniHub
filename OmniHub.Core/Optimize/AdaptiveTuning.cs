@@ -56,6 +56,16 @@ public sealed class AdaptiveTuning : IDisposable
     /// </summary>
     public double DemandThreshold { get; init; } = 0.85;
 
+    /// <summary>
+    /// What the discrete GPU is doing, or null when there is nothing to ask.
+    ///
+    /// Optional on purpose. With no reader supplied the controller steers exactly as it did
+    /// before the budget term existed, because <see cref="GpuDemand"/>'s default is all-null and
+    /// an unreadable GPU load is never treated as busy. That keeps machines with no discrete GPU,
+    /// and machines whose GPU cannot be read, on the behaviour that has actually been measured.
+    /// </summary>
+    public Func<GpuDemand>? ReadGpu { get; init; }
+
     /// <summary>The limit the controller last commanded, or null before its first tick.</summary>
     public int? CommandedWatts { get; private set; }
 
@@ -165,9 +175,14 @@ public sealed class AdaptiveTuning : IDisposable
 
                 double temp = _readTempC();
 
+                // The GPU shares this chassis' cooling, so the CPU limit is not decided by the
+                // CPU's own numbers alone. With no reader this collapses to Direction unchanged.
+                GpuDemand gpu = default;
+                try { if (ReadGpu is { } read) gpu = read(); } catch { }
+
                 int next = Math.Clamp(
-                    watts + StepWatts * Direction(
-                        temp, watts, power?.StapmWatts,
+                    watts + StepWatts * ThermalBudget.CpuDirection(
+                        temp, watts, power?.StapmWatts, gpu,
                         TargetTempC, DeadbandC, DemandThreshold),
                     MinWatts, MaxWatts);
 
