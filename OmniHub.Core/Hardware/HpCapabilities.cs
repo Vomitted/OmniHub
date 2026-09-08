@@ -90,9 +90,21 @@ public readonly record struct HpSystemData(
     ///
     /// The default CPU PL4 is the giveaway: a board that answers this command at all reports a
     /// real wattage there, so a zero means nothing was populated.
+    ///
+    /// MEASURED, and the reason this test is only two clauses. On the Victus 15 fb2xxx (board
+    /// 8C2F) the reply carries status=0x00C8 and a non-zero byte #7 whose "switchable" bits are
+    /// clear, while PL4 and the support flags are both zero. A third clause requiring
+    /// GpuModeSwitchFlags == 0 therefore judged that block CREDIBLE, and it says the board has
+    /// no software fan control -- on the machine this application drives the fans of, with the
+    /// fan count, types, levels and table all reading correctly two lines above it in the same
+    /// probe. Behaviour gated on that verdict would have switched the fan-command encoding to
+    /// the legacy set and disabled controls that work.
+    ///
+    /// So the standard is: no PL4 and no support flags means nothing was populated, whatever
+    /// stray bytes came back beside them.
     /// </summary>
     public bool LooksUnreported =>
-        DefaultCpuPowerLimit4W == 0 && SupportFlags == HpSupportFlags.None && GpuModeSwitchFlags == 0;
+        DefaultCpuPowerLimit4W == 0 && SupportFlags == HpSupportFlags.None;
 
     /// <summary>
     /// Whether the board can switch graphics mode. Bits #2 and #3 are the observed "supported"

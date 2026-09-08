@@ -132,6 +132,34 @@ public class HpCapabilityTests
     }
 
     /// <summary>
+    /// The real reply from the Victus 15 fb2xxx (board 8C2F), which is not all zeroes and was
+    /// wrongly judged credible.
+    ///
+    /// Measured via -Probe: status=0x00C8, policy byte 0, support flags 0, PL4 0, and a non-zero
+    /// byte #7 whose switchable bits are clear. Read as credible, that block says the board has
+    /// no software fan control and no graphics switching, and reports the legacy thermal policy
+    /// -- on a laptop whose fans this application was driving at the moment the probe ran, with
+    /// fan count, types, levels and the 32-byte fan table all reading correctly in the same
+    /// output. Gating on it would have moved fan commands onto the legacy encoding.
+    ///
+    /// The exact value of byte #7 is not recoverable from the probe text, which prints the
+    /// decoded bit test rather than the raw byte; 0x03 stands in for "some bits set, none of
+    /// them the switchable ones", which is what the output proves.
+    /// </summary>
+    [Fact]
+    public void TheVictusBlockIsTreatedAsUnreportedDespiteNotBeingAllZeroes()
+    {
+        var s = HpSystemData.Parse(Payload(
+            status: 0x00C8, policy: 0x00, support: 0x00, pl4: 0x00, gpuSwitch: 0x03))!.Value;
+
+        Assert.True(s.LooksUnreported, "a block with no PL4 and no support flags carries nothing");
+
+        // And therefore denies nothing, and cannot move the fan encoding.
+        Assert.False(HpSystemData.Denies(s, c => c.SoftwareFanControl));
+        Assert.False(HpSystemData.Denies(s, c => c.GpuModeSwitchSupported));
+    }
+
+    /// <summary>
     /// The bit the whole safety floor depends on. A board that does not set it will not honour
     /// SetFanLevel, and saying otherwise would promise a fix that cannot work there.
     /// </summary>
