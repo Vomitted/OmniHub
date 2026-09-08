@@ -58,6 +58,17 @@ public partial class DashboardView : UserControl
             // state rather than state from launch.
             RefreshGpuMode();
             RefreshPerf();
+
+            // The readiness card explains which capabilities are missing and why. It was written,
+            // styled, and never called -- so it has never once appeared. On a machine without the
+            // PawnIO driver the Tuning tab simply sat dark with no explanation anywhere, which is
+            // the exact confusion this panel exists to prevent.
+            //
+            // Built here rather than in the constructor because the SMU is retried over the first
+            // seconds of a session: asked once at startup it would report tuning unavailable on
+            // every launch that lost the race with PawnIO's service, and never correct itself.
+            // Loaded fires on each return to the tab, so the card re-states current truth.
+            BuildReadiness();
         };
         Unloaded += (_, _) => ctx.OnReading -= OnReading;
 
@@ -336,7 +347,16 @@ public partial class DashboardView : UserControl
                 "Windows reports GPU name and load for any adapter but exposes no thermal or power sensor. "
                 + "Those readings need nvidia-smi, which installs with an NVIDIA driver."));
 
-        if (missing.Count == 0) return;
+        // Rebuilt from scratch, because this now runs on every return to the tab rather than
+        // once: appending without clearing would stack a fresh copy of every row each visit,
+        // and a capability that has since become available has to be able to disappear.
+        ReadinessRows.Children.Clear();
+
+        if (missing.Count == 0)
+        {
+            ReadinessCard.Visibility = Visibility.Collapsed;
+            return;
+        }
 
         ReadinessCard.Visibility = Visibility.Visible;
         ReadinessHeadline.Text =
@@ -365,7 +385,9 @@ public partial class DashboardView : UserControl
         }
 
         // The one missing piece a user can actually install, so the one that gets a button.
-        if (_ctx.Smu is null) GetPawnIoBtn.Visibility = Visibility.Visible;
+        // Set both ways: the SMU can open on a retry after this card first appeared, and the
+        // offer to install a driver that is already loaded would be nonsense.
+        GetPawnIoBtn.Visibility = _ctx.Smu is null ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void GetPawnIo_Click(object sender, RoutedEventArgs e)

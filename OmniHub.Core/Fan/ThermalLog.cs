@@ -104,6 +104,46 @@ public sealed class ThermalLog : IDisposable
         CurrentPath = path;
 
         if (isNew) _writer.WriteLine(Header);
+
+        PruneOldLogs(path);
+    }
+
+    /// <summary>
+    /// How long a thermal trace is kept. Long enough to compare a machine against itself a
+    /// fortnight ago, which is the span these files actually get used over.
+    /// </summary>
+    private static readonly TimeSpan Retention = TimeSpan.FromDays(14);
+
+    /// <summary>
+    /// Deletes traces older than <see cref="Retention"/>.
+    ///
+    /// One file a day, kept forever, was the only unbounded growth in the application -- a
+    /// megabyte and a half on a busy day, and nothing anywhere pruned it.
+    ///
+    /// Only thermal-*.csv is touched. Load-test runs live in the same directory and are
+    /// deliberate artefacts someone created in order to compare against later; deleting one
+    /// would throw away the baseline half of a measurement. The file currently open is never a
+    /// candidate either.
+    /// </summary>
+    private static void PruneOldLogs(string currentPath)
+    {
+        try
+        {
+            var cutoff = DateTime.UtcNow - Retention;
+            foreach (var file in Directory.EnumerateFiles(LogDirectory, "thermal-*.csv"))
+            {
+                if (string.Equals(file, currentPath, StringComparison.OrdinalIgnoreCase)) continue;
+                try
+                {
+                    if (File.GetLastWriteTimeUtc(file) < cutoff) File.Delete(file);
+                }
+                catch { /* locked, or vanished under us: leave it and try again another day */ }
+            }
+        }
+        catch
+        {
+            // Housekeeping must never be able to stop logging, which is the part that matters.
+        }
     }
 
     /// <summary>True when the file exists, has content, and its header is not the current one.</summary>
