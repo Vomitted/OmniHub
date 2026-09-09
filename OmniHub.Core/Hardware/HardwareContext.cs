@@ -301,9 +301,18 @@ public sealed class HardwareContext : IDisposable
             {
                 // Before the reading, so a late-arriving driver is picked up on the very next
                 // tick rather than never.
+                // Timed, because the tick body costs about 300ms and nobody knows which call it
+                // is. The poll re-arms after it finishes rather than on a fixed period, so that
+                // cost sets the real cadence: measured from the thermal log's own timestamps,
+                // 2s nominal lands at 2.31s. Two rounds of optimisation aimed at this figure
+                // barely moved it, which means the guesses were aimed at the wrong call.
+                var tick = global::System.Diagnostics.Stopwatch.StartNew();
+
                 RetrySmuOpen();
 
                 var reading = System.ReadTemperature();
+                long tempMs = tick.ElapsedMilliseconds;
+
                 var temp = (byte)Math.Clamp(Math.Round(reading.Celsius), 0, 255);
                 _lastTemperature = reading;
                 _lastTemperatureC = temp;
@@ -311,6 +320,7 @@ public sealed class HardwareContext : IDisposable
                 CpuTrend.Ingest(reading.Celsius, _lastTemperatureAtUtc);
 
                 var levels = Fan.GetFanLevel();
+                long fanMs = tick.ElapsedMilliseconds - tempMs;
 
                 // Max-fan and throttling are read every fifth tick, not every tick.
                 //
@@ -334,6 +344,8 @@ public sealed class HardwareContext : IDisposable
                         // default to "not max fan" and "unknown throttling" -- both honest.
                     }
                 }
+                long slowMs = tick.ElapsedMilliseconds - tempMs - fanMs;
+
                 var maxFan = _lastMaxFan;
                 var throttle = _lastThrottle;
                 var payload = new Reading(temp,
@@ -364,6 +376,9 @@ public sealed class HardwareContext : IDisposable
                         catch { /* one bad subscriber must not silence the others */ }
                     }
                 }
+
+                RecordTiming(tick.ElapsedMilliseconds, tempMs, fanMs, slowMs,
+                             tick.ElapsedMilliseconds - tempMs - fanMs - slowMs, _slowTick == 0);
             }
             catch
             {
@@ -378,6 +393,54 @@ public sealed class HardwareContext : IDisposable
 
         _pollTimer = timer;
         timer.Change(TimeSpan.Zero, Timeout.InfiniteTimeSpan); // first tick now, then self-re-arming
+    }
+
+    /// <summary>The most recent tick's cost, in milliseconds, for the Diagnostics tab.</summary>
+    public string LastTickTimings { get; private set; } = "not measured yet";
+
+    private int _timingTicks;
+    private long _sumTotal, _sumTemp, _sumFan, _sumSlow, _sumDispatch;
+
+    /// <summary>
+    /// Accumulates the tick breakdown and writes one averaged line per thirty ticks.
+    ///
+    /// Averaged rather than per-tick because a single sample of a BIOS round trip is mostly
+    /// noise, and because a line every 2.3 seconds would be its own cost. Thirty ticks is about
+    /// seventy seconds, which is enough to see whether the temperature read or the fan read
+    /// dominates -- the question two rounds of optimisation guessed at and got wrong.
+    ///
+    /// Its own file, not the thermal log: that schema is the fan curve's, and diagnostics that
+    /// force a column change would roll every reader's parser.
+    /// </summary>
+    private void RecordTiming(long total, long temp, long fan, long slow, long dispatch, bool wasSlowTick)
+    {
+        _sumTotal += total; _sumTemp += temp; _sumFan += fan; _sumSlow += slow; _sumDispatch += dispatch;
+
+        LastTickTimings =
+            $"{total} ms total: temperature {temp}, fan level {fan}, "
+            + $"{(wasSlowTick ? $"max-fan/throttle {slow}, " : "")}subscribers {dispatch}";
+
+        if (++_timingTicks < 30) return;
+
+        try
+        {
+            string dir = OmniHub.Core.Fan.ThermalLog.LogDirectory;
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, $"polltiming-{DateTime.Now:yyyy-MM-dd}.csv");
+
+            if (!File.Exists(path))
+                File.AppendAllText(path, "timestamp,ticks,avg_total_ms,avg_temp_ms,avg_fan_ms,avg_slow_ms,avg_dispatch_ms\n");
+
+            File.AppendAllText(path, string.Join(',',
+                DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss'Z'", global::System.Globalization.CultureInfo.InvariantCulture),
+                _timingTicks,
+                _sumTotal / _timingTicks, _sumTemp / _timingTicks, _sumFan / _timingTicks,
+                _sumSlow / _timingTicks, _sumDispatch / _timingTicks) + "\n");
+        }
+        catch { /* diagnostics must never be able to stop the poll */ }
+
+        _timingTicks = 0;
+        _sumTotal = _sumTemp = _sumFan = _sumSlow = _sumDispatch = 0;
     }
 
     public void Dispose()

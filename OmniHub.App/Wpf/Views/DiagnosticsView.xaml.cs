@@ -222,6 +222,11 @@ public partial class DiagnosticsView : UserControl
 
         AddRow(CapabilityRows, "Processor tuning",
             _ctx.Smu is null ? _ctx.SmuUnavailableReason ?? "the SMU could not be opened" : "available");
+
+        // The poll re-arms after each tick rather than on a fixed period, so this figure is the
+        // real cadence, and it is the number two rounds of optimisation aimed at and missed.
+        // Averages are appended to polltiming-*.csv beside the thermal logs.
+        AddRow(CapabilityRows, "Poll tick cost", _ctx.LastTickTimings);
     }
 
     /// <summary>A label and a value on one line, sharing the fixed label column.</summary>
