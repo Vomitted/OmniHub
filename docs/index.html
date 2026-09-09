@@ -182,6 +182,7 @@ footer a{color:var(--muted);border-bottom-color:#333}
   <a class="name" href="#">OmniHub<span>v1.2.0</span></a>
   <nav>
     <a href="#problem">Problem</a>
+    <a href="#does">What it does</a>
     <a href="#compat">Compatibility</a>
     <a href="#measured">Measured</a>
     <a href="#install">Install</a>
@@ -253,8 +254,76 @@ footer a{color:var(--muted);border-bottom-color:#333}
 </div></section>
 
 <!-- ==================================================================== -->
+<section id="does"><div class="wrap">
+  <h2><span class="num">02</span>What it does</h2>
+  <p class="lead">
+    Six areas of control, and one rule running through all of them: a value the hardware did not
+    report is shown as unavailable, never as a plausible number standing in for it.
+  </p>
+
+  <div class="tw"><table>
+    <caption>Each area is enabled by what the machine answers, not by what this page claims. See Compatibility below.</caption>
+    <thead><tr><th>Area</th><th>What you get</th></tr></thead>
+    <tbody>
+      <tr><td>Fans</td><td>An editable temperature-to-level curve, a safety floor that overrides the stock 0&nbsp;% entry, a manual calibration sweep to find your own chassis&rsquo;s raw band, and a Max mode.</td></tr>
+      <tr><td>GPU power</td><td>Custom TGP and Dynamic Boost as separate switches, GPU mode, and the ceiling re-asserted on a timer because the firmware takes it back.</td></tr>
+      <tr><td>CPU tuning</td><td>Sustained and boost power limits, thermal limit, and a per-knob enable, so a limit you have not set is never written.</td></tr>
+      <tr><td>Adaptive tuning</td><td>Moves the sustained power limit within a range you set, steering on temperature and demand together.</td></tr>
+      <tr><td>Measurement</td><td>A repeatable load test with saved runs, the five-way bottleneck table, per-phase poll timing, and a thermal log.</td></tr>
+      <tr><td>Windows</td><td>Power plans, timer resolution, MMCSS, process priority, and per-application GPU routing.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Adaptive tuning steers on demand, not on heat alone</h3>
+  <p>
+    A controller watching temperature by itself has a failure mode that reads as success: an idle
+    machine is cool, so the limit goes up, which is harmless right up until the limit is high
+    enough that the idle machine warms to the target and stays there. The temperature reading says
+    the controller is working. Version 1.1.0 shipped exactly that.
+  </p>
+  <p>
+    The direction is now a function of three things &mdash; package temperature, the limit in
+    force, and how much the processor is actually drawing against it. A cool machine that is not
+    asking for power gets none, because there is nothing there to give it.
+  </p>
+
+  <h3>One heatpipe, two chips</h3>
+  <p>
+    CPU and GPU are cooled by the same heatpipe but were tuned as independent knobs, so a
+    GPU-bound game left the CPU holding a sustained limit it was not using while the package sat
+    at its thermal target. The CPU yields when the GPU is busy <em>and</em> the package has
+    reached target. Both conditions are required &mdash; a busy GPU on a cool machine is not
+    competing for anything.
+  </p>
+
+  <h3>The load test exists because a release was wrong</h3>
+  <p>
+    Version 1.1.1 compiled, passed every test, and stopped its own adaptive controller within
+    seconds of launch. Nothing in the application could tell you that, and a ninety-second look at
+    the temperature readout could not either. The Diagnostics tab pins every core for a duration
+    you choose and records temperature, package power, CPU clock and fan speed, then reports
+    median, p90, max and the clock <em>floor</em> &mdash; the figure that moves when sustained
+    behaviour does. Runs are saved to disk, so two builds can be compared instead of described.
+  </p>
+  <div class="note">
+    <strong>The load test only reads.</strong> No fan commands and no power writes, so it is safe
+    to run while OmniHub is driving the fans &mdash; which is the only condition under which its
+    numbers mean anything. Also available headless as
+    <span class="m">OmniHub.exe -LoadTest &lt;minutes&gt;</span>.
+  </div>
+
+  <h3>What is limiting the processor</h3>
+  <p>
+    Five constraints, each as a fraction of its own limit: sustained power, boost power, EDC, TDC
+    and temperature. Sitting at 99&nbsp;% of core current and 60&nbsp;% of power says plainly that
+    raising the power limit will change nothing &mdash; which no single figure on the page could
+    say. Without an SMU the whole table is hidden rather than filled in with an estimate.
+  </p>
+</div></section>
+
+<!-- ==================================================================== -->
 <section id="compat"><div class="wrap">
-  <h2><span class="num">02</span>Compatibility</h2>
+  <h2><span class="num">03</span>Compatibility</h2>
   <p class="lead">
     OmniHub starts and runs on any Windows laptop. What it can <em>drive</em> depends on the
     interfaces your machine exposes. Controls the hardware cannot support are disabled and
@@ -297,8 +366,12 @@ footer a{color:var(--muted);border-bottom-color:#333}
 
 <!-- ==================================================================== -->
 <section id="app"><div class="wrap">
-  <h2><span class="num">03</span>The application</h2>
-  <p class="lead">Captured from the build linked above, on the machine every measurement in the next section came from.</p>
+  <h2><span class="num">04</span>The application</h2>
+  <p class="lead">
+    Captured on 1.1.0, on the machine every measurement in the next section came from. The
+    sidebar was regrouped in 1.2.0 &mdash; nine destinations became seven &mdash; so the
+    navigation differs from the current build. The readouts do not.
+  </p>
   <figure>
     <img src="img/dashboard.png" width="1086" height="733"
          alt="OmniHub's Dashboard: CPU 63.4 °C at 18% load, 4.3 GHz across 12 logical cores, 17.3 of 31.2 GB memory used, GPU thermal 51 °C with TGP and Boost on, a thermal headroom gauge, and a live temperature history chart.">
@@ -313,7 +386,7 @@ footer a{color:var(--muted);border-bottom-color:#333}
 
 <!-- ==================================================================== -->
 <section id="measured"><div class="wrap">
-  <h2><span class="num">04</span>Measured results</h2>
+  <h2><span class="num">05</span>Measured results</h2>
   <p class="lead">
     What came back when the tool talked to firmware — including where the firmware fought it.
   </p>
@@ -352,7 +425,7 @@ footer a{color:var(--muted);border-bottom-color:#333}
 
 <!-- ==================================================================== -->
 <section id="interfaces"><div class="wrap">
-  <h2><span class="num">05</span>Interfaces</h2>
+  <h2><span class="num">06</span>Interfaces</h2>
   <p class="lead">
     No abstraction invented for a landing page. These are the same interfaces OmenMon, OmenCore
     and Omen Gaming Hub itself use.
@@ -415,7 +488,7 @@ OmniHub.exe -Probe
 
 <!-- ==================================================================== -->
 <section id="install"><div class="wrap">
-  <h2><span class="num">06</span>Install</h2>
+  <h2><span class="num">07</span>Install</h2>
 
   <div class="note warn">
     <strong>Windows will warn about this download.</strong> The build is not code-signed, so
@@ -442,11 +515,26 @@ OmniHub.exe -Probe
     <li>Run <code>OmniHub.exe</code> and accept the UAC prompt. <strong>Elevation is not
       optional</strong> — the WMI session requires it and the SMU driver refuses unelevated
       callers.</li>
-    <li>Open <strong>Settings</strong> and enable <em>Launch when you sign in</em>.</li>
+    <li>Open <strong>Settings</strong> and enable <em>Launch when you sign in</em> &mdash; but
+      read the note below first if this laptop runs on battery.</li>
     <li>On Ryzen, install the PawnIO driver for the Tuning tab — the dashboard offers it when
       missing, or <code>winget install namazso.PawnIO</code>. No restart needed; the app retries
       every ten seconds.</li>
   </ol>
+
+  <div class="note warn">
+    <strong>On 1.2.0, <em>Launch when you sign in</em> inherits Windows&rsquo; battery
+    defaults.</strong> Task Scheduler sets both
+    <span class="m">DisallowStartIfOnBatteries</span> and
+    <span class="m">StopIfGoingOnBatteries</span> to true by default, and
+    <code>schtasks</code>&rsquo; command-line form cannot express either &mdash; so OmniHub does
+    not start at sign-in while unplugged, and Task Scheduler terminates it the moment the
+    charger comes out. That termination is a hard kill: the fan controller never reaches its
+    shutdown path and never hands control back to the BIOS, which can leave the fans pinned at
+    whatever was last commanded. Until the next release, open the task in Task Scheduler and
+    clear both boxes under <em>Conditions &rarr; Power</em>. Fixed on
+    <span class="m">main</span>.
+  </div>
 
   <h3>Build from source</h3>
   <pre>winget install Microsoft.DotNet.SDK.10
@@ -471,7 +559,7 @@ dotnet build OmniHub.slnx -c Release</pre>
 
 <!-- ==================================================================== -->
 <section id="changelog"><div class="wrap">
-  <h2><span class="num">07</span>Changelog</h2>
+  <h2><span class="num">08</span>Changelog</h2>
   <p class="lead">
     Read live from the published releases, which is the same list the application's Settings tab
     reads. There is no separate feed to fall out of date. Full history in
@@ -482,13 +570,19 @@ dotnet build OmniHub.slnx -c Release</pre>
 
 <!-- ==================================================================== -->
 <section id="limits"><div class="wrap">
-  <h2><span class="num">08</span>Known limitations</h2>
+  <h2><span class="num">09</span>Known limitations</h2>
   <ul>
     <li>The safety floor protects only while the application is running.</li>
     <li>Curve tuning is manual. A board can carry its own fan band in <span class="m">profiles\&lt;baseboard&gt;.json</span>, but no preset database is bundled — nobody has measured those boards.</li>
     <li>The 10–56 raw fan band was measured on one chassis, not on yours. The Fans tab has a calibration sweep to find your own, and the result can be written into a profile.</li>
     <li>The capability block this laptop returns is not trustworthy: it reports no software fan control on a machine whose fans the application is demonstrably driving. Capabilities therefore only ever enable a message, never silently disable working hardware.</li>
     <li>Throttling detection is not independently verified against known-good hardware.</li>
+    <li>1.2.0 was tuned, measured and released entirely on mains. On battery it keeps the
+      discrete GPU awake &mdash; the TGP re-assertion loop overrides the firmware&rsquo;s own
+      reclaim, and polling <span class="m">nvidia-smi</span> wakes the card over PCIe &mdash;
+      and unplugging switches profile, which switches <em>out</em> of Adaptive, so the
+      controller that would have backed the limit off has stopped running. Both are fixed on
+      <span class="m">main</span> and neither is in the download above.</li>
   </ul>
 </div></section>
 

@@ -14,7 +14,53 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
-Nothing yet.
+Battery. 1.2.0 was tuned, measured and released entirely on mains, and almost everything below
+is a thing that only goes wrong once the charger comes out.
+
+### Fixed
+
+- **The app was not crashing on unplug — Windows was killing it.** The auto-start task carried
+  both of Task Scheduler's battery defaults, `DisallowStartIfOnBatteries` and
+  `StopIfGoingOnBatteries`, because `schtasks`' command-line form cannot express either and the
+  task had always been created with it. So OmniHub did not start at sign-in while unplugged, and
+  was terminated the moment the charger came out — `LastTaskResult` `0x8007042B`, the process
+  terminated unexpectedly. It is a hard kill, so the fan controller never reached its shutdown
+  path and never handed control back to the BIOS: a power event could leave the fans pinned at
+  whatever was last commanded, on the rail where a stuck fan is also draining the battery. The
+  task is registered from XML now, with both flags false and no execution time limit.
+- **A failed registration no longer leaves the machine with no task at all.** `/Create` deletes
+  before it writes, so a rejected XML left nothing behind and OmniHub stopped coming back after a
+  reboot — worse than the defect being fixed. It falls back to the plain command-line form now,
+  which carries Windows' battery defaults but does exist, and says plainly that it did rather
+  than reporting success for something degraded.
+- **A failure says what Windows said.** The error from the call that actually failed was being
+  overwritten by the status re-query that follows it, so a dialog reporting "The system cannot
+  find the file specified" was faithfully quoting a query for a task that had just failed to be
+  created, and the create's own reason had already been discarded. `schtasks` is also resolved
+  from `Environment.SystemDirectory` rather than by bare name — not a diagnosis, just one
+  possibility taken off the table, since a system binary should not be reached through an
+  inherited `PATH`.
+- **The AC-to-battery transition reached 90 °C.** Unplugging switched profiles, which switched
+  *out* of Adaptive, so the controller that would have backed the limit off had stopped running.
+  Adaptive now owns both rails itself and the profile switch stands aside.
+- **The discrete GPU never slept on battery.** `nvidia-smi` reported P4 at 0% utilisation against
+  a 43 W discharge — awake and idling rather than in D3cold — because polling it over PCIe wakes
+  the card, and because the TGP re-assertion loop kept overriding the firmware's own reclaim. On
+  battery the loop stands down and the card is left alone; the ceiling is released on unplug
+  rather than waiting ~90 s for the firmware to take it back.
+
+### Added
+
+- **A battery rail for adaptive tuning.** Separate maximum wattage and temperature target that
+  take effect on unplug and are restored on plug-in, clamped immediately on the transition
+  instead of drifting into the new rail over the following minutes.
+
+### Changed
+
+- **The fan level is read two bytes at a time.** `hpqBIntM` exposes one method per response-buffer
+  size, and the 128-byte one costs ~300 ms on this firmware against ~8 ms for the 4-byte one. That
+  single call was 94% of the hardware poll. Measured: tick body ~314 ms to ~72 ms, real cadence
+  2.32 s to 2.08 s.
 
 ---
 
