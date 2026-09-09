@@ -13,9 +13,59 @@ public sealed class FanController
     public byte[] GetFanType() =>
         _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanType, null, 128);
 
-    /// <summary>Current fan speed level per fan (raw BIOS units, not RPM).</summary>
-    public byte[] GetFanLevel() =>
-        _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanLevel, null, 128);
+    /// <summary>
+    /// Which response-buffer size this board answers fan level with. Null until measured.
+    /// </summary>
+    private int? _fanLevelOutSize;
+
+    /// <summary>
+    /// Current fan speed level per fan (raw BIOS units, not RPM).
+    ///
+    /// Asked with a four-byte reply where the board allows it, because hpqBIntM exposes one
+    /// method per response size and they are not equally priced. Measured on the Victus 15
+    /// fb2xxx with the poll instrumentation: this call was 306ms of a 324ms tick, 94% of it,
+    /// while the max-fan and throttling reads beside it cost about 8ms each. The difference
+    /// between them is that those ask hpqBIOSInt4 and this asked hpqBIOSInt128 for two bytes of
+    /// answer.
+    ///
+    /// Since the poll re-arms after each tick rather than on a fixed period, that single call
+    /// was setting the whole application's cadence: a nominal 2s loop measured at 2.31s.
+    ///
+    /// The small size is not assumed. The first call asks BOTH ways and keeps the cheap one only
+    /// if it agrees with the one already known to work: a fan level read out of the wrong buffer
+    /// would drive the curve from a wrong number, which is the one failure this application
+    /// cannot have. A board that disagrees, or that refuses the small method, keeps the 128-byte
+    /// call for the rest of the session and behaves exactly as it did before.
+    /// </summary>
+    public byte[] GetFanLevel()
+    {
+        if (_fanLevelOutSize is int size)
+            return _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanLevel, null, size);
+
+        var large = _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanLevel, null, 128);
+
+        try
+        {
+            var small = _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanLevel, null, 4);
+
+            // Compared with a tolerance rather than for equality: the two reads are consecutive,
+            // not simultaneous, and a fan that is ramping can genuinely move a unit or two
+            // between them. A real mismatch is not off by one, it is a different buffer.
+            _fanLevelOutSize =
+                small.Length >= 2 && large.Length >= 2
+                && Math.Abs(small[0] - large[0]) <= 4
+                && Math.Abs(small[1] - large[1]) <= 4
+                    ? 4
+                    : 128;
+        }
+        catch
+        {
+            // The small method is not available here. Pay for finding that out once.
+            _fanLevelOutSize = 128;
+        }
+
+        return large;
+    }
 
     /// <summary>
     /// Directly commands fan 1 and fan 2 levels. Bypasses BIOS auto-control. The raw byte
