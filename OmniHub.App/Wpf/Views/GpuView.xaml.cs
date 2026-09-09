@@ -39,7 +39,18 @@ public partial class GpuView : UserControl
         // anyone to open a tab -- and the ForceMaxPower latch means it no longer matters
         // whether a preset write happens before or after it.
         MaxPowerCheck.IsChecked = _settings.GpuMaxPower;
-        if (_settings.GpuMaxPower) ApplyMaxPower();
+
+        // Not while unplugged.
+        //
+        // The TGP unlock is a mains feature. Applying it from here meant that launching OmniHub
+        // on battery wrote the unlock during startup, before the poll loop had taken its first
+        // look at which rail the machine is on -- so the app spent its opening seconds holding up
+        // a card it exists to let sleep, and only ReassertGpuPower noticing the rail afterwards
+        // undid it. Skipping it here costs nothing: the next tick after the charger goes back in
+        // sees the rail change and applies it.
+        if (_settings.GpuMaxPower &&
+            OmniHub.Core.Optimize.PowerSourceWatcher.Read() != OmniHub.Core.Optimize.PowerSource.Battery)
+            ApplyMaxPower();
 
         MaxPowerCheck.Checked += MaxPowerChanged;
         MaxPowerCheck.Unchecked += MaxPowerChanged;

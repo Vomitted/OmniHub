@@ -81,8 +81,11 @@ public static class GpuTelemetry
     /// build a readout, and a WMI round trip per call would be felt. Adapters do not appear and
     /// disappear during a session in a way this readout needs to track.
     /// </summary>
+    private static readonly Lazy<List<(string Name, string Vendor)>> AdapterList = new(
+        Adapters, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+
     private static readonly Lazy<bool> AnyAdapter = new(
-        () => Adapters().Count > 0, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+        () => AdapterList.Value.Count > 0, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
 
     /// <summary>True when some GPU can be reported -- via nvidia-smi, or via Windows.</summary>
     public static bool IsAvailable => HasNvidiaSmi || AnyAdapter.Value;
@@ -235,7 +238,14 @@ public static class GpuTelemetry
     {
         try
         {
-            var adapters = Adapters();
+            // The cached list, not a fresh WMI query.
+            //
+            // This ran SELECT ... FROM Win32_VideoController on every call, and on battery it is
+            // the only GPU path left, so it ran every three seconds forever -- to re-read an
+            // adapter name that cannot change while the process lives. AnyAdapter above had
+            // already made exactly this argument and cached it; QueryWindows simply never got
+            // the same treatment.
+            var adapters = AdapterList.Value;
             if (adapters.Count == 0) return null;
 
             var (name, vendor) = PickAdapter(adapters);
