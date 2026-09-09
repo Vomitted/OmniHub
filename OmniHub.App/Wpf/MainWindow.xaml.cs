@@ -764,30 +764,80 @@ public partial class MainWindow : Window
     /// </summary>
     private int _gpuCheckInFlight;
 
+    /// <summary>The rail the GPU ceiling was last decided for, so a charger move is noticed once.</summary>
+    private OmniHub.Core.Optimize.PowerSource _lastGpuRail = OmniHub.Core.Optimize.PowerSource.Unknown;
+
+    /// <summary>
+    /// Hands the GPU ceiling back to stock, so the card can reach D3cold on battery.
+    ///
+    /// ForceMaxPower comes off first, and that ordering is not optional: the latch exists so
+    /// three separate callers cannot lower the ceiling behind the user's back, and SetPower
+    /// enforces it by rewriting any request that would. Releasing while it is still set would be
+    /// silently converted back into the maximum, which is the exact behaviour being undone here.
+    /// </summary>
+    private void ReleaseGpuPower()
+    {
+        if (Interlocked.Exchange(ref _gpuCheckInFlight, 1) == 1) return;
+
+        Task.Run(() =>
+        {
+            try
+            {
+                _ctx.Gpu.ForceMaxPower = false;
+                _ctx.Gpu.SetPowerPreset(GpuPowerLevel.Eco);
+            }
+            catch
+            {
+                // A machine with no vendor interface, or a firmware that refuses. Nothing to do:
+                // not releasing leaves the previous behaviour, which is what it had before.
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _gpuCheckInFlight, 0);
+            }
+        });
+    }
+
     private void ReassertGpuPower()
     {
-        if (!_settings.GpuMaxPower || DateTime.UtcNow < _nextGpuCheckUtc) return;
-        _nextGpuCheckUtc = DateTime.UtcNow + GpuReassertInterval;
+        if (!_settings.GpuMaxPower) return;
 
-        // Not on battery. This is a mains feature, and re-asserting it unplugged is actively
-        // harmful.
+        // The rail is checked every tick, not every thirty seconds, because a charger moving is
+        // the event this cares about most and a cheap P/Invoke is not worth rate-limiting.
         //
-        // The loop exists because the firmware reclaims the TGP unlock after about ninety
-        // seconds, so applying it once is not enough. On battery that reclaim is the firmware
-        // doing the right thing: it is letting the discrete GPU go, and putting the unlock
-        // straight back every thirty seconds overrides that decision on the one rail where it
-        // must not be overridden.
+        // The TGP unlock is a mains feature, and holding it on battery is actively harmful. The
+        // loop exists because the firmware reclaims the unlock after about ninety seconds, so
+        // applying it once is not enough -- but unplugged, that reclaim is the firmware doing the
+        // right thing and letting the discrete GPU go. Putting the unlock straight back every
+        // thirty seconds overrode that on the one rail where it must not be overridden.
         //
-        // Measured on this machine: nvidia-smi reported P4 at 0% utilisation while unplugged --
-        // awake and idling rather than in D3cold -- against a 43 W discharge rate. A discrete
-        // GPU that never sleeps is the largest single thing a laptop can be doing wrong on
-        // battery, and it was this application holding it up.
-        //
-        // Deliberately not "release the unlock on battery" either: that would be a write, and a
-        // write is one more transaction with a device we are trying to stop touching. Simply not
-        // re-asserting lets the firmware's own reclaim stand, which returns the card to stock and
-        // lets it reach D3cold on its own.
-        if (OmniHub.Core.Optimize.PowerSourceWatcher.Read() == OmniHub.Core.Optimize.PowerSource.Battery) return;
+        // Measured here: nvidia-smi reported P4 at 0% utilisation while unplugged -- awake and
+        // idling rather than in D3cold -- against a 43 W discharge rate. A discrete GPU that
+        // never sleeps is the largest single thing a laptop can be doing wrong on battery, and
+        // this application was holding it up.
+        var source = OmniHub.Core.Optimize.PowerSourceWatcher.Read();
+        bool railChanged = source != _lastGpuRail;
+        _lastGpuRail = source;
+
+        if (source == OmniHub.Core.Optimize.PowerSource.Battery)
+        {
+            // Released at the moment of unplugging rather than left to time out.
+            //
+            // Waiting for the firmware's own reclaim would work, but it costs about ninety
+            // seconds of a card that should already be asleep, every single time the charger
+            // comes out. Writing is the right call here and the earlier reasoning against it was
+            // wrong: SetGpuPower is a call to HP's EC about its GPU power policy, not a PCIe
+            // transaction with the card, so it cannot wake what it is trying to let sleep.
+            if (railChanged) ReleaseGpuPower();
+            return;
+        }
+
+        // Plugging back in re-asserts at once instead of up to thirty seconds later, so the
+        // ceiling is there by the time anything is asked of the card.
+        if (railChanged) _nextGpuCheckUtc = DateTime.MinValue;
+
+        if (DateTime.UtcNow < _nextGpuCheckUtc) return;
+        _nextGpuCheckUtc = DateTime.UtcNow + GpuReassertInterval;
 
         // Off the poll thread, and never twice at once.
         //
