@@ -29,8 +29,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Core only. The App project is WPF and would pull a UI thread into the test host;
-         everything worth testing here is pure logic that lives in Core. -->
+    <!-- Core only, and for a sharper reason than the original note gave.
+         The App project's build output IS the installed application: the desktop shortcut, the
+         Start Menu entry and the OmniHub_AutoStart scheduled task all point at
+         bin\Release\net8.0-windows\OmniHub.exe. Referencing it here makes "dotnet test" build
+         that path, which fails outright whenever OmniHub is running, because the running process
+         holds a lock on its own executable.
+
+         Tests must not require the user to shut down their fan control first. Markup that
+         declares a clr-namespace from OmniHub.App is therefore checked as text rather than
+         parsed; ViewMarkupTests says which files that costs and why. -->
     <ProjectReference Include="..\OmniHub.Core\OmniHub.Core.csproj" />
   </ItemGroup>
 

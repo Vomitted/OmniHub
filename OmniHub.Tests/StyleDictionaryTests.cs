@@ -1,8 +1,5 @@
 using System.IO;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Markup;
-using System.Windows.Threading;
 
 namespace OmniHub.Tests;
 
@@ -15,114 +12,11 @@ namespace OmniHub.Tests;
 /// the dictionary is parsed, and the dictionaries are parsed at application startup. Until now
 /// the only way to find out was to launch the application, and with views built lazily some of
 /// it would not surface until a particular tab was opened.
-///
-/// This parses the same three layers App.xaml merges, in the same order, on a thread of its own.
-/// It is what makes changes to the shared styles safe to make without a machine to look at.
 /// </summary>
 public class StyleDictionaryTests
 {
-    private static DirectoryInfo RepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "OmniHub.App")))
-            dir = dir.Parent;
-
-        Assert.True(dir is not null, "could not locate the repository root from the test binary");
-        return dir!;
-    }
-
-    private static string WpfDir => Path.Combine(RepoRoot().FullName, "OmniHub.App", "Wpf");
-
-    /// <summary>
-    /// Runs a delegate on a fresh STA thread and rethrows whatever it threw.
-    ///
-    /// WPF objects require a single-threaded apartment and the test host's threads are not one.
-    /// Owning the thread here, rather than marking the whole assembly STA, leaves the rest of the
-    /// suite exactly as it was.
-    /// </summary>
-    /// <summary>
-    /// One STA thread with a live dispatcher and a single Application, shared by every test here.
-    ///
-    /// WPF allows exactly one Application per AppDomain, so a thread per test cannot each make
-    /// their own. The Application is not decoration: StaticResource inside a dictionary loaded
-    /// through Source resolves against Application.Current.Resources, which is precisely how the
-    /// three layers find each other at runtime and why parsing them in isolation cannot work.
-    ///
-    /// A background thread, so it never holds the test host open.
-    /// </summary>
-    private static readonly Lazy<Dispatcher> UiThread = new(() =>
-    {
-        Dispatcher? dispatcher = null;
-        using var ready = new ManualResetEventSlim();
-
-        var thread = new Thread(() =>
-        {
-            _ = new Application();
-            dispatcher = Dispatcher.CurrentDispatcher;
-            ready.Set();
-            Dispatcher.Run();
-        })
-        {
-            IsBackground = true,
-        };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        ready.Wait();
-
-        return dispatcher!;
-    });
-
-    private static void OnStaThread(Action action)
-    {
-        Exception? failure = null;
-        UiThread.Value.Invoke(() =>
-        {
-            try { action(); }
-            catch (Exception ex) { failure = ex; }
-        });
-
-        if (failure is not null) throw failure;
-    }
-
-    /// <summary>
-    /// Merges the three layers the way App.xaml does: palette, then Theme, then Styles.
-    ///
-    /// Order matters and is the point of the test. Theme's brushes are built from the palette's
-    /// colours, and Styles refers to Theme's brushes, fonts and radii by StaticResource, which
-    /// resolves at parse time and would fail on its own.
-    /// </summary>
-    private static ResourceDictionary BuildMerged(string paletteFile)
-    {
-        var paths = new[]
-        {
-            Path.Combine(WpfDir, "Palettes", paletteFile),
-            Path.Combine(WpfDir, "Theme.xaml"),
-            Path.Combine(WpfDir, "Styles.xaml"),
-        };
-
-        foreach (var path in paths)
-            Assert.True(File.Exists(path), $"{path} is missing");
-
-        // Merged one at a time, with the result live on the Application as it goes.
-        //
-        // This ordering is the whole mechanism, not a detail. StaticResource is resolved while a
-        // document is parsed, and a dictionary loaded through Source is its own document -- so
-        // Styles.xaml asking for TextFaintBrush finds it only because Theme.xaml is already in
-        // Application.Current.Resources by the time Styles.xaml is read. Parsing the three in
-        // isolation and merging afterwards fails on exactly that lookup, which is what the app
-        // itself would do without an Application to fall back to.
-        var merged = new ResourceDictionary();
-        Application.Current.Resources = merged;
-
-        foreach (var path in paths)
-            merged.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri(path) });
-
-        return merged;
-    }
-
     public static IEnumerable<object[]> Palettes() =>
-        Directory.EnumerateFiles(Path.Combine(WpfDir, "Palettes"), "*.xaml")
+        Directory.EnumerateFiles(Path.Combine(WpfTestHost.WpfDir, "Palettes"), "*.xaml")
                  .Select(p => new object[] { Path.GetFileName(p) });
 
     /// <summary>
@@ -136,9 +30,9 @@ public class StyleDictionaryTests
     [MemberData(nameof(Palettes))]
     public void EveryPaletteBuildsTheWholeStyleLayer(string paletteFile)
     {
-        OnStaThread(() =>
+        WpfTestHost.Run(() =>
         {
-            var merged = BuildMerged(paletteFile);
+            var merged = WpfTestHost.LoadResources(paletteFile);
 
             // Indexing forces the deferred content to be realised. A dictionary that parsed can
             // still fail here if a Setter or a trigger inside one of these is wrong.
@@ -165,15 +59,15 @@ public class StyleDictionaryTests
     ///
     /// Thirty-nine borders had their Padding="16" deleted on the strength of this default. If it
     /// drifts back to something else, all thirty-nine change silently and at once -- which is
-    /// exactly what happened in the other direction when the default sat at 18 and every caller
-    /// quietly overrode it.
+    /// exactly what had happened in the other direction, with the default sitting at 18 and every
+    /// caller quietly overriding it.
     /// </summary>
     [Fact]
     public void TheCardPaddingDefaultIsWhatTheCallersRelyOn()
     {
-        OnStaThread(() =>
+        WpfTestHost.Run(() =>
         {
-            var merged = BuildMerged("OledBlack.xaml");
+            var merged = WpfTestHost.LoadResources();
             var card = (Style)merged["CardBorderStyle"];
 
             var padding = card.Setters.OfType<Setter>()
