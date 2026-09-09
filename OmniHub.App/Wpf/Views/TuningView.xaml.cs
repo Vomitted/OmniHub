@@ -48,8 +48,14 @@ public partial class TuningView : UserControl, IDisposable
 
     /// <summary>Guards the startup controls while they are being populated from settings.</summary>
     private bool _suppressStartupEvents;
-    private readonly Dictionary<string, Slider> _sliders = new();
-    private readonly Dictionary<string, CheckBox> _enables = new();
+    /// <summary>
+    /// Every knob on this tab, by key.
+    ///
+    /// This was two dictionaries of live controls, a Slider and a CheckBox per key, which made
+    /// the visual tree the state model: reading what the user had chosen meant reaching into a
+    /// Slider, and the row could not be restyled without editing the code that constructed it.
+    /// </summary>
+    private readonly Dictionary<string, KnobRow> _knobs = new();
     private AdaptiveTuning? _adaptive;
     private DispatcherTimer? _liveTimer;
     private TextBlock? _liveStapm, _liveFast, _liveSlow, _liveTemp;
@@ -414,17 +420,18 @@ public partial class TuningView : UserControl, IDisposable
             "Ceiling for the controller.", enabled: true, showEnable: false);
 
         foreach (string key in new[] { "adaptiveTarget", "adaptiveMin", "adaptiveMax" })
-            _sliders[key].ValueChanged += (_, _) => SaveAdaptiveSettings();
+            if (Knob(key) is { } row) row.ValueChanged += SaveAdaptiveSettings;
 
         // The thermal limit persists on its own, because it is the knob that measurably works
         // and the one a preset is most likely to trample.
         if (_settings.ThermalLimitC is int saved) Set("tctl", saved);
-        _sliders["tctl"].ValueChanged += (_, _) =>
-        {
-            if (_suppressStartupEvents) return;
-            _settings.ThermalLimitC = (int)_sliders["tctl"].Value;
-            _settings.Save();
-        };
+        if (Knob("tctl") is { } tctl)
+            tctl.ValueChanged += () =>
+            {
+                if (_suppressStartupEvents) return;
+                _settings.ThermalLimitC = (int)tctl.Value;
+                _settings.Save();
+            };
 
         // Mode selector. Manual and Adaptive are genuinely different intents -- one applies
         // the sliders once, the other holds a target continuously -- and leaving both live at
@@ -866,7 +873,7 @@ public partial class TuningView : UserControl, IDisposable
                 if (goingAdaptive)
                 {
                     if (_adaptive is not { IsRunning: true }) SetMode(TuningMode.Adaptive);
-                    StartupStatus.Text += $" Adaptive holding {(int)_sliders["adaptiveTarget"].Value} C.";
+                    StartupStatus.Text += $" Adaptive holding {(int)(Knob("adaptiveTarget")?.Value ?? 0)} C.";
                 }
                 else
                 {
@@ -1178,71 +1185,33 @@ public partial class TuningView : UserControl, IDisposable
     private void AddRow(Panel host, string key, string label, double min, double max, double value,
                         string unit, string tip, bool enabled = false, bool showEnable = true)
     {
-        var grid = new Grid { Margin = new Thickness(0, 5, 0, 5), ToolTip = tip };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(28) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(210) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(76) });
+        var row = new KnobRow(key, label, min, max, value, unit, tip, enabled, showEnable);
 
-        var enable = new CheckBox
+        // The row's appearance is KnobRowTemplate, in this view's XAML. All that is built here is
+        // a presenter to hang it on, which is the entire point: changing how a knob looks is now
+        // a change to markup rather than to fifty lines of construction code.
+        host.Children.Add(new ContentPresenter
         {
-            Style = (Style)FindResource("OmniCheckBoxStyle"),
-            IsChecked = enabled,
-            VerticalAlignment = VerticalAlignment.Center,
-            Visibility = showEnable ? Visibility.Visible : Visibility.Hidden,
-        };
-        var name = new TextBlock { Text = label, Style = (Style)FindResource("MutedText"), VerticalAlignment = VerticalAlignment.Center };
-        var slider = new Slider
-        {
-            Style = (Style)FindResource("OmniSliderStyle"),
-            Minimum = min,
-            Maximum = max,
-            Value = value,
-            IsSnapToTickEnabled = true,
-            TickFrequency = 1,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 12, 0),
-        };
-        var readout = new TextBlock
-        {
-            Text = $"{value:0} {unit}",
-            Style = (Style)FindResource("BodyText"),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
+            Content = row,
+            ContentTemplate = (DataTemplate)FindResource("KnobRowTemplate"),
+        });
 
-        // Touching a slider is itself the intent to set that knob, so it ticks its own box.
-        // Requiring both actions would mean silently dropped changes.
-        slider.ValueChanged += (_, _) =>
-        {
-            readout.Text = $"{slider.Value:0} {unit}";
-            if (showEnable) enable.IsChecked = true;
-        };
-
-        Grid.SetColumn(name, 1);
-        Grid.SetColumn(slider, 2);
-        Grid.SetColumn(readout, 3);
-        grid.Children.Add(enable);
-        grid.Children.Add(name);
-        grid.Children.Add(slider);
-        grid.Children.Add(readout);
-        host.Children.Add(grid);
-
-        _sliders[key] = slider;
-        _enables[key] = enable;
+        _knobs[key] = row;
     }
+
+    /// <summary>The model for a knob, or null if nothing built that key.</summary>
+    private KnobRow? Knob(string key) => _knobs.GetValueOrDefault(key);
 
     // ---------------------------------------------------------------- behaviour
 
-    private int? Value(string key) =>
-        _enables.TryGetValue(key, out var box) && box.IsChecked == true && _sliders.TryGetValue(key, out var s)
-            ? (int)Math.Round(s.Value)
-            : null;
+    private int? Value(string key) => Knob(key)?.Selected;
 
     private void Set(string key, int? value)
     {
-        if (value is not int v) return;
-        if (_sliders.TryGetValue(key, out var s)) s.Value = Math.Clamp(v, s.Minimum, s.Maximum);
-        if (_enables.TryGetValue(key, out var e)) e.IsChecked = true;
+        if (value is not int v || Knob(key) is not { } row) return;
+
+        row.Value = v;       // clamps to its own range, and ticks its box on the way
+        row.Enabled = true;  // explicit, for the rows that show no checkbox to tick
     }
 
     private AmdTuningProfile CurrentProfile() => new(
@@ -1381,10 +1350,10 @@ public partial class TuningView : UserControl, IDisposable
 
         // Kept ordered: a floor above the ceiling would make the controller's clamp collapse
         // to a single value and it would stop responding to temperature entirely.
-        int min = (int)_sliders["adaptiveMin"].Value;
-        int max = (int)_sliders["adaptiveMax"].Value;
+        int min = (int)(Knob("adaptiveMin")?.Value ?? 0);
+        int max = (int)(Knob("adaptiveMax")?.Value ?? 0);
 
-        int target = (int)_sliders["adaptiveTarget"].Value;
+        int target = (int)(Knob("adaptiveTarget")?.Value ?? 0);
         _settings.AdaptiveTargetTempC = target;
         _settings.AdaptiveMinWatts = Math.Min(min, max);
         _settings.AdaptiveMaxWatts = Math.Max(min, max);
@@ -1460,7 +1429,7 @@ public partial class TuningView : UserControl, IDisposable
         // enforced on this platform. The power-steering loop below chases the same target by
         // adjusting sustained watts, which this firmware ignores -- so on its own it would
         // leave "max temp 90" doing precisely nothing, which is how it looked broken.
-        int target = (int)_sliders["adaptiveTarget"].Value;
+        int target = (int)(Knob("adaptiveTarget")?.Value ?? 0);
         var capped = _tuning.SetThermalLimitC(target);
         Set("tctl", target);
         _settings.ThermalLimitC = target;
@@ -1472,9 +1441,9 @@ public partial class TuningView : UserControl, IDisposable
 
         _adaptive = new AdaptiveTuning(_tuning, () => _ctx.CurrentTemperature().Celsius)
         {
-            TargetTempC = (int)_sliders["adaptiveTarget"].Value,
-            MinWatts = (int)_sliders["adaptiveMin"].Value,
-            MaxWatts = (int)_sliders["adaptiveMax"].Value,
+            TargetTempC = (int)(Knob("adaptiveTarget")?.Value ?? 0),
+            MinWatts = (int)(Knob("adaptiveMin")?.Value ?? 0),
+            MaxWatts = (int)(Knob("adaptiveMax")?.Value ?? 0),
 
             // The discrete GPU shares this chassis' heatpipe and fans, so the CPU limit is not
             // the CPU's business alone. Read through GpuTelemetry's cache, which is refreshed in
