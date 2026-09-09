@@ -769,6 +769,26 @@ public partial class MainWindow : Window
         if (!_settings.GpuMaxPower || DateTime.UtcNow < _nextGpuCheckUtc) return;
         _nextGpuCheckUtc = DateTime.UtcNow + GpuReassertInterval;
 
+        // Not on battery. This is a mains feature, and re-asserting it unplugged is actively
+        // harmful.
+        //
+        // The loop exists because the firmware reclaims the TGP unlock after about ninety
+        // seconds, so applying it once is not enough. On battery that reclaim is the firmware
+        // doing the right thing: it is letting the discrete GPU go, and putting the unlock
+        // straight back every thirty seconds overrides that decision on the one rail where it
+        // must not be overridden.
+        //
+        // Measured on this machine: nvidia-smi reported P4 at 0% utilisation while unplugged --
+        // awake and idling rather than in D3cold -- against a 43 W discharge rate. A discrete
+        // GPU that never sleeps is the largest single thing a laptop can be doing wrong on
+        // battery, and it was this application holding it up.
+        //
+        // Deliberately not "release the unlock on battery" either: that would be a write, and a
+        // write is one more transaction with a device we are trying to stop touching. Simply not
+        // re-asserting lets the firmware's own reclaim stand, which returns the card to stock and
+        // lets it reach D3cold on its own.
+        if (OmniHub.Core.Optimize.PowerSourceWatcher.Read() == OmniHub.Core.Optimize.PowerSource.Battery) return;
+
         // Off the poll thread, and never twice at once.
         //
         // This began life running inline on the poll callback, which holds the poll loop's

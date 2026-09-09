@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.IO;
+using System.Security;
+using System.Text;
 
 namespace OmniHub.App;
 
@@ -21,7 +24,94 @@ public static class StartupManager
 
         string exePath = Environment.ProcessPath
             ?? throw new InvalidOperationException("Could not determine the running executable's path.");
-        return RunSchTasks("/Create", "/TN", TaskName, "/TR", exePath, "/SC", "ONLOGON", "/RL", "HIGHEST", "/F");
+
+        // Registered from XML rather than with /TR and /SC.
+        //
+        // schtasks' command-line form cannot express the two settings that matter most here, and
+        // Task Scheduler defaults BOTH of them to true on a battery-powered machine:
+        //
+        //   DisallowStartIfOnBatteries -- OmniHub does not start at sign-in while unplugged,
+        //                                 which is one of the two times the fan curve matters.
+        //   StopIfGoingOnBatteries     -- Task Scheduler TERMINATES OmniHub the moment the
+        //                                 charger comes out.
+        //
+        // The second is the serious one, and it does not present as a settings problem: it looks
+        // exactly like the application crashing on unplug, which is how it was reported. Worse,
+        // it is a hard kill, so the fan controller never reaches its shutdown path and never
+        // hands control back to the BIOS. The laptop can be left with its fans pinned at whatever
+        // level was last commanded, by a power event, on the rail where a stuck fan is also
+        // draining the battery.
+        //
+        // ExecutionTimeLimit is PT0S, meaning none. The default of three days would otherwise
+        // stop a machine that simply stays awake.
+        string xml = TaskXml(exePath);
+        string path = Path.Combine(Path.GetTempPath(), $"omnihub-task-{Guid.NewGuid():N}.xml");
+
+        try
+        {
+            // UTF-16: schtasks /XML rejects a plain UTF-8 file with a parse error that names no
+            // encoding, which is a genuinely confusing way to fail.
+            File.WriteAllText(path, xml, new UnicodeEncoding(bigEndian: false, byteOrderMark: true));
+            return RunSchTasks("/Create", "/TN", TaskName, "/XML", path, "/F");
+        }
+        finally
+        {
+            try { File.Delete(path); } catch { }
+        }
+    }
+
+    private static string TaskXml(string exePath)
+    {
+        string user = SecurityElement.Escape($@"{Environment.UserDomainName}\{Environment.UserName}") ?? "";
+        string command = SecurityElement.Escape(exePath) ?? "";
+
+        return $"""
+            <?xml version="1.0" encoding="UTF-16"?>
+            <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+              <RegistrationInfo>
+                <Description>Starts OmniHub at sign-in with the privileges its BIOS access needs.</Description>
+              </RegistrationInfo>
+              <Triggers>
+                <LogonTrigger>
+                  <Enabled>true</Enabled>
+                  <UserId>{user}</UserId>
+                </LogonTrigger>
+              </Triggers>
+              <Principals>
+                <Principal id="Author">
+                  <UserId>{user}</UserId>
+                  <LogonType>InteractiveToken</LogonType>
+                  <RunLevel>HighestAvailable</RunLevel>
+                </Principal>
+              </Principals>
+              <Settings>
+                <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+                <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+                <AllowHardTerminate>false</AllowHardTerminate>
+                <StartWhenAvailable>true</StartWhenAvailable>
+                <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+                <IdleSettings>
+                  <StopOnIdleEnd>false</StopOnIdleEnd>
+                  <RestartOnIdle>false</RestartOnIdle>
+                </IdleSettings>
+                <AllowStartOnDemand>true</AllowStartOnDemand>
+                <Enabled>true</Enabled>
+                <Hidden>false</Hidden>
+                <RunOnlyIfIdle>false</RunOnlyIfIdle>
+                <DisallowStartOnRemoteAppSession>false</DisallowStartOnRemoteAppSession>
+                <UseUnifiedSchedulingEngine>true</UseUnifiedSchedulingEngine>
+                <WakeToRun>false</WakeToRun>
+                <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+                <Priority>7</Priority>
+                <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+              </Settings>
+              <Actions Context="Author">
+                <Exec>
+                  <Command>{command}</Command>
+                </Exec>
+              </Actions>
+            </Task>
+            """;
     }
 
     private static bool RunSchTasks(params string[] args)
