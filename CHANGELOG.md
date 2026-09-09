@@ -14,8 +14,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
-Battery. 1.2.0 was tuned, measured and released entirely on mains, and almost everything below
-is a thing that only goes wrong once the charger comes out.
+Three threads. Battery, because 1.2.0 was tuned, measured and released entirely on mains and
+a good deal of it only goes wrong once the charger comes out. A real installer, replacing a
+zip and the instruction to "extract somewhere permanent". And the interface, rebuilt against
+a reference the user supplied after four attempts at inferring it from description.
 
 ### Fixed
 
@@ -51,12 +53,37 @@ is a thing that only goes wrong once the charger comes out.
 
 ### Added
 
+- **An installer.** The download is a setup program now: licence, install directory, optional
+  desktop shortcut, an optional sign-in task, and a tick-box that fetches the PawnIO driver
+  through winget. Uninstalling removes the scheduled task, which previously survived a
+  deleted folder and failed at every sign-in thereafter. Built by `installer\build.ps1`,
+  which also pins down how a release is produced: the repository's ordinary Release output
+  is framework-dependent and useless on a machine without the .NET desktop runtime, while
+  every shipped zip has been self-contained, and nothing recorded the difference except
+  somebody's shell history.
+- **A licence.** MIT, in `LICENSE`. There was no licence file at all, which made "source
+  available" on the website a description of nothing in particular and left the installer
+  with no text to show.
 - **A battery rail for adaptive tuning.** Separate maximum wattage and temperature target that
   take effect on unplug and are restored on plug-in, clamped immediately on the transition
   instead of drifting into the new rail over the following minutes.
 
 ### Changed
 
+- **The interface, against a supplied reference.** Blue into cyan as a two-stop accent ramp;
+  tinted rather than neutral grounds; 10px card corners; gradient progress tracks whose
+  colour carries meaning (accent for utilisation, green to amber for memory pressure, amber
+  to red for a temperature against its limit). A selected mode segment is a raised panel now
+  rather than a solid accent fill that was the loudest thing on a window whose job is the
+  readings.
+- **The Dashboard, rebuilt.** Gone: a 27px heading reading SYSTEMCORE, presets named MAX
+  TURBO / SMART BALANCED / TRAVEL ECO, and a 250x250 circular gauge redrawing at frame rate.
+  In their place a chip bar carrying state, model, temperature and load; presets named Eco,
+  Balanced and Performance and ordered quietest to loudest; and four equal cards each with a
+  value badge, a reading, a labelled sub-row and a track. The gauge showed a 0-to-100 score
+  that tapered from 30 C to 95 C and was capped at 25 while throttling: the endpoints, the
+  taper and the penalty were all choices and none of them was a reading. It is degrees of
+  margin as text now, beside the temperature it comes from.
 - **The fan level is read two bytes at a time.** `hpqBIntM` exposes one method per response-buffer
   size, and the 128-byte one costs ~300 ms on this firmware against ~8 ms for the 4-byte one. That
   single call was 94% of the hardware poll. Measured: tick body ~314 ms to ~72 ms, real cadence

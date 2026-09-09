@@ -94,6 +94,24 @@ public partial class App : Application
             return;
         }
 
+        // Registers the sign-in task and exits. Called by the installer when the user ticks
+        // "Start OmniHub when I sign in".
+        //
+        // The installer could run schtasks itself, and that is the obvious way to do it, but
+        // it would mean a second copy of the task XML living in the .iss file. That XML is
+        // not boilerplate: it carries DisallowStartIfOnBatteries and StopIfGoingOnBatteries
+        // set false, which is the fix for Task Scheduler terminating the app on unplug and
+        // leaving the fans wherever they were last commanded. Two copies of it would drift,
+        // and the copy that drifts is the one nobody tests. One owner: StartupManager.
+        //
+        // Above the single-instance guard because setup may run it while OmniHub is open.
+        if (e.Args.Length > 0 && e.Args[0].Equals("-InstallStartup", StringComparison.OrdinalIgnoreCase))
+        {
+            Environment.ExitCode = StartupManager.SetEnabled(true) ? 0 : 1;
+            Shutdown();
+            return;
+        }
+
         _singleInstanceMutex = new Mutex(true, "Local\\OmniHub_SingleInstance_Mutex", out bool createdNew);
         if (!createdNew)
         {
