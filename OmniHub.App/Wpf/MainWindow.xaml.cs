@@ -28,6 +28,12 @@ public partial class MainWindow : Window
     private WinForms.NotifyIcon? _trayIcon;
     private TrayFlyout? _flyout;
     private FansView _fansView = null!;
+
+    /// <summary>
+    /// The GPU screen. Built at startup for the TGP unlock in its constructor, then handed to
+    /// the Performance group rather than owned as a tab of its own.
+    /// </summary>
+    private GpuView _gpuView = null!;
     private bool _allowClose;
     private bool _cleanedUp;
     private bool _wasThrottling;
@@ -66,7 +72,12 @@ public partial class MainWindow : Window
         // comment on that constructor, which relies on being built here).
         _views["dashboard"] = new DashboardView(_ctx, _service, _settings);
         _views["fans"] = _fansView;
-        _views["gpu"] = new GpuView(_ctx, _settings);
+
+        // Held rather than placed in _views: the GPU screen now lives inside the Performance
+        // group, but it still has to be BUILT at startup, because its constructor applies the
+        // TGP unlock. Handing the group this instance keeps the unlock on the launch path while
+        // the screen itself moves behind a sub-selector.
+        _gpuView = new GpuView(_ctx, _settings);
 
         // Built on first visit. All eight were constructed before the first frame, so launching
         // the app paid for every tab whether or not it was ever opened -- and two of these are
@@ -75,11 +86,21 @@ public partial class MainWindow : Window
         // fires an HTTPS request to the GitHub releases API. Neither belongs on the path to
         // showing a window.
         _viewFactories["power"] = () => new PowerView(_ctx);
-        _viewFactories["apps"] = () => new AppRoutingView();
-        _viewFactories["tuning"] = () => new TuningView(_ctx, _settings);
-        _viewFactories["optimize"] = () => new OptimizeView(_settings, _ctx);
         _viewFactories["diagnostics"] = () => new DiagnosticsView(_ctx);
         _viewFactories["settings"] = () => new SettingsView(_settings);
+
+        // Grouped by subject rather than by screen. CPU tuning and GPU power are two halves of
+        // one decision about how much the machine may draw, and app GPU routing is a Windows-side
+        // setting like the rest of the System tab. Neither screen's markup moves; only the route
+        // to it does. GroupView builds its sections lazily too, so opening Performance does not
+        // construct the half nobody looked at.
+        _viewFactories["performance"] = () => new GroupView(
+            ("CPU", () => new TuningView(_ctx, _settings)),
+            ("GPU", () => _gpuView));
+
+        _viewFactories["system"] = () => new GroupView(
+            ("Windows", () => new OptimizeView(_settings, _ctx)),
+            ("App GPU routing", () => new AppRoutingView()));
 
         // Neither the timer resolution nor the MMCSS request survives a process restart, so
         // a saved preference has to be re-asserted here or the toggle would show "on" while
@@ -409,12 +430,26 @@ public partial class MainWindow : Window
         });
     }
 
-    // Views are all ScrollViewer > StackPanel; returns null rather than guessing if one is
-    // ever built differently, which simply means no stagger for that view.
+    /// <summary>
+    /// The panel whose children are a view's cards, or null when a view is not built that way.
+    ///
+    /// Leaf views are all ScrollViewer &gt; Panel. A GroupView is not: it is a Grid holding a
+    /// section selector and a host, with the real screen one level further in -- so the plain
+    /// check returned null for it and the entrance animation silently stopped happening on the
+    /// grouped tabs. Silently, because a null here is a legitimate "this view is shaped
+    /// differently, skip the stagger", which is exactly the kind of quiet regression a grouped
+    /// tab would have shipped with.
+    ///
+    /// Still returns null rather than guessing on anything else.
+    /// </summary>
     private static System.Windows.Controls.Panel? FindContentStack(UserControl view)
     {
+        if (view is GroupView group && group.CurrentSection is { } section)
+            return FindContentStack(section);
+
         if (view.Content is System.Windows.Controls.ScrollViewer { Content: System.Windows.Controls.Panel panel })
             return panel;
+
         return null;
     }
 
@@ -566,10 +601,10 @@ public partial class MainWindow : Window
         GpuAppRouting.SetPreference(_suggestedAppPath, AppGpuPreference.HighPerformance);
         _suggestedAppPath = null;
 
-        // Resolve rather than index: the apps tab is built on first use, and accepting a
-        // suggestion from the tray is a path that can reach it before anyone has opened it.
-        if (ResolveView("apps") is AppRoutingView appsView) appsView.RefreshList();
-        NavApps.IsChecked = true;
+        // App routing now lives inside the System group, which owns building and showing it, so
+        // there is nothing to reach into from here. Navigating is enough: the screen reads the
+        // registry when it is constructed, and the preference was written a line ago.
+        NavSystem.IsChecked = true;
     }
 
     // Fires a real Windows notification the moment thermal throttling starts, so you
