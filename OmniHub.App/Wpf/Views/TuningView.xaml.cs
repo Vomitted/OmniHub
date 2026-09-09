@@ -531,6 +531,27 @@ public partial class TuningView : UserControl, IDisposable
 
     private void ApplyForSource(PowerSource source, bool automatic)
     {
+        // Adaptive owns both rails, so a profile switch here would be fighting it -- and losing
+        // in a way nobody would notice.
+        //
+        // ApplyNamed puts the tab into Manual for any profile that is not Adaptive. So with
+        // adaptive on, a battery profile set, and no mains profile set -- which is a perfectly
+        // ordinary configuration -- unplugging switched to the static profile AND turned adaptive
+        // off, and plugging back in found no mains profile, said "nothing changed", and left the
+        // machine on the battery profile while plugged in with adaptive still off. One charger
+        // cycle disabled the feature until somebody happened to look.
+        //
+        // Now that adaptive carries a battery rail of its own, there is nothing for the profile
+        // switch to add while it is running.
+        if (_adaptive is { IsRunning: true })
+        {
+            var rail = _adaptive.RailFor(source);
+            PowerSourceStatus.Text =
+                $"Now on {Describe(source)} - adaptive is steering it: up to {rail.MaxWatts} W, "
+                + $"holding {rail.TargetTempC} C.";
+            return;
+        }
+
         string? wanted = source == PowerSource.Mains ? _settings.AcProfileName : _settings.DcProfileName;
         if (wanted is null)
         {

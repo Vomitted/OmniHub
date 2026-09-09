@@ -231,6 +231,15 @@ public sealed class HardwareContext : IDisposable
     // "|| _slowTick == 1" special case that fired on tick one but also reset the counter to 1
     // instead of 0 -- which quietly made the real period four ticks, not the five named here.
     private int _slowTick = SlowTickEvery - 1;
+
+    /// <summary>
+    /// The last fan levels read back from the EC, refreshed on the slow tick.
+    ///
+    /// Empty until the first poll, which the seed above makes the very first tick, so the
+    /// dashboard never renders a fabricated zero while waiting for a real one.
+    /// </summary>
+    private byte[] _lastLevels = Array.Empty<byte>();
+
     private bool _lastMaxFan;
     private ThrottlingState _lastThrottle = ThrottlingState.Unknown;
 
@@ -319,8 +328,7 @@ public sealed class HardwareContext : IDisposable
                 _lastTemperatureAtUtc = DateTime.UtcNow;
                 CpuTrend.Ingest(reading.Celsius, _lastTemperatureAtUtc);
 
-                var levels = Fan.GetFanLevel();
-                long fanMs = tick.ElapsedMilliseconds - tempMs;
+                long fanMs = 0;
 
                 // Max-fan and throttling are read every fifth tick, not every tick.
                 //
@@ -333,6 +341,26 @@ public sealed class HardwareContext : IDisposable
                 if (++_slowTick >= SlowTickEvery)
                 {
                     _slowTick = 0;
+
+                    // The fan level readback moved in here, and it is the single biggest thing
+                    // this loop does. Measured with the poll instrumentation: 306ms of a 324ms
+                    // tick -- 94% of it -- against about 8ms for each of the two reads below.
+                    //
+                    // The difference is not the work, it is the method. hpqBIntM exposes one per
+                    // response-buffer size, and the fan level command answers only through
+                    // hpqBIOSInt128; asking hpqBIOSInt4 for it is refused outright. So the cost
+                    // cannot be argued down, only paid less often.
+                    //
+                    // Less often is right anyway. Nothing steers on this value: FanService reads
+                    // temperature and WRITES levels, and it writes at most on a change or every
+                    // thirty seconds. The readback exists so the screen and the log can show what
+                    // the EC actually reports rather than what was last asked for, and at one
+                    // read per five ticks that is still about every eleven seconds -- current by
+                    // any standard the display needs, for a quarter of the poll's cost.
+                    long beforeFan = tick.ElapsedMilliseconds;
+                    try { _lastLevels = Fan.GetFanLevel(); } catch { /* keep the last good read */ }
+                    fanMs = tick.ElapsedMilliseconds - beforeFan;
+
                     try
                     {
                         _lastMaxFan = System.GetMaxFanActive();
@@ -346,6 +374,7 @@ public sealed class HardwareContext : IDisposable
                 }
                 long slowMs = tick.ElapsedMilliseconds - tempMs - fanMs;
 
+                var levels = _lastLevels;
                 var maxFan = _lastMaxFan;
                 var throttle = _lastThrottle;
                 var payload = new Reading(temp,
