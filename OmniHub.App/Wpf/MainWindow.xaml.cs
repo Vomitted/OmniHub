@@ -118,6 +118,20 @@ public partial class MainWindow : Window
         if (_settings.ThermalLogging) _thermalLog = new ThermalLog();
 
         _ctx.StartPolling(TimeSpan.FromSeconds(2));
+
+        // Build the remaining tabs once the window is idle.
+        //
+        // Making them lazy moved their cost off the launch path, which was the wrong trade for
+        // THIS application: it starts minimised to the tray at sign-in, so nobody ever watches
+        // it launch, while everybody notices a tab that hesitates when clicked. Lazy construction
+        // turned an unwatched second at startup into a visible pause on first visit to every
+        // screen -- and TuningView, the most expensive of them, is behind a tab someone opens
+        // deliberately and waits on.
+        //
+        // Queued at ApplicationIdle, one view per callback, so each yields to input rather than
+        // blocking the window: launch stays light, and the click stays instant.
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+            new Action(PrewarmViews));
         _fansView.ApplySavedMode();
         UpdateActiveModeLabel();
         _ctx.OnReading += _ => ReassertGpuPower();
@@ -209,6 +223,26 @@ public partial class MainWindow : Window
         if (sender is not System.Windows.Controls.RadioButton rb) return;
         MoveNavIndicator(rb);
         if (rb.Tag is string key && ResolveView(key) is { } view) AnimateTo(view);
+    }
+
+    /// <summary>
+    /// Builds every not-yet-built tab, one idle callback at a time.
+    ///
+    /// Separate callbacks rather than a loop: constructing all of them in one pass would hold the
+    /// UI thread for the sum of their costs, which is the stall this exists to remove. Each is
+    /// queued at ApplicationIdle so a click or a keystroke goes first.
+    ///
+    /// ResolveView caches, so a tab the user reaches before its turn comes up is simply already
+    /// there when the callback runs.
+    /// </summary>
+    private void PrewarmViews()
+    {
+        // Copied, because ResolveView removes from _viewFactories as it builds.
+        foreach (string key in _viewFactories.Keys.ToList())
+        {
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                new Action(() => ResolveView(key)));
+        }
     }
 
     /// <summary>

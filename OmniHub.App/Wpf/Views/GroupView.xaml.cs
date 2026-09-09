@@ -52,6 +52,15 @@ public partial class GroupView : UserControl, IDisposable
         // Show the first section. Setting IsChecked raises Checked, which does the work.
         if (Selector.Children.Count > 0 && Selector.Children[0] is RadioButton opening)
             opening.IsChecked = true;
+
+        // Then build the others while nothing is happening, for the same reason MainWindow
+        // prewarms its tabs: lazy construction is worth having on the launch path and not worth
+        // paying for on a click. Queued one per idle callback so each yields to input.
+        foreach (var (label, _) in _sections)
+        {
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle,
+                new Action(() => Resolve(label)));
+        }
     }
 
     /// <summary>
