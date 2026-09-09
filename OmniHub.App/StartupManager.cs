@@ -16,6 +16,9 @@ public static class StartupManager
 {
     private const string TaskName = "OmniHub_AutoStart";
 
+    /// <summary>What schtasks said when the last call failed, or null when it succeeded.</summary>
+    public static string? LastError { get; private set; }
+
     public static bool IsEnabled() => RunSchTasks("/Query", "/TN", TaskName);
 
     public static bool SetEnabled(bool enabled)
@@ -84,26 +87,30 @@ public static class StartupManager
                   <RunLevel>HighestAvailable</RunLevel>
                 </Principal>
               </Principals>
+              <!-- Element ORDER matters and the schema version matters.
+                   TaskSettingsType is an xsd:sequence, so these are not interchangeable, and
+                   DisallowStartOnRemoteAppSession and UseUnifiedSchedulingEngine belong to
+                   schema 1.3 -- declaring 1.2 and including them is rejected with "the task XML
+                   contains an unexpected node", which is exactly how this failed the first time.
+                   They are dropped rather than the version raised, because neither is wanted. -->
               <Settings>
+                <AllowStartOnDemand>true</AllowStartOnDemand>
+                <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
                 <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
                 <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
                 <AllowHardTerminate>false</AllowHardTerminate>
                 <StartWhenAvailable>true</StartWhenAvailable>
                 <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+                <WakeToRun>false</WakeToRun>
+                <Enabled>true</Enabled>
+                <Hidden>false</Hidden>
                 <IdleSettings>
                   <StopOnIdleEnd>false</StopOnIdleEnd>
                   <RestartOnIdle>false</RestartOnIdle>
                 </IdleSettings>
-                <AllowStartOnDemand>true</AllowStartOnDemand>
-                <Enabled>true</Enabled>
-                <Hidden>false</Hidden>
-                <RunOnlyIfIdle>false</RunOnlyIfIdle>
-                <DisallowStartOnRemoteAppSession>false</DisallowStartOnRemoteAppSession>
-                <UseUnifiedSchedulingEngine>true</UseUnifiedSchedulingEngine>
-                <WakeToRun>false</WakeToRun>
                 <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
                 <Priority>7</Priority>
-                <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+                <RunOnlyIfIdle>false</RunOnlyIfIdle>
               </Settings>
               <Actions Context="Author">
                 <Exec>
@@ -134,10 +141,24 @@ public static class StartupManager
             // after it. Enough output from schtasks to fill a pipe buffer would block the
             // child on that write and this call forever, with no timeout to escape by.
             // Draining both concurrently and bounding the wait removes both halves.
-            _ = proc.StandardOutput.ReadToEndAsync();
-            _ = proc.StandardError.ReadToEndAsync();
+            var stdout = proc.StandardOutput.ReadToEndAsync();
+            var stderr = proc.StandardError.ReadToEndAsync();
 
             if (!proc.WaitForExit(30_000)) { try { proc.Kill(true); } catch { } return false; }
+
+            // Kept, so a failure can say what schtasks said.
+            //
+            // It reported "ERROR: The task XML contains an unexpected node." and named the
+            // element and line, and every word of that was discarded -- the user saw "Could not
+            // update the startup task" and nothing else, for a one-line schema mistake. The
+            // output was already being drained to stop the pipe filling; keeping it costs
+            // nothing and is the difference between a diagnosis and a guess.
+            LastError = proc.ExitCode == 0
+                ? null
+                : string.Concat(stderr.Result, stdout.Result).Trim() is { Length: > 0 } detail
+                    ? detail
+                    : $"schtasks exited with code {proc.ExitCode}.";
+
             return proc.ExitCode == 0;
         }
         catch

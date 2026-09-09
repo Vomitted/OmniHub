@@ -274,9 +274,14 @@ public partial class SettingsView : UserControl
                     _suppressEvents = true;
                     StartupToggle.IsChecked = !enabled;
                     _suppressEvents = false;
+                    // Says what Windows said. The bare sentence sent someone hunting for a
+                    // one-line schema mistake that schtasks had already named exactly.
+                    string detail = StartupManager.LastError is { Length: > 0 } why
+                        ? $"Could not update the startup task.\n\n{why}"
+                        : "Could not update the startup task.";
+
                     System.Windows.MessageBox.Show(
-                        "Could not update the startup task.", "Startup",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                        detail, "Startup", MessageBoxButton.OK, MessageBoxImage.Warning);
                 });
             }
         });
