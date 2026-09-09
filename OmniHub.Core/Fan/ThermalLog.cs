@@ -33,6 +33,10 @@ public sealed class ThermalLog : IDisposable
     private DateTime _openedForDate;
     private bool _failed;
 
+    /// <summary>How long a written row may sit unflushed. See EnsureWriterFor for the trade.</summary>
+    private static readonly TimeSpan FlushInterval = TimeSpan.FromSeconds(10);
+    private DateTime _lastFlushUtc = DateTime.MinValue;
+
     public static string LogDirectory => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniHub", "logs");
 
@@ -69,6 +73,12 @@ public sealed class ThermalLog : IDisposable
                   .Append(Sanitize(sensor));
 
                 _writer.WriteLine(sb.ToString());
+
+                if (utcNow - _lastFlushUtc >= FlushInterval)
+                {
+                    _writer.Flush();
+                    _lastFlushUtc = utcNow;
+                }
             }
             catch
             {
@@ -97,9 +107,16 @@ public sealed class ThermalLog : IDisposable
 
         bool isNew = !File.Exists(path) || new FileInfo(path).Length == 0;
 
-        // AutoFlush: the process is routinely killed from the tray or by a crash, and a
-        // buffered tail is exactly the part of the trace worth having after a thermal event.
-        _writer = new StreamWriter(path, append: true, Encoding.UTF8) { AutoFlush = true };
+        // Flushed on a short interval rather than per row.
+        //
+        // AutoFlush was a syscall for every line, about 0.43 a second, forever, and inside the
+        // poll callback. The reason it was there is still right, and is why this is an interval
+        // rather than a plain buffer: the process is routinely exited from the tray or lost to a
+        // crash, and the tail of a trace is exactly the part worth having after a thermal event.
+        // The trade is bounded instead of taken -- at most FlushInterval of rows can be lost,
+        // four or five lines at this poll rate, and Dispose flushes whatever is left.
+        _writer = new StreamWriter(path, append: true, Encoding.UTF8) { AutoFlush = false };
+        _lastFlushUtc = utcNow;
         _openedForDate = utcNow.Date;
         CurrentPath = path;
 
@@ -169,6 +186,9 @@ public sealed class ThermalLog : IDisposable
 
     private void CloseWriter()
     {
+        // Dispose flushes on its own, but doing it explicitly first means a failure to write the
+        // tail cannot be mistaken for a failure to close the file.
+        try { _writer?.Flush(); } catch { }
         try { _writer?.Dispose(); } catch { }
         _writer = null;
         CurrentPath = null;

@@ -15,9 +15,29 @@ namespace OmniHub.Core.Optimize;
 /// </summary>
 public sealed class PowerPlanAutomation : IDisposable
 {
-    private readonly PowerSourceWatcher _watcher = new();
+    private readonly PowerSourceWatcher _watcher;
+    private readonly bool _ownsWatcher;
     private Guid? _acPlan;
     private Guid? _dcPlan;
+
+    /// <summary>
+    /// Uses a shared watcher when given one, and its own otherwise.
+    ///
+    /// Two of these were polling GetSystemPowerStatus independently, five seconds apart, for the
+    /// same answer. Sharing removes something subtler than the duplicate call, too: with separate
+    /// watchers the consumers observe a charger change at slightly different moments, so the
+    /// tuning profile and the power plan could briefly disagree about which rail the machine is
+    /// on.
+    ///
+    /// A borrowed watcher is not stopped by Stop and not disposed here. It belongs to whoever
+    /// created it, and stopping it would silently take the other consumer's notifications away.
+    /// </summary>
+    public PowerPlanAutomation(PowerSourceWatcher? shared = null)
+    {
+        _watcher = shared ?? new PowerSourceWatcher();
+        _ownsWatcher = shared is null;
+        _watcher.OnChanged += Apply;
+    }
 
     /// <summary>The last thing that happened, for the UI to show. Never thrown as an error.</summary>
     public string LastResult { get; private set; } = "Not started.";
@@ -28,7 +48,6 @@ public sealed class PowerPlanAutomation : IDisposable
     /// <summary>Raised after a switch attempt so the UI can refresh without polling.</summary>
     public event Action<string>? OnApplied;
 
-    public PowerPlanAutomation() => _watcher.OnChanged += Apply;
 
     /// <summary>
     /// Begins watching. Both plan ids must be known; with either missing this does nothing
@@ -58,7 +77,11 @@ public sealed class PowerPlanAutomation : IDisposable
     public void Stop()
     {
         if (!IsRunning) return;
-        _watcher.Stop();
+
+        // Only a watcher this owns may be stopped. A shared one keeps running for whoever else
+        // is listening; IsRunning below is what stops this from acting on it.
+        if (_ownsWatcher) _watcher.Stop();
+
         IsRunning = false;
         LastResult = "Automation off. The active power plan was left as it is.";
     }
@@ -72,6 +95,10 @@ public sealed class PowerPlanAutomation : IDisposable
     /// </summary>
     private void Apply(PowerSource source)
     {
+        // A shared watcher keeps reporting after Stop, because other consumers still want it.
+        // This is what makes the switch actually off rather than merely quiet.
+        if (!IsRunning) return;
+
         try
         {
             Guid? want = source switch
@@ -109,6 +136,8 @@ public sealed class PowerPlanAutomation : IDisposable
     public void Dispose()
     {
         _watcher.OnChanged -= Apply;
-        _watcher.Dispose();
+
+        // Only dispose a watcher this created. A shared one outlives this object.
+        if (_ownsWatcher) _watcher.Dispose();
     }
 }

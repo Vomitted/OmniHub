@@ -484,7 +484,11 @@ public partial class TuningView : UserControl, IDisposable
         _acProfile = AddProfilePicker("On charge", _settings.AcProfileName);
         _dcProfile = AddProfilePicker("On battery", _settings.DcProfileName);
 
-        _watcher = new PowerSourceWatcher();
+        // The shared watcher, not one of this view's own. Two of them were polling
+        // GetSystemPowerStatus for the same answer, and worse, observing a charger change at
+        // slightly different moments -- so the tuning profile and the Windows power plan could
+        // briefly act on different beliefs about which rail the machine was on.
+        _watcher = _ctx.PowerSource;
         _watcher.OnChanged += source => Dispatcher.Invoke(() => ApplyForSource(source, automatic: true));
         if (_settings.AutoSwitchProfiles) _watcher.Start();
 
@@ -1567,7 +1571,9 @@ public partial class TuningView : UserControl, IDisposable
     {
         try { _autoEco?.Dispose(); } catch { }
         try { _adaptive?.Dispose(); } catch { }
-        try { _watcher?.Dispose(); } catch { }
+        // Stopped, not disposed: the watcher belongs to HardwareContext now, and disposing a
+        // shared one here would take the power plan automation's notifications with it.
+        try { _watcher?.Stop(); } catch { }
         try { _processWatcher?.Dispose(); } catch { }
         try { _liveTimer?.Stop(); } catch { }
     }

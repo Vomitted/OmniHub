@@ -182,6 +182,19 @@ public sealed class HardwareContext : IDisposable
     public bool HasUndrivenFans => FanCount is > 2;
 
     /// <summary>
+    /// The one charger watcher, shared by everything that cares which rail the machine is on.
+    ///
+    /// There were two, polling GetSystemPowerStatus five seconds apart for the same answer. The
+    /// duplicated syscall was the smaller half of it: two watchers observe a charger change at
+    /// slightly different moments, so the tuning profile and the Windows power plan could briefly
+    /// disagree about which rail the machine was on and act on different answers.
+    ///
+    /// Owned here because this already owns the machine's state. Whoever needs it starts it;
+    /// a session that enables neither feature never polls.
+    /// </summary>
+    public Optimize.PowerSourceWatcher PowerSource { get; } = new();
+
+    /// <summary>
     /// What the firmware says this board can do, or null when it would not say.
     ///
     /// This is the answer to "will OmniHub work on a Pavilion / an older Omen / a Victus", asked
