@@ -101,22 +101,9 @@
             </Border>
 
 
-            <!-- What is actually holding the processor back.
-                 Hidden entirely without an SMU: with no PM table there is nothing to report, and
-                 an empty set of bars would read as "no constraints" rather than "not measured".
-                 Rows are built once and only their values move, so this costs nothing per tick. -->
-            <Border x:Name="LimitsCard" Visibility="Collapsed"
-                    Style="{StaticResource CardBorderStyle}" Margin="0,0,0,16">
-                <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
-                    <StackPanel>
-                        <TextBlock Text="WHAT IS LIMITING THE PROCESSOR" Style="{StaticResource SubHeadingText}"/>
-                        <TextBlock x:Name="LimitsHeadline" Style="{StaticResource MutedText}" FontSize="11.5"
-                                   TextWrapping="Wrap" MaxWidth="760" Margin="0,0,0,10"/>
-                        <StackPanel x:Name="LimitRows"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
+            <!-- "What is limiting the processor" lives on Performance > CPU now, beside the knobs
+                 it talks about. Having it here also put a synchronous SMU read on the UI thread
+                 every time this tab was opened. -->
 
             <!-- Status strip: the facts worth knowing before anything else. -->
             <Grid Margin="0,0,0,16">

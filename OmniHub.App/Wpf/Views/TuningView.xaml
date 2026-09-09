@@ -75,6 +75,24 @@
                 </Grid>
             </Border>
 
+            <!-- The same five numbers as LIVE above, but as a fraction of each limit, which is
+                 the form that answers "which knob would change anything". Here rather than on the
+                 dashboard because it talks about the knobs directly below it, and because on the
+                 dashboard it meant a synchronous SMU read on the UI thread every time that tab
+                 was opened. It is fed by the live timer, which already reads off-thread. -->
+            <TextBlock Text="WHAT IS LIMITING THE PROCESSOR" Style="{StaticResource SubHeadingText}"/>
+            <Border x:Name="LimitsCard" Visibility="Collapsed"
+                    Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock x:Name="LimitsHeadline" Style="{StaticResource MutedText}" FontSize="11.5"
+                                   TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,10"/>
+                        <StackPanel x:Name="LimitRows"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <TextBlock Text="PRESETS" Style="{StaticResource SubHeadingText}"/>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>

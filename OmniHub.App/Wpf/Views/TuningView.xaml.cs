@@ -1206,6 +1206,115 @@ public partial class TuningView : UserControl, IDisposable
     /// <summary>The model for a knob, or null if nothing built that key.</summary>
     private KnobRow? Knob(string key) => _knobs.GetValueOrDefault(key);
 
+    /// <summary>One constraint's row: built once, then only its value and bar move.</summary>
+    private sealed record LimitRowUi(TextBlock Percent, Grid Bar);
+
+    private readonly List<LimitRowUi> _limitRows = new();
+
+    /// <summary>
+    /// Shows each constraint as a fraction of its own limit, and names the tightest.
+    ///
+    /// The LIVE card above already prints these as "X of Y". The fraction is the form that
+    /// answers the question people actually have: at 99% of core current and 60% of power,
+    /// raising the power limit changes nothing, and no single figure says so.
+    ///
+    /// Called from the live timer's UI callback, so the PM table read has already happened off
+    /// the UI thread. That matters: reading it here instead is an SMU mailbox transaction with
+    /// spin loops, and doing that on a tab change is what made switching tabs stutter.
+    /// </summary>
+    private void UpdateLimits(PowerSnapshot? snapshot)
+    {
+        if (snapshot is null)
+        {
+            LimitsCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var limits = snapshot.Limits();
+
+        if (_limitRows.Count != limits.Length)
+        {
+            _limitRows.Clear();
+            LimitRows.Children.Clear();
+            foreach (var (name, _) in limits) _limitRows.Add(BuildLimitRow(name));
+        }
+
+        for (int i = 0; i < limits.Length; i++)
+        {
+            double pct = limits[i].Percent;
+            _limitRows[i].Percent.Text = $"{pct:0}%";
+            SetBar(_limitRows[i].Bar, pct);
+        }
+
+        var tightest = snapshot.TightestLimit();
+        LimitsHeadline.Text = tightest.Percent >= 95
+            ? $"Held back by {tightest.Name.ToLowerInvariant()}, at {tightest.Percent:0}% of its limit. "
+              + "Raising anything with room to spare below will not change this."
+            : $"Nothing is close to its limit. The tightest is {tightest.Name.ToLowerInvariant()} "
+              + $"at {tightest.Percent:0}%.";
+
+        LimitsCard.Visibility = Visibility.Visible;
+    }
+
+    private LimitRowUi BuildLimitRow(string name)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 7) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(148) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) });
+
+        var label = new TextBlock
+        {
+            Text = name,
+            Style = (Style)FindResource("TileFoot"),
+            Margin = new Thickness(0),
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+        };
+        Grid.SetColumn(label, 0);
+
+        var bar = new Grid
+        {
+            Height = 3,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            Margin = new Thickness(4, 0, 10, 0),
+        };
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Star) });
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100, GridUnitType.Star) });
+
+        var filled = new Border { Background = (Brush)FindResource("MetricCpuBrush"), CornerRadius = new CornerRadius(2) };
+        Grid.SetColumn(filled, 0);
+        var rest = new Border { Background = (Brush)FindResource("PanelAltBrush"), CornerRadius = new CornerRadius(2) };
+        Grid.SetColumn(rest, 1);
+        bar.Children.Add(filled);
+        bar.Children.Add(rest);
+        Grid.SetColumn(bar, 1);
+
+        var percent = new TextBlock
+        {
+            Style = (Style)FindResource("TileFoot"),
+            Margin = new Thickness(0),
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center,
+            Text = "--",
+        };
+        Grid.SetColumn(percent, 2);
+
+        grid.Children.Add(label);
+        grid.Children.Add(bar);
+        grid.Children.Add(percent);
+        LimitRows.Children.Add(grid);
+
+        return new LimitRowUi(percent, bar);
+    }
+
+    /// <summary>Fills a two-column star rail from a 0-100 percentage.</summary>
+    private static void SetBar(Grid bar, double percent)
+    {
+        double pct = Math.Clamp(percent, 0, 100);
+        bar.ColumnDefinitions[0].Width = new GridLength(pct, GridUnitType.Star);
+        bar.ColumnDefinitions[1].Width = new GridLength(100 - pct, GridUnitType.Star);
+    }
+
     // ---------------------------------------------------------------- behaviour
 
     private int? Value(string key) => Knob(key)?.Selected;
@@ -1523,6 +1632,8 @@ public partial class TuningView : UserControl, IDisposable
                     _liveCoreTemp!.Text = p is null ? NA : $"{p.CoreTempC:0.0} C  of  {p.ThermalLimitC:0} C";
                     _liveSocTemp!.Text = p is null ? NA : $"{p.SocTempC:0.0} C  /  {p.GfxTempC:0.0} C";
                     _liveTemp!.Text = t.Result.Temp is double c ? $"{c:0.0} C" : NA;
+
+                    UpdateLimits(p);
 
                     if (_liveGpu is not null)
                     {
