@@ -23,7 +23,6 @@ public partial class DashboardView : UserControl
         _ctx = ctx; _service = service; _settings = settings;
 
         ModelText.Text = $"{ctx.Model.Manufacturer} {ctx.Model.Product}".Trim();
-        Gauge.Label = "Thermal Headroom";
         LoadBatteryFooter();
         TrendChart.LineBrush = (Brush)FindResource("DangerBrush");
         TrendChart.MinValue = 20; TrendChart.MaxValue = 100;
@@ -615,12 +614,15 @@ public partial class DashboardView : UserControl
                 : displayC >= 80 ? "HOT"
                 : _service.IsRunning ? "MANAGED" : "BIOS AUTO";
 
-            // A transparent, real-input-derived indicator -- not a fabricated composite score.
-            // 100% at 30C or below, tapering to 0% at 95C, penalized further if actively throttling.
-            double headroom = Math.Clamp((95.0 - displayC) / (95.0 - 30.0) * 100.0, 0, 100);
-            if (r.Throttling == ThrottlingState.On) headroom = Math.Min(headroom, 25);
-            Gauge.SetValue(headroom);
-            Gauge.Sub = ceiling ? "--" : $"{shown}\u00b0C";
+            // Degrees of margin, not a score, and no longer a 250x250 dial.
+            //
+            // This was a 0 to 100 figure that tapered from 30 C to 95 C and was then capped
+            // at 25 whenever the package was throttling. Every part of that was a choice --
+            // the endpoints, the taper, the penalty -- and none of it was a reading. Degrees
+            // below the limit carries the same information with nothing invented on top, and
+            // it now sits beside the temperature it is derived from, so the two can be read
+            // against each other instead of one being a dial across the room from the other.
+            HeadroomText.Text = ceiling ? "--" : $"{95.0 - displayC:0}\u00b0C margin";
 
             // The discrete GPU, read and labelled separately from the die.
             //

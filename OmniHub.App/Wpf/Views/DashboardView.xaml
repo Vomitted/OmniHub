@@ -5,35 +5,50 @@
              Background="{StaticResource BackgroundBrush}">
     <UserControl.Resources>
 
-        <!-- Metric card: coloured title, oversized value with a small unit suffix, a thin
-             progress rail, then a two-fact footer. The value dominates and everything else
-             is deliberately small, so a glance reads the number and the supporting detail is
-             there only when you go looking for it. -->
+        <!-- Metric card: plain title, a value badge at the top right, the reading itself, then
+             a labelled sub-row over a progress track.
+
+             The title is no longer coloured and no longer shouts. It used to be tinted per
+             metric and set in bold monospace caps, which made four cards read as four
+             warnings; the colour has moved into the track below, where it can mean something.
+             The value dominates and everything else is deliberately small, so a glance reads
+             the number and the supporting detail is there when you go looking for it. -->
         <Style x:Key="MetricTitle" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
-            <Setter Property="FontSize" Value="10.5"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
         <Style x:Key="MetricValue" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource UiFontSemibold}"/>
-            <Setter Property="FontSize" Value="40"/>
-            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+            <Setter Property="FontSize" Value="30"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-            <Setter Property="LineHeight" Value="44"/>
+            <Setter Property="LineHeight" Value="32"/>
         </Style>
         <Style x:Key="MetricUnit" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
             <Setter Property="VerticalAlignment" Value="Bottom"/>
-            <Setter Property="Margin" Value="4,0,0,6"/>
+            <Setter Property="Margin" Value="3,0,0,3"/>
         </Style>
         <Style x:Key="MetricFoot" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
             <Setter Property="FontSize" Value="9.5"/>
             <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}"/>
+        </Style>
+        <Style x:Key="SubLabel" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}"/>
+        </Style>
+
+        <!-- Identity and reading chips in the title bar. -->
+        <Style x:Key="BarChip" TargetType="Border" BasedOn="{StaticResource CardTagStyle}">
+            <Setter Property="Margin" Value="0,0,7,0"/>
         </Style>
 
         <!-- Quick-action chip. Not a toggle: each performs an action and reports the result. -->
@@ -43,14 +58,13 @@
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
             <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
             <Setter Property="FontSize" Value="10.5"/>
-            <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Padding" Value="13,7"/>
             <Setter Property="Margin" Value="0,0,7,7"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4"
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{StaticResource RadiusSm}"
                                 BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -58,8 +72,8 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="{StaticResource PanelHoverBrush}"/>
-                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
@@ -75,7 +89,7 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,20,26,24">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="22,16,22,20">
         <StackPanel>
 
             <!-- Shown ONLY when something this machine needs is missing. A readiness panel
@@ -84,12 +98,11 @@
                  gets read the once it matters. -->
             <Border x:Name="ReadinessCard" Visibility="Collapsed"
                     Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1" CornerRadius="5" Margin="0,0,0,16">
+                    BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,14">
                 <Grid>
-                    <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource WarnBrush}" CornerRadius="5,0,0,5"/>
+                    <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource WarnBrush}" CornerRadius="10,0,0,10"/>
                     <StackPanel Margin="17,13,14,13">
-                        <TextBlock Text="THIS MACHINE" Style="{StaticResource MetricTitle}"
-                                   Foreground="{StaticResource WarnBrush}" Margin="0,0,0,6"/>
+                        <TextBlock Text="This machine" Style="{StaticResource MetricTitle}" Margin="0,0,0,6"/>
                         <TextBlock x:Name="ReadinessHeadline" Style="{StaticResource BodyText}" FontSize="12"
                                    TextWrapping="Wrap" MaxWidth="760" Margin="0,0,0,8"/>
                         <StackPanel x:Name="ReadinessRows"/>
@@ -100,69 +113,216 @@
                 </Grid>
             </Border>
 
-
-            <!-- "What is limiting the processor" lives on Performance > CPU now, beside the knobs
-                 it talks about. Having it here also put a synchronous SMU read on the UI thread
-                 every time this tab was opened. -->
-
-            <!-- Status strip: the facts worth knowing before anything else. -->
-            <Grid Margin="0,0,0,16">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <StackPanel Margin="0,0,26,0">
-                        <TextBlock Text="CPU TEMP" Style="{StaticResource MetricTitle}" HorizontalAlignment="Left"/>
-                        <TextBlock x:Name="StripTemp" Text="--" FontFamily="{StaticResource MonoFont}" FontSize="14" FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                    <StackPanel Margin="0,0,26,0">
-                        <TextBlock Text="CPU LOAD" Style="{StaticResource MetricTitle}" HorizontalAlignment="Left" Foreground="{StaticResource MetricCpuBrush}"/>
-                        <TextBlock x:Name="StripLoad" Text="--" FontFamily="{StaticResource MonoFont}" FontSize="14" FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                    <StackPanel>
-                        <TextBlock Text="SYSTEM" Style="{StaticResource MetricTitle}" HorizontalAlignment="Left" Foreground="{StaticResource WarnBrush}"/>
-                        <TextBlock x:Name="StripState" Text="--" FontFamily="{StaticResource MonoFont}" FontSize="14" FontWeight="Bold"
-                                   Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                </StackPanel>
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Ellipse x:Name="LiveDot" Width="6" Height="6" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
-                    <TextBlock Text="LIVE ENGINE" FontFamily="{StaticResource MonoFont}" FontSize="10.5" FontWeight="Bold"
-                               Foreground="{StaticResource AccentBrush}" Margin="7,0,0,0" VerticalAlignment="Center"/>
-                </StackPanel>
-            </Grid>
-
-            <!-- Title row + preset selector -->
+            <!-- Title bar.
+                 Identity and live state on the left as chips, mode on the right. This replaces a
+                 27px word, "SYSTEMCORE", that named nothing and told you nothing: the machine
+                 already knows what application it is, and the space is better spent on the
+                 model, the temperature and whether anything is throttling. -->
             <Grid Margin="0,0,0,14">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="SYSTEMCORE" FontFamily="{StaticResource UiFontSemibold}" FontSize="27"
-                           FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                <Border Grid.Column="1" Style="{StaticResource ChipBorderStyle}" HorizontalAlignment="Left"
-                        VerticalAlignment="Center" Margin="14,4,0,0" BorderBrush="{StaticResource AccentDimBrush}">
-                    <TextBlock x:Name="ModelText" FontFamily="{StaticResource MonoFont}" FontSize="10.5"
-                               Foreground="{StaticResource AccentBrush}"/>
-                </Border>
 
-                <Border Grid.Column="2" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
-                        BorderThickness="1" CornerRadius="5" Padding="3" VerticalAlignment="Center">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Style="{StaticResource BarChip}" Background="{StaticResource PanelBrush}">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="LiveDot" Width="6" Height="6" Fill="{StaticResource GoodBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,7,0"/>
+                            <TextBlock x:Name="StripState" Text="--" Style="{StaticResource CardTagText}"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource BarChip}">
+                        <TextBlock x:Name="ModelText" Style="{StaticResource CardTagText}"/>
+                    </Border>
+                    <Border Style="{StaticResource BarChip}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="temp&#160;" Style="{StaticResource CardTagText}"
+                                       Foreground="{StaticResource TextFaintBrush}"/>
+                            <TextBlock x:Name="StripTemp" Text="--" Style="{StaticResource CardTagText}"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource BarChip}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="load&#160;" Style="{StaticResource CardTagText}"
+                                       Foreground="{StaticResource TextFaintBrush}"/>
+                            <TextBlock x:Name="StripLoad" Text="--" Style="{StaticResource CardTagText}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Order runs quietest to loudest, left to right, which is the order the
+                     reference uses and the order the labels imply. It previously ran the other
+                     way with names that had to be decoded: MAX TURBO, SMART BALANCED and
+                     TRAVEL ECO all describe a mood rather than a setting. -->
+                <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="{StaticResource RadiusSm}" Padding="3" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
-                        <RadioButton x:Name="PerformanceBtn" GroupName="Preset" Content="MAX TURBO" Width="112" Height="30" Style="{StaticResource PillRadioStyle}" Checked="PerformanceBtn_Checked"/>
-                        <RadioButton x:Name="BalancedBtn" GroupName="Preset" Content="SMART BALANCED" Width="140" Height="30" Margin="3,0" Style="{StaticResource PillRadioStyle}" Checked="BalancedBtn_Checked"/>
-                        <RadioButton x:Name="SilentBtn" GroupName="Preset" Content="TRAVEL ECO" Width="112" Height="30" Style="{StaticResource PillRadioStyle}" Checked="SilentBtn_Checked"/>
+                        <RadioButton x:Name="SilentBtn" GroupName="Preset" Content="Eco" Width="86" Height="28" Style="{StaticResource PillRadioStyle}" Checked="SilentBtn_Checked"/>
+                        <RadioButton x:Name="BalancedBtn" GroupName="Preset" Content="Balanced" Width="96" Height="28" Margin="3,0" Style="{StaticResource PillRadioStyle}" Checked="BalancedBtn_Checked"/>
+                        <RadioButton x:Name="PerformanceBtn" GroupName="Preset" Content="Performance" Width="110" Height="28" Style="{StaticResource PillRadioStyle}" Checked="PerformanceBtn_Checked"/>
                     </StackPanel>
                 </Border>
             </Grid>
 
+            <!-- Four readings across, each the same shape: title, badge, value, sub-row, track.
+                 The circular gauge that used to sit in the middle of this row is gone. It spent
+                 250 by 250 pixels and a redraw at frame rate to show one number that now sits
+                 in the Processor card's sub-row as text, next to the temperature it is derived
+                 from, where it can actually be compared against it. -->
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Processor -->
+                <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="14,12" Margin="0,0,10,0">
+                    <StackPanel>
+                        <Grid>
+                            <TextBlock Text="Processor" Style="{StaticResource MetricTitle}"/>
+                            <Border Style="{StaticResource CardTagStyle}" HorizontalAlignment="Right">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock x:Name="CpuClockText" Text="--" Style="{StaticResource CardTagText}"/>
+                                    <TextBlock Text="&#160;GHz" Style="{StaticResource CardTagText}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        <Grid Margin="0,11,0,0">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                <TextBlock x:Name="ThermalText" Style="{StaticResource MetricValue}" Text="--"/>
+                                <TextBlock x:Name="ThermalUnit" Text="&#176;C" Style="{StaticResource MetricUnit}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="ThermalFootRight" Style="{StaticResource MetricFoot}"
+                                       HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,0,4"/>
+                        </Grid>
+                        <Grid Margin="0,12,0,6">
+                            <TextBlock x:Name="ThermalTitle" Text="Thermal headroom" Style="{StaticResource SubLabel}"/>
+                            <TextBlock x:Name="HeadroomText" Text="--" Style="{StaticResource MetricFoot}"
+                                       Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Right"/>
+                        </Grid>
+                        <Grid x:Name="ThermalBar" Height="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="0*"/>
+                                <ColumnDefinition Width="100*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="ThermalBarFill" Grid.Column="0" Background="{StaticResource CriticalGradientBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Graphics -->
+                <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="14,12" Margin="0,0,10,0">
+                    <StackPanel>
+                        <Grid>
+                            <TextBlock Text="Graphics" Style="{StaticResource MetricTitle}"/>
+                            <Border Style="{StaticResource CardTagStyle}" HorizontalAlignment="Right">
+                                <TextBlock x:Name="GpuFootRight" Text="--" Style="{StaticResource CardTagText}"/>
+                            </Border>
+                        </Grid>
+                        <Grid Margin="0,11,0,0">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                <TextBlock x:Name="GpuTempText" Style="{StaticResource MetricValue}" Text="--"/>
+                                <TextBlock x:Name="GpuTempUnit" Text="&#176;C" Style="{StaticResource MetricUnit}"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,12,0,6">
+                            <TextBlock x:Name="GpuSubText" Style="{StaticResource SubLabel}" TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                        <Grid x:Name="GpuBar" Height="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="0*"/>
+                                <ColumnDefinition Width="100*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="GpuBarFill" Grid.Column="0" Background="{StaticResource AccentGradientBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Memory -->
+                <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="14,12" Margin="0,0,10,0">
+                    <StackPanel>
+                        <Grid>
+                            <TextBlock Text="Memory" Style="{StaticResource MetricTitle}"/>
+                            <Border Style="{StaticResource CardTagStyle}" HorizontalAlignment="Right">
+                                <TextBlock x:Name="MemFootRight" Text="--" Style="{StaticResource CardTagText}"/>
+                            </Border>
+                        </Grid>
+                        <Grid Margin="0,11,0,0">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                <TextBlock x:Name="MemText" Style="{StaticResource MetricValue}" Text="--"/>
+                                <TextBlock Text="GB" Style="{StaticResource MetricUnit}"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,12,0,6">
+                            <TextBlock x:Name="MemSubText" Style="{StaticResource SubLabel}" TextTrimming="CharacterEllipsis"/>
+                        </Grid>
+                        <Grid x:Name="MemLoadBar" Height="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="0*"/>
+                                <ColumnDefinition Width="100*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Background="{StaticResource PressureGradientBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Processor load -->
+                <Border Grid.Column="3" Style="{StaticResource CardBorderStyle}" Padding="14,12">
+                    <StackPanel>
+                        <Grid>
+                            <TextBlock Text="Utilisation" Style="{StaticResource MetricTitle}"/>
+                            <Border Style="{StaticResource CardTagStyle}" HorizontalAlignment="Right">
+                                <TextBlock x:Name="CpuFootLeft" Text="--" Style="{StaticResource CardTagText}"/>
+                            </Border>
+                        </Grid>
+                        <Grid Margin="0,11,0,0">
+                            <TextBlock x:Name="CpuLoadText" Style="{StaticResource MetricValue}" Text="--" HorizontalAlignment="Left"/>
+                        </Grid>
+                        <Grid Margin="0,12,0,6">
+                            <TextBlock Text="Across all cores" Style="{StaticResource SubLabel}"/>
+                        </Grid>
+                        <Grid x:Name="CpuLoadBar" Height="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="0*"/>
+                                <ColumnDefinition Width="100*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Background="{StaticResource AccentGradientBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Telemetry -->
+            <Border Style="{StaticResource CardBorderStyle}" Padding="14,12">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10">
+                        <StackPanel HorizontalAlignment="Left">
+                            <TextBlock Text="Temperature telemetry" Style="{StaticResource MetricTitle}"/>
+                            <TextBlock Text="Continuous hardware monitor" Style="{StaticResource SubLabel}" Margin="0,3,0,0"/>
+                        </StackPanel>
+                        <Border Style="{StaticResource CardTagStyle}" HorizontalAlignment="Right" VerticalAlignment="Top">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                <TextBlock x:Name="TrendWindowText" Text="LIVE" Style="{StaticResource CardTagText}"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <controls:WaveformChart x:Name="TrendChart" Height="118"/>
+                </StackPanel>
+            </Border>
+
             <!-- Quick actions -->
-            <WrapPanel Margin="0,0,0,16">
+            <WrapPanel Margin="0,14,0,0">
                 <Button x:Name="ChipAutoGpu" Content="AUTO-GPU" Style="{StaticResource ChipButton}" Click="ChipAutoGpu_Click"/>
                 <Button x:Name="ChipCleanRam" Content="CLEAN RAM" Style="{StaticResource ChipButton}" Click="ChipCleanRam_Click"/>
                 <Button x:Name="ChipClearShaders" Content="CLEAR SHADERS" Style="{StaticResource ChipButton}" Click="ChipClearShaders_Click"/>
@@ -173,144 +333,14 @@
                            Margin="6,0,0,7" TextWrapping="Wrap" MaxWidth="360"/>
             </WrapPanel>
 
-            <!-- Instrument row -->
-            <Grid Margin="0,0,0,18">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0">
-                    <Border Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,14,14">
-                        <Grid>
-                            <Border Style="{StaticResource CardSheenStyle}"/>
-                            <StackPanel>
-                                <TextBlock Text="COMPUTE UNIT" Style="{StaticResource MetricTitle}" HorizontalAlignment="Left" Foreground="{StaticResource MetricCpuBrush}"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                    <TextBlock x:Name="CpuClockText" Style="{StaticResource MetricValue}" Text="--"/>
-                                    <TextBlock Text="GHz" Style="{StaticResource MetricUnit}"/>
-                                </StackPanel>
-                                <Grid x:Name="CpuLoadBar" Height="3" Margin="0,9,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="0*"/>
-                                        <ColumnDefinition Width="100*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Background="{StaticResource MetricCpuBrush}" CornerRadius="2"/>
-                                    <Border Grid.Column="1" Background="{StaticResource PanelAltBrush}" CornerRadius="2"/>
-                                </Grid>
-                                <Grid Margin="0,7,0,0">
-                                    <TextBlock x:Name="CpuFootLeft" Style="{StaticResource MetricFoot}" HorizontalAlignment="Left"/>
-                                    <TextBlock x:Name="CpuLoadText" Style="{StaticResource MetricFoot}" HorizontalAlignment="Right"/>
-                                </Grid>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <Border Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,14,0">
-                        <Grid>
-                            <Border Style="{StaticResource CardSheenStyle}"/>
-                            <StackPanel>
-                                <TextBlock Text="MEMORY ALLOCATION" Style="{StaticResource MetricTitle}" HorizontalAlignment="Left" Foreground="{StaticResource MetricMemBrush}"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                    <TextBlock x:Name="MemText" Style="{StaticResource MetricValue}" Text="--"/>
-                                    <TextBlock Text="GB" Style="{StaticResource MetricUnit}"/>
-                                </StackPanel>
-                                <Grid x:Name="MemLoadBar" Height="3" Margin="0,9,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="0*"/>
-                                        <ColumnDefinition Width="100*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Background="{StaticResource MetricMemBrush}" CornerRadius="2"/>
-                                    <Border Grid.Column="1" Background="{StaticResource PanelAltBrush}" CornerRadius="2"/>
-                                </Grid>
-                                <Grid Margin="0,7,0,0">
-                                    <TextBlock x:Name="MemSubText" Style="{StaticResource MetricFoot}" HorizontalAlignment="Left"/>
-                                    <TextBlock x:Name="MemFootRight" Style="{StaticResource MetricFoot}" HorizontalAlignment="Right"/>
-                                </Grid>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </StackPanel>
-
-                <controls:CircularGauge x:Name="Gauge" Grid.Column="1" Width="250" Height="250"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
-                <StackPanel Grid.Column="2">
-                    <Border Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="14,0,0,14">
-                        <Grid>
-                            <Border Style="{StaticResource CardSheenStyle}"/>
-                            <StackPanel>
-                                <TextBlock Text="GPU THERMAL" Style="{StaticResource MetricTitle}" Foreground="{StaticResource MetricGpuBrush}"/>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
-                                    <TextBlock x:Name="GpuTempText" Style="{StaticResource MetricValue}" Text="--"/>
-                                    <TextBlock x:Name="GpuTempUnit" Text="&#176;C" Style="{StaticResource MetricUnit}"/>
-                                </StackPanel>
-                                <Grid x:Name="GpuBar" Height="3" Margin="0,9,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="0*"/>
-                                        <ColumnDefinition Width="100*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border x:Name="GpuBarFill" Grid.Column="0" Background="{StaticResource MetricGpuBrush}" CornerRadius="2"/>
-                                    <Border Grid.Column="1" Background="{StaticResource PanelAltBrush}" CornerRadius="2"/>
-                                </Grid>
-                                <Grid Margin="0,7,0,0">
-                                    <TextBlock x:Name="GpuSubText" Style="{StaticResource MetricFoot}" HorizontalAlignment="Left"/>
-                                    <TextBlock x:Name="GpuFootRight" Style="{StaticResource MetricFoot}" HorizontalAlignment="Right"/>
-                                </Grid>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <Border Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="14,0,0,0">
-                        <Grid>
-                            <Border Style="{StaticResource CardSheenStyle}"/>
-                            <StackPanel>
-                                <TextBlock x:Name="ThermalTitle" Text="CPU THERMAL" Style="{StaticResource MetricTitle}"/>
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
-                                    <TextBlock x:Name="ThermalText" Style="{StaticResource MetricValue}" Text="--"/>
-                                    <TextBlock x:Name="ThermalUnit" Text="&#176;C" Style="{StaticResource MetricUnit}"/>
-                                </StackPanel>
-                                <Grid x:Name="ThermalBar" Height="3" Margin="0,9,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="0*"/>
-                                        <ColumnDefinition Width="100*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border x:Name="ThermalBarFill" Grid.Column="0" Background="{StaticResource DangerBrush}" CornerRadius="2"/>
-                                    <Border Grid.Column="1" Background="{StaticResource PanelAltBrush}" CornerRadius="2"/>
-                                </Grid>
-                                <Grid Margin="0,7,0,0">
-                                    <TextBlock x:Name="ThermalSubText" Style="{StaticResource MetricFoot}" HorizontalAlignment="Left"/>
-                                    <TextBlock x:Name="ThermalFootRight" Style="{StaticResource MetricFoot}" HorizontalAlignment="Right"/>
-                                </Grid>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </StackPanel>
-            </Grid>
-
-            <!-- Telemetry -->
-            <Border Style="{StaticResource CardBorderStyle}" Padding="16,13">
-                <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
-                    <StackPanel>
-                        <Grid Margin="0,0,0,8">
-                            <TextBlock Text="HISTORICAL TELEMETRY / TEMPERATURE" Style="{StaticResource MetricTitle}" HorizontalAlignment="Left"
-                                       Foreground="{StaticResource TextMutedBrush}"/>
-                            <Border Style="{StaticResource ChipBorderStyle}" HorizontalAlignment="Right" BorderBrush="{StaticResource AccentDimBrush}">
-                                <TextBlock x:Name="TrendWindowText" Text="LIVE" FontFamily="{StaticResource MonoFont}" FontSize="9.5"
-                                           FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
-                            </Border>
-                        </Grid>
-                        <controls:WaveformChart x:Name="TrendChart" Height="104"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- Power footer -->
-            <Grid Margin="2,14,2,0">
-                <TextBlock x:Name="PowerStateText" Style="{StaticResource MutedText}" FontSize="11.5" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="BatteryText" Style="{StaticResource MutedText}" FontSize="11.5" HorizontalAlignment="Right"
+            <!-- Status footer. The fan readout sits here rather than in a metric card:
+                 it is a sentence, not a figure, and giving it a card would have made one of
+                 the four taller than the rest for a line of text. -->
+            <Grid Margin="2,6,2,0">
+                <TextBlock x:Name="PowerStateText" Style="{StaticResource MutedText}" FontSize="11" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="ThermalSubText" Style="{StaticResource MetricFoot}" HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="BatteryText" Style="{StaticResource MutedText}" FontSize="11" HorizontalAlignment="Right"
                            Foreground="{StaticResource TextFaintBrush}"/>
             </Grid>
 
