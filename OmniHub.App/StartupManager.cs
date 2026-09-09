@@ -135,7 +135,11 @@ public static class StartupManager
             foreach (var a in args) psi.ArgumentList.Add(a);
 
             using var proc = Process.Start(psi);
-            if (proc is null) return false;
+            if (proc is null)
+            {
+                LastError = "schtasks.exe could not be started.";
+                return false;
+            }
 
             // Both pipes are redirected and neither was read, with an unbounded WaitForExit
             // after it. Enough output from schtasks to fill a pipe buffer would block the
@@ -144,7 +148,12 @@ public static class StartupManager
             var stdout = proc.StandardOutput.ReadToEndAsync();
             var stderr = proc.StandardError.ReadToEndAsync();
 
-            if (!proc.WaitForExit(30_000)) { try { proc.Kill(true); } catch { } return false; }
+            if (!proc.WaitForExit(30_000))
+            {
+                try { proc.Kill(true); } catch { }
+                LastError = "schtasks.exe did not finish within 30 seconds.";
+                return false;
+            }
 
             // Kept, so a failure can say what schtasks said.
             //
@@ -161,8 +170,12 @@ public static class StartupManager
 
             return proc.ExitCode == 0;
         }
-        catch
+        catch (Exception ex)
         {
+            // Named rather than swallowed. Every silent "return false" here reaches the user as
+            // an unexplained refusal, and this class has already cost one round of guessing that
+            // way.
+            LastError = ex.Message;
             return false;
         }
     }

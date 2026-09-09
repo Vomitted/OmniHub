@@ -259,7 +259,17 @@ public partial class SettingsView : UserControl
         Task.Run(() =>
         {
             bool ok = false;
-            try { ok = StartupManager.SetEnabled(enabled); } catch { }
+            string? failure = null;
+            try { ok = StartupManager.SetEnabled(enabled); } catch (Exception ex) { failure = ex.Message; }
+
+            // Captured HERE, before anything else runs schtasks.
+            //
+            // LastError is overwritten by every call, and the re-query below is itself a call
+            // that fails whenever the task is absent -- which is exactly the situation after a
+            // failed create. So the dialog was faithfully reporting the query's "cannot find the
+            // file specified" while the create's actual reason had already been thrown away,
+            // which sent the diagnosis in the wrong direction entirely.
+            failure ??= StartupManager.LastError;
 
             // Re-query rather than assume the write took: schtasks can report success while
             // policy blocks the task, and the chip must show the machine's state.
@@ -276,7 +286,7 @@ public partial class SettingsView : UserControl
                     _suppressEvents = false;
                     // Says what Windows said. The bare sentence sent someone hunting for a
                     // one-line schema mistake that schtasks had already named exactly.
-                    string detail = StartupManager.LastError is { Length: > 0 } why
+                    string detail = failure is { Length: > 0 } why
                         ? $"Could not update the startup task.\n\n{why}"
                         : "Could not update the startup task.";
 
