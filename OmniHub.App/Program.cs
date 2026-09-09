@@ -59,6 +59,29 @@ internal static class Program
         }
     }
 
+    /// <summary>
+    /// Runs the probe with its output captured instead of printed, saves it, and reports where.
+    ///
+    /// Shared with the Diagnostics tab so there is one probe rather than two that drift apart.
+    /// The console is redirected rather than RunProbe rewritten to take a TextWriter: this is a
+    /// Windows-subsystem executable with no console attached, so Console.Out is already going
+    /// nowhere and swapping it costs nothing.
+    ///
+    /// Not for the UI thread; the probe is a series of BIOS round trips behind one send lock.
+    /// </summary>
+    public static string CaptureProbeReport()
+    {
+        var captured = new StringWriter();
+        var previous = Console.Out;
+        Console.SetOut(captured);
+
+        try { RunProbe(); }
+        catch (Exception ex) { captured.WriteLine($"Probe crashed: {ex}"); }
+        finally { Console.SetOut(previous); }
+
+        return SaveProbe(captured.ToString());
+    }
+
     /// <summary>Writes the probe text beside the logs, and says where it went.</summary>
     static string SaveProbe(string text)
     {

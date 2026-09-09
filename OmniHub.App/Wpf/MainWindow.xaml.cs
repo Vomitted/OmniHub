@@ -78,6 +78,7 @@ public partial class MainWindow : Window
         _viewFactories["apps"] = () => new AppRoutingView();
         _viewFactories["tuning"] = () => new TuningView(_ctx, _settings);
         _viewFactories["optimize"] = () => new OptimizeView(_settings, _ctx);
+        _viewFactories["diagnostics"] = () => new DiagnosticsView(_ctx);
         _viewFactories["settings"] = () => new SettingsView(_settings);
 
         // Neither the timer resolution nor the MMCSS request survives a process restart, so

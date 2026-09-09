@@ -1,0 +1,71 @@
+<UserControl x:Class="OmniHub.App.Wpf.Views.DiagnosticsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource BackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,20,26,24">
+        <StackPanel>
+
+            <StackPanel Margin="0,0,0,16">
+                <TextBlock Text="Diagnostics" Style="{StaticResource HeadingText}" FontSize="24"/>
+                <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,4,0,0"
+                           Text="Measure what this machine actually does, and read back what its firmware says it can do."/>
+            </StackPanel>
+
+            <TextBlock Text="LOAD TEST" Style="{StaticResource SubHeadingText}"/>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                                   MaxWidth="700" TextWrapping="Wrap"
+                                   Text="Loads every core and records temperature, package power, CPU clock and fan speed. Run it once before a change and once after: the clock floor and the p90 temperature are what move when sustained behaviour does. The machine will get hot. Nothing here commands a fan or writes a power limit."/>
+
+                        <WrapPanel Margin="0,0,0,12">
+                            <ComboBox x:Name="DurationCombo" Width="150" Height="34" Margin="0,0,12,0"
+                                      Style="{StaticResource OmniComboBoxStyle}"/>
+                            <Button x:Name="RunBtn" Content="Run load test" Width="150" Height="34"
+                                    Margin="0,0,12,0" Style="{StaticResource PrimaryButtonStyle}" Click="RunBtn_Click"/>
+                            <Button x:Name="StopBtn" Content="Stop" Width="110" Height="34" IsEnabled="False"
+                                    Style="{StaticResource FlatButtonStyle}" Click="StopBtn_Click"/>
+                        </WrapPanel>
+
+                        <TextBlock x:Name="RunStatus" Style="{StaticResource MutedText}" FontSize="11.5"
+                                   TextWrapping="Wrap" Text="Not started."/>
+                        <TextBlock x:Name="RunLive" Style="{StaticResource TileFoot}" Margin="0,8,0,0"/>
+                        <StackPanel x:Name="RunSummary" Margin="0,10,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="WHAT THE FIRMWARE REPORTS" Style="{StaticResource SubHeadingText}"/>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                                   MaxWidth="700" TextWrapping="Wrap"
+                                   Text="Read from the board rather than from a list of model numbers. Where a capability reads as unavailable, the control stays enabled unless the firmware states plainly that it is unsupported: a reply carrying nothing is an unknown, not a refusal."/>
+                        <StackPanel x:Name="CapabilityRows"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="PROBE REPORT" Style="{StaticResource SubHeadingText}"/>
+            <Border Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                                   MaxWidth="700" TextWrapping="Wrap"
+                                   Text="Saves everything the BIOS reports about this laptop to a text file, unmodified. This is the evidence a board nobody has tested needs before its fan curve can be trusted, and it is what a per-model profile gets written from."/>
+                        <Button x:Name="SaveProbeBtn" Content="Save probe report" Width="180" Height="34"
+                                HorizontalAlignment="Left" Style="{StaticResource FlatButtonStyle}" Click="SaveProbeBtn_Click"/>
+                        <TextBlock x:Name="ProbeStatus" Style="{StaticResource MutedText}" FontSize="11"
+                                   Margin="0,10,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
