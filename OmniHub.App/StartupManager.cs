@@ -55,7 +55,31 @@ public static class StartupManager
             // UTF-16: schtasks /XML rejects a plain UTF-8 file with a parse error that names no
             // encoding, which is a genuinely confusing way to fail.
             File.WriteAllText(path, xml, new UnicodeEncoding(bigEndian: false, byteOrderMark: true));
-            return RunSchTasks("/Create", "/TN", TaskName, "/XML", path, "/F");
+            if (RunSchTasks("/Create", "/TN", TaskName, "/XML", path, "/F")) return true;
+
+            // Fall back to the plain form rather than leave the machine with nothing.
+            //
+            // /Create deletes any existing task before it writes the new one, so a failure here
+            // does not leave the previous entry standing -- it leaves none at all, and OmniHub
+            // stops coming back after a reboot. That is a worse outcome than a task whose battery
+            // settings Windows' command-line form cannot express, which is merely the behaviour
+            // every previous version shipped with.
+            //
+            // The XML error is kept and handed on, because a working-but-degraded task that says
+            // nothing is how this failure stayed invisible in the first place.
+            string xmlError = LastError ?? "the XML form was rejected";
+
+            if (RunSchTasks("/Create", "/TN", TaskName, "/TR", exePath, "/SC", "ONLOGON", "/RL", "HIGHEST", "/F"))
+            {
+                LastError =
+                    "Startup is enabled, but with Windows' own battery defaults: OmniHub will not "
+                    + "start at sign-in while unplugged, and Task Scheduler will stop it when the "
+                    + "charger comes out.\n\nThe settings that prevent this could not be applied. "
+                    + $"Windows said:\n{xmlError}";
+                return true;
+            }
+
+            return false;
         }
         finally
         {
@@ -125,7 +149,16 @@ public static class StartupManager
     {
         try
         {
-            var psi = new ProcessStartInfo("schtasks.exe")
+            // Absolute path, not the bare name.
+            //
+            // UseShellExecute = false resolves a bare name off PATH, and a failed CreateProcess
+            // reports "The system cannot find the file specified." -- which is precisely the
+            // message this returned, for both the create and the query, which is what made it
+            // look like a problem with the task XML rather than with launching schtasks at all.
+            // A system binary should never be reached through an inherited PATH anyway.
+            string schtasks = Path.Combine(Environment.SystemDirectory, "schtasks.exe");
+
+            var psi = new ProcessStartInfo(schtasks)
             {
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -137,7 +170,7 @@ public static class StartupManager
             using var proc = Process.Start(psi);
             if (proc is null)
             {
-                LastError = "schtasks.exe could not be started.";
+                LastError = $"{schtasks} could not be started.";
                 return false;
             }
 
@@ -151,7 +184,7 @@ public static class StartupManager
             if (!proc.WaitForExit(30_000))
             {
                 try { proc.Kill(true); } catch { }
-                LastError = "schtasks.exe did not finish within 30 seconds.";
+                LastError = $"{schtasks} did not finish within 30 seconds.";
                 return false;
             }
 
@@ -175,7 +208,9 @@ public static class StartupManager
             // Named rather than swallowed. Every silent "return false" here reaches the user as
             // an unexplained refusal, and this class has already cost one round of guessing that
             // way.
-            LastError = ex.Message;
+            // The path is named: every previous round of this ended with a bare sentence that
+            // could have come from three different failures.
+            LastError = $"{ex.Message} (running {Path.Combine(Environment.SystemDirectory, "schtasks.exe")})";
             return false;
         }
     }

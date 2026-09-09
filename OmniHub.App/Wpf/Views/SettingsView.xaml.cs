@@ -277,7 +277,17 @@ public partial class SettingsView : UserControl
             try { actual = StartupManager.IsEnabled(); } catch { }
             Dispatcher.Invoke(() => SetChip(StartupChip, StartupChipText, actual, "ENABLED"));
 
-            if (!ok)
+            // Enabled, but not the way it was asked for: the XML form was rejected and the plain
+            // fallback carries Windows' battery defaults back with it. Startup genuinely is on, so
+            // the toggle stays on -- but the degradation is said out loud, because a task that
+            // silently declines to start on battery and kills the app on unplug is exactly the
+            // failure that spent this long looking like a crash.
+            if (ok && failure is { Length: > 0 } warning)
+            {
+                Dispatcher.Invoke(() => System.Windows.MessageBox.Show(
+                    warning, "Startup", MessageBoxButton.OK, MessageBoxImage.Warning));
+            }
+            else if (!ok)
             {
                 Dispatcher.Invoke(() =>
                 {
