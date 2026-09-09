@@ -18,6 +18,78 @@ Nothing yet.
 
 ---
 
+## [1.2.0] — 2026-09-09
+
+Measurement, broader hardware support, and a UI grouped by subject. The thread running through
+it: this release exists because 1.1.1 compiled, passed every test, and was wrong — so most of the
+work is about being able to tell.
+
+### Added
+
+- **Diagnostics tab.** A load test that pins every core for a chosen duration and records
+  temperature, package power, CPU clock and fan speed, writes the run to a CSV, and reports
+  median, p90, max and the clock *floor* — the figure that moves when sustained behaviour does.
+  It only reads: no fan commands, no power writes, so it is safe to run while OmniHub is
+  controlling the fans, which is the point. Alongside it, the firmware's own capability answers
+  and a one-click probe report. Also available as `OmniHub.exe -LoadTest <minutes>`.
+- **What is limiting the processor** (Performance › CPU). All five constraints — sustained power,
+  boost power, EDC, TDC, temperature — each as a fraction of its own limit. Being at 99% of core
+  current and 60% of power says plainly that raising the power limit will change nothing, which
+  no single figure on the page could say. Hidden entirely without an SMU.
+- **Shared CPU/GPU thermal budget.** The two chips are cooled by one heatpipe but were tuned as
+  independent knobs, so a GPU-bound game left the CPU holding a sustained limit it was not using
+  while the package sat at its thermal target. When the GPU is busy *and* the package has reached
+  target, the CPU yields. Both conditions are required: a busy GPU on a cool machine is not
+  competing for anything.
+- **Per-model fan calibration.** `profiles/<baseboard>.json` can carry a chassis's real raw fan
+  band, measured with the Manual Calibration tool. A profile missing a value, or one whose
+  ceiling sits at or below its floor, is refused rather than half-applied.
+- **Poll timing.** Each phase of the hardware poll is timed and averaged to `polltiming-*.csv`,
+  and shown on Diagnostics.
+
+### Changed
+
+- **Seven sidebar destinations instead of nine**, grouped by subject: CPU tuning and GPU power
+  are two halves of one decision about how much the machine may draw, so they share a
+  **Performance** tab; app GPU routing joins the Windows settings under **System**. No screen's
+  content moved.
+- **The firmware gates behaviour.** `GetSystemData` decoded completely and fed nothing but a line
+  of `-Probe` output. It is read at startup now, and three states are kept distinct: supported,
+  denied, and *not stated*. Only a stated denial disables a control — a reply carrying nothing is
+  unknown, and switching off working hardware on the strength of a failed read is the silent
+  failure worth avoiding.
+- **Legacy boards get the right fan encoding.** Pavilion Gaming and early Omen take a 0/1/2
+  thermal policy; current Omen and Victus take `0x30`–`0x50`. The legacy path existed with zero
+  callers, so those boards were being sent an out-of-range mode byte.
+- The tuning tab's knob rows are a data template bound to a model, rather than fifty lines of
+  imperative construction per knob with two dictionaries of live controls standing in for state.
+- The fan count is read and reported. A board claiming more than two fans is named honestly
+  rather than driven as though it had two.
+
+### Fixed
+
+- **The GPU query is off the fan curve's critical path.** It held a global lock while launching
+  `nvidia-smi` and waiting up to three seconds, and the callers behind that lock were the fan
+  control loop and the hardware poll. One slow query stalled both.
+- **A dead reading no longer sits on screen.** The dashboard returned early when the performance
+  reader failed, leaving the previous clock, load and memory figures looking live.
+- **The readiness card appears.** It was written, styled, and never called, so a machine missing
+  the PawnIO driver got no explanation anywhere for why half the application was dark.
+- **Dragging the adaptive target no longer freezes the window.** Every intermediate slider
+  position applied a thermal limit inline on the UI thread, and that is an SMU transaction that
+  spins.
+- Tabs build in the background rather than on first click; the tray flyout stops subscribing to
+  the poll forever after one click; the gauge stops rebuilding unfrozen geometry at frame rate;
+  the "every fifth tick" refresh happens every fifth tick; thermal logs are pruned after a
+  fortnight; one charger watcher instead of two observing the same change at different moments.
+
+### Notes
+
+1.1.1 should be skipped; 1.1.2 fixed it. The build is not code-signed, so SmartScreen will warn.
+The SHA-256 of the archive is published with the release and on the download page.
+
+---
+
 ## [1.1.2] — 2026-09-08
 
 ### Fixed
@@ -172,7 +244,8 @@ telemetry. If a value cannot be read, the interface says so.
   against your installed version.
 - Throttling detection is not independently verified against known-good hardware.
 
-[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.2.0
 [1.1.2]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.2
 [1.1.1]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.0
