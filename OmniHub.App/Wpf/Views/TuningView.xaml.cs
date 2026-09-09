@@ -1566,6 +1566,20 @@ public partial class TuningView : UserControl, IDisposable
                 var g = GpuTelemetry.Read();
                 return new GpuDemand(g?.UtilisationPercent, g?.TempC, g?.PowerWatts);
             },
+
+            // On battery the question is not how to spend the thermal budget well, it is how not
+            // to spend the battery, so the controller steers to a different rail entirely.
+            //
+            // The ceiling matters more than the target here. A mains ceiling lets the processor
+            // burst to it whenever a tab opens, and the bursts are what cost the charge; holding
+            // the sustained limit low is what stops the chip taking gaming-sized wattage to do
+            // nothing in particular. The target comes down with it, because at these limits the
+            // die will not approach the mains figure anyway -- leaving it high would make the
+            // temperature term inert and hand every decision to the demand term.
+            BatteryRail = new AdaptiveTuning.Rail(
+                MinWatts: 5,
+                MaxWatts: Math.Max(8, _settings.AdaptiveMaxWattsBattery),
+                TargetTempC: _settings.AdaptiveTargetTempCBattery),
         };
 
         _adaptive.OnTick += (temp, watts) => Dispatcher.Invoke(() =>

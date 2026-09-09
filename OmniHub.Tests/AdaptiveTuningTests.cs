@@ -71,6 +71,64 @@ public class AdaptiveTuningTests
         Assert.Equal(0, Dir(tempC: Target, watts: 40, draw: null));
     }
 
+    /// <summary>
+    /// Which rail applies, and the asymmetry when Windows will not say.
+    ///
+    /// Unknown takes MAINS, deliberately. Windows reports an unknown line status during resume
+    /// and on some docks, and quietly detuning a plugged-in machine on that basis is a worse
+    /// error than briefly over-supplying an unplugged one -- the same direction the capability
+    /// gating chose.
+    /// </summary>
+    [Fact]
+    public void BatteryTakesItsOwnRailAndUnknownDoesNot()
+    {
+        var controller = new AdaptiveTuning(null!, () => 0)
+        {
+            MinWatts = 25,
+            MaxWatts = 60,
+            TargetTempC = 85,
+            BatteryRail = new AdaptiveTuning.Rail(MinWatts: 5, MaxWatts: 18, TargetTempC: 70),
+        };
+
+        Assert.Equal(new AdaptiveTuning.Rail(5, 18, 70), controller.RailFor(PowerSource.Battery));
+        Assert.Equal(new AdaptiveTuning.Rail(25, 60, 85), controller.RailFor(PowerSource.Mains));
+        Assert.Equal(new AdaptiveTuning.Rail(25, 60, 85), controller.RailFor(PowerSource.Unknown));
+    }
+
+    [Fact]
+    public void WithNoBatteryRailBothSourcesBehaveIdentically()
+    {
+        // A machine with no battery, or a user who has not configured one, must steer exactly as
+        // it did before rails existed.
+        var controller = new AdaptiveTuning(null!, () => 0) { MinWatts = 25, MaxWatts = 60, TargetTempC = 85 };
+
+        Assert.Equal(controller.RailFor(PowerSource.Mains), controller.RailFor(PowerSource.Battery));
+    }
+
+    /// <summary>
+    /// The rough transition, as arithmetic.
+    ///
+    /// Stepping three watts at a time from a mains ceiling of 60 down to a battery ceiling of 18
+    /// takes fourteen ticks: about three quarters of a minute holding a gaming-sized sustained
+    /// limit on battery. The other direction is worse -- the ceiling jumps, the chip takes all of
+    /// it at once, and the die reaches ninety before the loop has taken a second step. Clamping
+    /// makes the change as sharp as the event that caused it.
+    /// </summary>
+    [Fact]
+    public void ARailChangeIsAppliedAtOnceRatherThanWalkedTo()
+    {
+        const int step = 3;
+        var mains = new AdaptiveTuning.Rail(25, 60, 85);
+        var battery = new AdaptiveTuning.Rail(5, 18, 70);
+
+        int walked = mains.MaxWatts, ticks = 0;
+        while (walked > battery.MaxWatts && ticks < 100) { walked -= step; ticks++; }
+        Assert.Equal(14, ticks);
+
+        Assert.Equal(18, Math.Clamp(mains.MaxWatts, battery.MinWatts, battery.MaxWatts));
+        Assert.Equal(25, Math.Clamp(battery.MaxWatts, mains.MinWatts, mains.MaxWatts));
+    }
+
     [Fact]
     public void DoesNotWindUpAcrossAnIdlePeriod()
     {

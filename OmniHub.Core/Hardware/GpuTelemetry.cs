@@ -139,10 +139,31 @@ public static class GpuTelemetry
         }
     }
 
+    /// <summary>
+    /// Whether asking NVIDIA directly is worth what it costs right now.
+    ///
+    /// It is not, on battery. nvidia-smi talks to the card over PCIe, and on a laptop whose
+    /// discrete GPU has been allowed to power down, that conversation is itself a wake
+    /// interrupt: the card leaves D3, and a machine that was drawing nothing from it starts
+    /// drawing twelve to fourteen watts. Polling every couple of seconds to report a temperature
+    /// therefore CAUSES most of what it reports, and does it while unplugged.
+    ///
+    /// The Windows path still answers on battery. It reads the adapter name and 3D utilisation
+    /// from counters the driver already maintains, so it costs nothing and wakes nothing;
+    /// temperature, power and clock go unavailable, which is what they honestly are when nobody
+    /// is willing to pay a wake to find out.
+    ///
+    /// Unknown counts as mains. Windows reports an unknown line status during resume and on some
+    /// docks, and going quiet there would drop GPU telemetry on a plugged-in machine for no
+    /// reason -- the same asymmetry the capability gating uses.
+    /// </summary>
+    private static bool WorthWakingTheCard() =>
+        Optimize.PowerSourceWatcher.Read() != Optimize.PowerSource.Battery;
+
     // Falls through to the Windows path when nvidia-smi is present but fails -- a driver that
     // is installed but wedged should still leave the name and load readable.
     private static GpuReading? Query() =>
-        (HasNvidiaSmi ? QueryNvidiaSmi() : null) ?? QueryWindows();
+        (HasNvidiaSmi && WorthWakingTheCard() ? QueryNvidiaSmi() : null) ?? QueryWindows();
 
     private static GpuReading? QueryNvidiaSmi()
     {

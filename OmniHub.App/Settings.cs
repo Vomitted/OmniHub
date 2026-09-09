@@ -152,6 +152,27 @@ public sealed class AppSettings
     public int AdaptiveMaxWatts { get; set; } = 54;
 
     /// <summary>
+    /// Highest sustained limit adaptive mode may command on battery, watts.
+    ///
+    /// Far below the mains ceiling on purpose. Unplugged, the cost of a high ceiling is not heat
+    /// but charge: the processor bursts to whatever it is allowed every time a tab opens, and it
+    /// is the bursts rather than the idle draw that empty the battery. Eighteen watts still
+    /// leaves enough headroom to finish short work quickly and return to idle, which is cheaper
+    /// than running slowly for longer.
+    /// </summary>
+    public int AdaptiveMaxWattsBattery { get; set; } = 18;
+
+    /// <summary>
+    /// Die temperature adaptive mode steers towards on battery.
+    ///
+    /// Lower than the mains target, because at a battery-sized power ceiling the die will not
+    /// approach the mains figure anyway. Leaving it at 85 would make the temperature term inert
+    /// and hand every decision to the demand term, which is not what "adaptive" should mean on
+    /// either rail.
+    /// </summary>
+    public int AdaptiveTargetTempCBattery { get; set; } = 70;
+
+    /// <summary>
     /// Master switch for auto eco. Its triggers below only mean anything while this is on.
     ///
     /// A real stored flag rather than "on if any trigger is set", so turning the section off

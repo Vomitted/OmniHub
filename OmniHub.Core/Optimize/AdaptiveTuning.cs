@@ -66,6 +66,40 @@ public sealed class AdaptiveTuning : IDisposable
     /// </summary>
     public Func<GpuDemand>? ReadGpu { get; init; }
 
+    /// <summary>The limits and target that apply on one power rail.</summary>
+    public readonly record struct Rail(int MinWatts, int MaxWatts, int TargetTempC);
+
+    /// <summary>
+    /// What to steer towards on battery, or null to use the same figures as on mains.
+    ///
+    /// "Adaptive" meant adaptive to temperature only: one ceiling and one target, whether or not
+    /// the machine was plugged in. On battery that is the wrong shape entirely. The goal there is
+    /// not to spend the thermal budget well, it is not to spend the battery, and a ceiling chosen
+    /// for a mains workload lets the processor burst to it every time a browser tab opens.
+    ///
+    /// Null keeps the previous single-rail behaviour exactly, so a machine with no battery, or a
+    /// user who has not configured one, is unaffected.
+    /// </summary>
+    public Rail? BatteryRail { get; init; }
+
+    /// <summary>
+    /// Where the machine is drawing power from. Defaults to the real reading; injectable so the
+    /// rail switching can be tested without a battery.
+    /// </summary>
+    public Func<PowerSource> ReadPowerSource { get; init; } = PowerSourceWatcher.Read;
+
+    /// <summary>
+    /// The rail in force for a given power source.
+    ///
+    /// Unknown takes the mains rail, for the reason PowerSourceWatcher documents: Windows reports
+    /// an unknown line status during resume and on some docks, and detuning a plugged-in machine
+    /// on that basis is a worse error than briefly over-supplying an unplugged one.
+    /// </summary>
+    public Rail RailFor(PowerSource source) =>
+        source == PowerSource.Battery && BatteryRail is { } battery
+            ? battery
+            : new Rail(MinWatts, MaxWatts, TargetTempC);
+
     /// <summary>The limit the controller last commanded, or null before its first tick.</summary>
     public int? CommandedWatts { get; private set; }
 
@@ -155,6 +189,11 @@ public sealed class AdaptiveTuning : IDisposable
 
         int ignoredTicks = 0;
 
+        // The rail in force last tick, so a charger going in or out is noticed here rather than
+        // waited out. See the clamp below for why that matters.
+        var lastSource = PowerSource.Unknown;
+        bool sourceSeen = false;
+
         while (!token.IsCancellationRequested)
         {
             try
@@ -163,14 +202,44 @@ public sealed class AdaptiveTuning : IDisposable
                 // cached inside the SMU layer, so this is not an extra mailbox transaction.
                 PowerSnapshot? power = _tuning.ReadPower();
 
+                // Which rail applies right now. Read every tick rather than at startup, because
+                // the whole point is that a charger can move while this is running.
+                PowerSource source;
+                try { source = ReadPowerSource(); } catch { source = lastSource; }
+                var rail = RailFor(source);
+
                 // Start from whatever the hardware is enforcing now, so the first move is a
                 // nudge rather than a jump away from an assumed value.
                 if (!seeded)
                 {
                     watts = Math.Clamp(
-                        (int)Math.Round(power?.StapmLimitWatts ?? MaxWatts),
-                        MinWatts, MaxWatts);
+                        (int)Math.Round(power?.StapmLimitWatts ?? rail.MaxWatts),
+                        rail.MinWatts, rail.MaxWatts);
                     seeded = true;
+                }
+
+                // A rail change is applied AT ONCE, not walked to three watts at a time.
+                //
+                // This is the rough transition. Unplugging left the controller holding a mains
+                // ceiling and stepping down from it, so the processor kept a gaming-sized
+                // sustained limit for the best part of a minute on battery. Plugging in was
+                // worse in the other direction: the ceiling jumped, the chip took all of it at
+                // once, and the die reached ninety degrees before the loop had taken its second
+                // step.
+                //
+                // Clamping into the new rail immediately makes the change as sharp as the event
+                // that caused it, which is what someone plugging in a charger expects.
+                if (!sourceSeen || source != lastSource)
+                {
+                    lastSource = source;
+                    sourceSeen = true;
+
+                    int clamped = Math.Clamp(watts, rail.MinWatts, rail.MaxWatts);
+                    if (clamped != watts)
+                    {
+                        watts = clamped;
+                        try { _tuning.SetStapmWatts(watts); } catch { }
+                    }
                 }
 
                 double temp = _readTempC();
@@ -183,8 +252,8 @@ public sealed class AdaptiveTuning : IDisposable
                 int next = Math.Clamp(
                     watts + StepWatts * ThermalBudget.CpuDirection(
                         temp, watts, power?.StapmWatts, gpu,
-                        TargetTempC, DeadbandC, DemandThreshold),
-                    MinWatts, MaxWatts);
+                        rail.TargetTempC, DeadbandC, DemandThreshold),
+                    rail.MinWatts, rail.MaxWatts);
 
                 if (next != watts)
                 {
