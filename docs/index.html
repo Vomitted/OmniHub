@@ -361,7 +361,9 @@ footer a{color:var(--muted);border-bottom-color:#333}
     <thead><tr><th>Subsystem</th><th>Detail</th></tr></thead>
     <tbody>
       <tr><td>BIOS control</td><td class="m">root\wmi · hpqBIntM · ACPI\PNP0C14\0_0</td></tr>
-      <tr><td>Fan level encoding</td><td class="m">raw × 100 = RPM; usable band ≈ 20–55</td></tr>
+      <tr><td>Fan level encoding</td><td class="m">raw × 100 = RPM; measured band 10–56 on board 8C2F</td></tr>
+      <tr><td>Per-model fan band</td><td class="m">profiles\&lt;baseboard&gt;.json</td></tr>
+      <tr><td>Load-test runs</td><td class="m">%AppData%\OmniHub\logs\loadtest-*.csv</td></tr>
       <tr><td>Tachometer readback</td><td class="m">not exposed by this interface</td></tr>
       <tr><td>Die temperature</td><td class="m">THM_TCON_CUR_TMP 0x00059800 · 0.125 °C</td></tr>
       <tr><td>Ring-0 access</td><td class="m">PawnIO (signed, optional)</td></tr>
@@ -483,11 +485,9 @@ dotnet build OmniHub.slnx -c Release</pre>
   <h2><span class="num">08</span>Known limitations</h2>
   <ul>
     <li>The safety floor protects only while the application is running.</li>
-    <li>Curve tuning is manual. There is no bundled per-model preset database.</li>
-    <li>The 20–55 raw fan band is a well-sourced community bound for this HP EC family, not a
-      measurement of your unit. The Fans tab includes a calibration sweep to find yours.</li>
-    <li><code>PawnIoAccess.cs</code> is an intentional stub — MSR package temperature needs the
-      PawnIO SDK wired against your installed version.</li>
+    <li>Curve tuning is manual. A board can carry its own fan band in <span class="m">profiles\&lt;baseboard&gt;.json</span>, but no preset database is bundled — nobody has measured those boards.</li>
+    <li>The 10–56 raw fan band was measured on one chassis, not on yours. The Fans tab has a calibration sweep to find your own, and the result can be written into a profile.</li>
+    <li>The capability block this laptop returns is not trustworthy: it reports no software fan control on a machine whose fans the application is demonstrably driving. Capabilities therefore only ever enable a message, never silently disable working hardware.</li>
     <li>Throttling detection is not independently verified against known-good hardware.</li>
   </ul>
 </div></section>
