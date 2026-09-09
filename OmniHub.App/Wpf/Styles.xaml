@@ -212,7 +212,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="Bd" Background="Transparent" CornerRadius="4" BorderThickness="1" BorderBrush="Transparent">
+                    <Border x:Name="Bd" Background="Transparent" CornerRadius="{StaticResource RadiusSm}" BorderThickness="1" BorderBrush="Transparent">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="6,0"/>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -220,11 +220,20 @@
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource PanelHoverBrush}"/>
                             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
                         </Trigger>
-                        <!-- Plain Setters, no Storyboard: guarantees the pill reverts the
+                        <!-- The selected segment is a RAISED SURFACE, not a filled one.
+
+                             It used to paint solid accent with white text, which made the
+                             mode selector the loudest thing on the window — brighter than
+                             any reading, on a screen whose entire job is the readings. A
+                             lifted panel with a stronger border says "this one" just as
+                             clearly and lets the accent stay reserved for data.
+
+                             Plain Setters, no Storyboard: guarantees the segment reverts the
                              instant a sibling is chosen. -->
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter Property="Foreground" Value="White"/>
-                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource PanelHoverBrush}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource TextPrimaryBrush}"/>
@@ -354,6 +363,7 @@
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
+                <Setter Property="Background" Value="{StaticResource PanelAltBrush}"/>
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -875,6 +885,63 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+
+    <!-- ====================================================================
+         Progress tracks.
+
+         Every bar in the app was previously a hand-rolled pair of Borders with its
+         geometry written out at the call site, so no two were quite the same height or
+         radius. These two styles are the pair: a Track holds the groove, a fill Border
+         sits inside it with its Width driven by the view.
+
+         The fill brush is deliberately NOT set here. A track showing utilisation wants the
+         accent ramp; one showing pressure against a limit wants the green-to-amber ramp;
+         one showing a limit already reached wants amber-to-red. Defaulting it would mean
+         every caller overrides it, which is the mistake CardBorderStyle Padding made.
+         ==================================================================== -->
+    <Style x:Key="TrackStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource TrackBrush}"/>
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}"/>
+        <Setter Property="Height" Value="5"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="ClipToBounds" Value="True"/>
+    </Style>
+
+    <Style x:Key="TrackFillStyle" TargetType="Border">
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+
+    <!-- The small value badge that sits at the top-right of a card: clock speed, memory
+         type, active profile. Distinct from StatusChipStyle, which carries a state dot. -->
+    <Style x:Key="CardTagStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource PanelAltBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{StaticResource RadiusSm}"/>
+        <Setter Property="Padding" Value="8,3"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="CardTagText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+    </Style>
+
+    <!-- Section heading: the small uppercase label above a group.
+
+         WPF TextBlock has no letter-spacing property and there is no supported way to fake
+         one without measuring each glyph, so the tracking in the reference is approximated
+         by the monospace face rather than by spacing. Set the text uppercase in the markup;
+         a ValueConverter to do it here would run on every render for a constant string. -->
+    <Style x:Key="SectionHeadingText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
     </Style>
 
 </ResourceDictionary>

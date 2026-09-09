@@ -1,38 +1,42 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- MIDNIGHT. Deep blue-black rather than true black. Easier on an IPS panel, where
-         #000000 shows backlight bleed and grey-shifts off-axis, and it gives the surface
-         steps more room to separate. Violet accent keeps it distinct from OLED Black's
-         cyan without straying into the thermal colour range. -->
+    <!-- MIDNIGHT. The reference palette, and the default.
 
-    <Color x:Key="BackgroundColor">#FF0B0E17</Color>
-    <Color x:Key="PanelColor">#FF131829</Color>
-    <Color x:Key="PanelAltColor">#FF1A2033</Color>
-    <Color x:Key="PanelHoverColor">#FF232B42</Color>
-    <Color x:Key="BorderColor">#FF262E45</Color>
-    <Color x:Key="BorderStrongColor">#FF3A4460</Color>
+         A blue-tinted near-black rather than a neutral one: the ground carries a little of the
+         accent's hue, which is what stops a dark UI reading as a grey void. The accent is a
+         two-stop ramp, blue into cyan, used as a gradient on progress tracks, the application
+         mark and the primary chart line — so AccentColor2 is not decoration, it is the second
+         stop every gradient in Theme.xaml reaches for. -->
 
-    <Color x:Key="TextPrimaryColor">#FFE8EAF2</Color>
-    <Color x:Key="TextMutedColor">#FF8A93AD</Color>
-    <Color x:Key="TextFaintColor">#FF59627C</Color>
+    <Color x:Key="BackgroundColor">#FF0A0D12</Color>
+    <Color x:Key="PanelColor">#FF11151B</Color>
+    <Color x:Key="PanelAltColor">#FF161B22</Color>
+    <Color x:Key="PanelHoverColor">#FF1A2028</Color>
+    <Color x:Key="BorderColor">#FF1E242C</Color>
+    <Color x:Key="BorderStrongColor">#FF262D36</Color>
 
-    <Color x:Key="AccentColor">#FF8B7CF6</Color>
-    <Color x:Key="AccentDimColor">#388B7CF6</Color>
-    <Color x:Key="AccentSoftColor">#1E8B7CF6</Color>
+    <Color x:Key="TextPrimaryColor">#FFE6EDF3</Color>
+    <Color x:Key="TextMutedColor">#FF8B949E</Color>
+    <Color x:Key="TextFaintColor">#FF5C6570</Color>
 
-    <Color x:Key="GoodColor">#FF48D18B</Color>
-    <Color x:Key="WarnColor">#FFEBB552</Color>
-    <Color x:Key="DangerColor">#FFF4685A</Color>
-    <!-- Per-metric card accents; see OledBlack.xaml for the rationale. -->
-    <Color x:Key="MetricCpuColor">#FF8B7CF6</Color>
-    <Color x:Key="MetricMemColor">#FF48D18B</Color>
-    <Color x:Key="MetricGpuColor">#FF60A5FA</Color>
+    <Color x:Key="AccentColor">#FF3B82F6</Color>
+    <Color x:Key="AccentColor2">#FF22D3EE</Color>
+    <Color x:Key="AccentDimColor">#383B82F6</Color>
+    <Color x:Key="AccentSoftColor">#1E3B82F6</Color>
 
-    <Color x:Key="CardTopHighlightColor">#18FFFFFF</Color>
-    <Color x:Key="GridLineColor">#FF1B2133</Color>
+    <Color x:Key="GoodColor">#FF22C55E</Color>
+    <Color x:Key="WarnColor">#FFF59E0B</Color>
+    <Color x:Key="DangerColor">#FFEF4444</Color>
 
-    <Color x:Key="CaptionColor">#FF0B0E17</Color>
-    <Color x:Key="CaptionTextColor">#FFE8EAF2</Color>
+    <Color x:Key="MetricCpuColor">#FF3B82F6</Color>
+    <Color x:Key="MetricMemColor">#FF22C55E</Color>
+    <Color x:Key="MetricGpuColor">#FF22D3EE</Color>
+
+    <Color x:Key="CardTopHighlightColor">#14FFFFFF</Color>
+    <Color x:Key="GridLineColor">#FF171C22</Color>
+
+    <Color x:Key="CaptionColor">#FF0A0D12</Color>
+    <Color x:Key="CaptionTextColor">#FFE6EDF3</Color>
 
 </ResourceDictionary>

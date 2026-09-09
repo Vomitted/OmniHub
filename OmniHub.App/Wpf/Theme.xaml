@@ -29,6 +29,7 @@
     <SolidColorBrush x:Key="TextMutedBrush" Color="{DynamicResource TextMutedColor}"/>
     <SolidColorBrush x:Key="TextFaintBrush" Color="{DynamicResource TextFaintColor}"/>
     <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource AccentColor}"/>
+    <SolidColorBrush x:Key="AccentBrush2" Color="{DynamicResource AccentColor2}"/>
     <SolidColorBrush x:Key="AccentDimBrush" Color="{DynamicResource AccentDimColor}"/>
     <SolidColorBrush x:Key="AccentSoftBrush" Color="{DynamicResource AccentSoftColor}"/>
     <SolidColorBrush x:Key="WarnBrush" Color="{DynamicResource WarnColor}"/>
@@ -63,11 +64,37 @@
         <GradientStop Color="#00000000" Offset="0.55"/>
     </LinearGradientBrush>
 
-    <!-- The one real gradient, on the primary call-to-action only. -->
-    <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,1">
+    <!-- The accent ramp: the palette's two accent stops, left to right.
+
+         This used to run AccentColor into AccentDimColor, which is the same hue at 22%
+         alpha — a fade to transparent rather than a gradient, and it read as a smudge
+         on anything wider than a button. Every palette now carries a genuine second
+         stop, so a progress track has somewhere to travel to. Horizontal, because every
+         consumer of it is a bar that fills left to right. -->
+    <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,0">
         <GradientStop Color="{DynamicResource AccentColor}" Offset="0"/>
-        <GradientStop Color="{DynamicResource AccentDimColor}" Offset="1"/>
+        <GradientStop Color="{DynamicResource AccentColor2}" Offset="1"/>
     </LinearGradientBrush>
+
+    <!-- Pressure ramps. These read as a scale rather than as decoration: a bar that is
+         green at the left and amber at the right says "the far end of this is bad"
+         without needing a word beside it to say so, which is the one place colour is
+         allowed to carry meaning here. -->
+    <LinearGradientBrush x:Key="PressureGradientBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{DynamicResource GoodColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource WarnColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="CriticalGradientBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{DynamicResource WarnColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource DangerColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="GoodGradientBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{DynamicResource GoodColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource AccentColor2}" Offset="1"/>
+    </LinearGradientBrush>
+
+    <!-- The unfilled part of any progress track. One key, so a track cannot drift.  -->
+    <SolidColorBrush x:Key="TrackBrush" Color="{DynamicResource PanelAltColor}"/>
 
     <!-- Was a blue-to-white gradient painted across every big number. Gradient fills on
          numerals fight legibility at a glance, which is the one thing a telemetry readout
@@ -85,12 +112,15 @@
     <FontFamily x:Key="UiFontLight">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
 
-    <!-- One radius scale. Tight rather than soft: rounded corners read consumer-friendly,
-         and the register this UI wants is precision instrument. Sharper corners also hold
-         their shape better on a near-black ground, where a large radius on a barely lifted
-         surface dissolves into the background. -->
-    <CornerRadius x:Key="RadiusSm">3</CornerRadius>
-    <CornerRadius x:Key="RadiusMd">5</CornerRadius>
+    <!-- One radius scale.
+
+         This argued for near-sharp corners on the grounds that a large radius dissolves
+         on a near-black ground. That was true of a barely-lifted surface with no border;
+         it is not true here, because a card now carries a visible 1px border that holds
+         the corner's shape whatever the fill does. Sm is for chips, tags and buttons;
+         Md is the card. Pill is reserved for the status capsule in the title bar. -->
+    <CornerRadius x:Key="RadiusSm">6</CornerRadius>
+    <CornerRadius x:Key="RadiusMd">10</CornerRadius>
     <CornerRadius x:Key="RadiusPill">999</CornerRadius>
 
     <!-- One spacing scale, to go beside the radius one above.

@@ -1,39 +1,40 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- EMBER. Warm near-black with a copper accent: the closest thing here to the
-         "gaming laptop" register, held to the same discipline as the rest.
-         Note the deliberate trade-off: a warm accent sits close to the amber warning
-         colour, so WarnColor here is pushed towards yellow and DangerColor towards true
-         red, keeping the thermal scale separable from the chrome. -->
+    <!-- EMBER. Warm near-black with the website's heat orange running into amber.
 
-    <Color x:Key="BackgroundColor">#FF100D0B</Color>
-    <Color x:Key="PanelColor">#FF191513</Color>
-    <Color x:Key="PanelAltColor">#FF221D1A</Color>
-    <Color x:Key="PanelHoverColor">#FF2C2521</Color>
-    <Color x:Key="BorderColor">#FF302925</Color>
-    <Color x:Key="BorderStrongColor">#FF473C35</Color>
+         Note the trade-off this palette has always carried: a warm accent sits close to the
+         amber warning colour, so WarnColor is pushed towards yellow and DangerColor towards a
+         true red, keeping the thermal scale separable from the chrome that surrounds it. -->
 
-    <Color x:Key="TextPrimaryColor">#FFEFE9E3</Color>
-    <Color x:Key="TextMutedColor">#FF9A9088</Color>
-    <Color x:Key="TextFaintColor">#FF68605A</Color>
+    <Color x:Key="BackgroundColor">#FF0F0C0A</Color>
+    <Color x:Key="PanelColor">#FF171310</Color>
+    <Color x:Key="PanelAltColor">#FF1E1815</Color>
+    <Color x:Key="PanelHoverColor">#FF251E1A</Color>
+    <Color x:Key="BorderColor">#FF2A231E</Color>
+    <Color x:Key="BorderStrongColor">#FF3A312A</Color>
 
-    <Color x:Key="AccentColor">#FFE07A4B</Color>
-    <Color x:Key="AccentDimColor">#38E07A4B</Color>
-    <Color x:Key="AccentSoftColor">#1EE07A4B</Color>
+    <Color x:Key="TextPrimaryColor">#FFF0EAE4</Color>
+    <Color x:Key="TextMutedColor">#FF9C9189</Color>
+    <Color x:Key="TextFaintColor">#FF675F59</Color>
+
+    <Color x:Key="AccentColor">#FFE0511E</Color>
+    <Color x:Key="AccentColor2">#FFF59E0B</Color>
+    <Color x:Key="AccentDimColor">#38E0511E</Color>
+    <Color x:Key="AccentSoftColor">#1EE0511E</Color>
 
     <Color x:Key="GoodColor">#FF57C48A</Color>
     <Color x:Key="WarnColor">#FFF2D24A</Color>
     <Color x:Key="DangerColor">#FFE8453A</Color>
-    <!-- Per-metric card accents; see OledBlack.xaml for the rationale. -->
-    <Color x:Key="MetricCpuColor">#FFE07A4B</Color>
+
+    <Color x:Key="MetricCpuColor">#FFE0511E</Color>
     <Color x:Key="MetricMemColor">#FF57C48A</Color>
-    <Color x:Key="MetricGpuColor">#FFDFA23C</Color>
+    <Color x:Key="MetricGpuColor">#FFF59E0B</Color>
 
     <Color x:Key="CardTopHighlightColor">#16FFFFFF</Color>
     <Color x:Key="GridLineColor">#FF1F1A17</Color>
 
-    <Color x:Key="CaptionColor">#FF100D0B</Color>
-    <Color x:Key="CaptionTextColor">#FFEFE9E3</Color>
+    <Color x:Key="CaptionColor">#FF0F0C0A</Color>
+    <Color x:Key="CaptionTextColor">#FFF0EAE4</Color>
 
 </ResourceDictionary>
