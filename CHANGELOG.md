@@ -18,6 +18,41 @@ Nothing yet.
 
 ---
 
+## [1.3.2] — 2026-09-10
+
+### Added
+
+- **Live battery draw.** The Dashboard title bar shows what the machine is actually pulling
+  from the pack and the runtime that implies — `31.3 W  2h 14m left` — or `AC`, with the
+  charge rate when charging. Straight from `root\wmi BatteryStatus`, which the codebase had
+  read for the battery-saver since 1.0 and never surfaced. The runtime estimate is
+  deliberately unsmoothed: it is remaining capacity over draw at that instant, so it swings
+  when load swings, because an estimate that looks stable while the truth is moving is worse
+  than one that visibly moves.
+- **Four more themes**, for eight: Nord, Terminal, Sandstone and Mono alongside Midnight,
+  OLED Black, Graphite and Ember. The default moves to Midnight.
+
+### Fixed
+
+- **Two themes were indistinguishable.** Rebasing the palettes on the 1.3.0 reference gave
+  OLED Black and Midnight the same blue-to-cyan accent, and the picker drew three colour
+  chips and nothing else, so the two previews rendered identically.
+
+### Changed
+
+- **A theme is no longer a recolour.** A palette now sets corner radius, card padding, the
+  heading typeface, the weight of every progress track, the size of the big readouts, and
+  whether cards carry any lift at all — so switching theme changes the feel of the layout,
+  not only its hue. Terminal is monospaced with hairline tracks and perfectly flat surfaces
+  at the tightest density here; Sandstone is the opposite corner of every one of those axes.
+  Those tokens moved out of `Theme.xaml` into the palettes and every reference became
+  `DynamicResource`, since a `StaticResource` is resolved once when a style is sealed and
+  would bake one theme's geometry into all the others.
+- **The theme preview draws a miniature card** using each theme's own radii and inset,
+  because the difference a palette now makes is one a colour chip cannot show.
+
+---
+
 ## [1.3.1] — 2026-09-10
 
 ### Fixed
@@ -344,7 +379,8 @@ telemetry. If a value cannot be read, the interface says so.
   against your installed version.
 - Throttling detection is not independently verified against known-good hardware.
 
-[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/Vomitted/OmniHub/releases/tag/v1.3.2
 [1.3.1]: https://github.com/Vomitted/OmniHub/releases/tag/v1.3.1
 [1.3.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.3.0
 [1.2.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.2.0
