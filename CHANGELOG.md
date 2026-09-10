@@ -18,6 +18,27 @@ Nothing yet.
 
 ---
 
+## [1.3.1] — 2026-09-10
+
+### Fixed
+
+- **The sign-in task never actually got its battery settings.** Every XML registration since
+  the feature was written had been failing, silently, on every machine. The generated task
+  document carried an XML comment explaining the schema constraints, and that comment held a
+  double hyphen in ordinary prose; XML forbids one inside a comment, so `schtasks` rejected
+  the document with `incorrect comment syntax` and the fallback registered a task using the
+  command-line form instead — which cannot express `DisallowStartIfOnBatteries` or
+  `StopIfGoingOnBatteries`. The result looked like a working task, refused to start on
+  battery, and was killed on unplug: exactly the defect 1.3.0 claimed to have fixed.
+- **A degraded registration is no longer reported as success.** `-InstallStartup` returns 0
+  when the task was registered as intended, 2 when it fell back, and 1 when it failed
+  outright, and writes the reason to `%AppData%\OmniHub\logs\startup-task.log`. A file
+  rather than a console, because the installer runs it hidden — and because attaching a
+  console here writes into a window nobody sees rather than into a redirected stream, which
+  is what hid this for one round of diagnosis.
+
+---
+
 ## [1.3.0] — 2026-09-10
 
 Three threads. Battery, because 1.2.0 was tuned, measured and released entirely on mains and
@@ -323,7 +344,8 @@ telemetry. If a value cannot be read, the interface says so.
   against your installed version.
 - Throttling detection is not independently verified against known-good hardware.
 
-[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/Vomitted/OmniHub/releases/tag/v1.3.1
 [1.3.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.3.0
 [1.2.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.2.0
 [1.1.2]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.2
