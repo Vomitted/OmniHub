@@ -206,14 +206,14 @@ footer a{color:var(--muted);border-bottom-color:#333}
     <div class="fact"><dt>Platform</dt><dd>Windows 10/11 x64</dd></div>
     <div class="fact"><dt>Runtime</dt><dd>none (self-contained)</dd></div>
     <div class="fact"><dt>Privileges</dt><dd>Administrator</dd></div>
-    <div class="fact"><dt>Licence</dt><dd>source available</dd></div>
+    <div class="fact"><dt>Licence</dt><dd><a href="https://github.com/Vomitted/OmniHub/blob/main/LICENSE">MIT</a></dd></div>
     <div class="fact"><dt>Telemetry</dt><dd>none</dd></div>
   </dl>
 
   <div class="actions">
     <!-- Static fallback for a reader with no JavaScript, or a rate-limited API. The script
          below replaces it with whatever the newest OmniHub release actually is. -->
-    <a class="btn primary" id="dl" href="https://github.com/Vomitted/OmniHub/releases/download/v1.2.0/OmniHub-1.2.0-win-x64.zip">Download .zip</a>
+    <a class="btn primary" id="dl" href="https://github.com/Vomitted/OmniHub/releases/download/v1.3.0/OmniHub-1.3.0-setup.exe">Download setup</a>
     <a class="btn" href="https://github.com/Vomitted/OmniHub">Source</a>
     <a class="btn" href="https://github.com/Vomitted/OmniHub/releases">All releases</a>
   </div>
@@ -498,11 +498,11 @@ OmniHub.exe -Probe
   </div>
 
   <p class="muted" style="margin-bottom:8px;font-size:.86rem">
-    SHA-256 of <span class="m">OmniHub-1.2.0-win-x64.zip</span>, built from commit
-    <span class="m">e939480</span>:
+    SHA-256 of <span class="m">OmniHub-1.3.0-setup.exe</span>, built from commit
+    <span class="m">d025bc4</span>:
   </p>
-  <p class="hash">b42d0c8962e59ee45c1f41da2951b8403dcd3534937c41450b263667484d18a2</p>
-  <pre>Get-FileHash .\OmniHub-1.2.0-win-x64.zip -Algorithm SHA256</pre>
+  <p class="hash">8e5a094d95a525583ba0571927e63b2bf17ecc848b5472cff3b6ec8efe311ee3</p>
+  <pre>Get-FileHash .\OmniHub-1.3.0-setup.exe -Algorithm SHA256</pre>
   <p class="muted" style="font-size:.83rem">
     This checksum is written by hand at release time and belongs to the version named above.
     Every release publishes its own on
@@ -511,30 +511,27 @@ OmniHub.exe -Probe
   </p>
 
   <ol>
-    <li>Extract somewhere permanent. There is no installer; it runs from where you put it.</li>
-    <li>Run <code>OmniHub.exe</code> and accept the UAC prompt. <strong>Elevation is not
-      optional</strong> — the WMI session requires it and the SMU driver refuses unelevated
-      callers.</li>
-    <li>Open <strong>Settings</strong> and enable <em>Launch when you sign in</em> &mdash; but
-      read the note below first if this laptop runs on battery.</li>
-    <li>On Ryzen, install the PawnIO driver for the Tuning tab — the dashboard offers it when
-      missing, or <code>winget install namazso.PawnIO</code>. No restart needed; the app retries
-      every ten seconds.</li>
+    <li>Run <code>OmniHub-1.3.0-setup.exe</code> and accept the UAC prompt. <strong>Elevation is
+      not optional</strong> — the WMI session requires it, the SMU driver refuses unelevated
+      callers, and the install directory sits under Program Files.</li>
+    <li>Agree to the licence and choose where it goes. The default is
+      <span class="m">C:\Program Files\OmniHub</span>.</li>
+    <li>Tick what you want: a desktop shortcut; <em>Start OmniHub when I sign in</em>, which
+      registers a scheduled task that runs it elevated without a prompt at every login; and the
+      <strong>PawnIO driver</strong>, fetched through winget from its own publisher rather than
+      bundled here. PawnIO is needed only for the Tuning tab — everything else works without
+      it.</li>
+    <li>Finish. Setup offers to launch it, and it lives in the system tray.</li>
   </ol>
 
-  <div class="note warn">
-    <strong>On 1.2.0, <em>Launch when you sign in</em> inherits Windows&rsquo; battery
-    defaults.</strong> Task Scheduler sets both
-    <span class="m">DisallowStartIfOnBatteries</span> and
-    <span class="m">StopIfGoingOnBatteries</span> to true by default, and
-    <code>schtasks</code>&rsquo; command-line form cannot express either &mdash; so OmniHub does
-    not start at sign-in while unplugged, and Task Scheduler terminates it the moment the
-    charger comes out. That termination is a hard kill: the fan controller never reaches its
-    shutdown path and never hands control back to the BIOS, which can leave the fans pinned at
-    whatever was last commanded. Until the next release, open the task in Task Scheduler and
-    clear both boxes under <em>Conditions &rarr; Power</em>. Fixed on
-    <span class="m">main</span>.
-  </div>
+  <p class="muted" style="font-size:.86rem">
+    If OmniHub is already running, setup stops and asks you to close it rather than closing it
+    itself. That is deliberate: exiting through the tray hands fan control back to the BIOS, and
+    a process killed to free a file lock never reaches that path — it can leave the fans pinned
+    at whatever level was last commanded. Uninstalling removes the sign-in task as well as the
+    files.
+  </p>
+
 
   <h3>Build from source</h3>
   <pre>winget install Microsoft.DotNet.SDK.10
@@ -577,12 +574,11 @@ dotnet build OmniHub.slnx -c Release</pre>
     <li>The 10–56 raw fan band was measured on one chassis, not on yours. The Fans tab has a calibration sweep to find your own, and the result can be written into a profile.</li>
     <li>The capability block this laptop returns is not trustworthy: it reports no software fan control on a machine whose fans the application is demonstrably driving. Capabilities therefore only ever enable a message, never silently disable working hardware.</li>
     <li>Throttling detection is not independently verified against known-good hardware.</li>
-    <li>1.2.0 was tuned, measured and released entirely on mains. On battery it keeps the
-      discrete GPU awake &mdash; the TGP re-assertion loop overrides the firmware&rsquo;s own
-      reclaim, and polling <span class="m">nvidia-smi</span> wakes the card over PCIe &mdash;
-      and unplugging switches profile, which switches <em>out</em> of Adaptive, so the
-      controller that would have backed the limit off has stopped running. Both are fixed on
-      <span class="m">main</span> and neither is in the download above.</li>
+    <li>On battery the discrete GPU settles at P8 drawing about 2 W, not D3cold. Measured with
+      the application closed as well as open, so this is the platform rather than OmniHub; the
+      remaining candidate is hardware-accelerated GPU scheduling, which is untested.</li>
+    <li>The screenshots above were captured on 1.1.0, before the 1.3.0 interface rebuild. They
+      no longer show what the application looks like.</li>
   </ul>
 </div></section>
 
@@ -680,7 +676,7 @@ render();
       // application's updater uses, and for the same reason: this repository also hosts
       // OmniControl Suite, whose v9.0.0 tag outranks anything here numerically.
       var rels = all.filter(function (r) {
-        return (r.assets || []).some(function (a) { return /^OmniHub.*\.zip$/i.test(a.name); });
+        return (r.assets || []).some(function (a) { return /^OmniHub.*\.(zip|exe)$/i.test(a.name); });
       });
       if (!rels.length) throw 0;
 
@@ -697,7 +693,10 @@ render();
                '<div class="body">' + esc((r.body || '').trim()) + '</div></div>';
       }).join('');
 
-      var asset = (cur.assets || []).filter(function (a) { return /\.zip$/i.test(a.name); })[0];
+      // Prefer the installer, fall back to a zip: every release up to 1.2.0 shipped only a
+      // zip, so the button keeps resolving if the newest release is ever an older build.
+      var files = (cur.assets || []).filter(function (a) { return /\.(exe|zip)$/i.test(a.name); });
+      var asset = files.filter(function (a) { return /setup\.exe$/i.test(a.name); })[0] || files[0];
       if (!asset) {
         var n = document.getElementById('unpub');
         n.textContent = 'The newest release has no build attached, so that link will not resolve.';

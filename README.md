@@ -49,8 +49,9 @@ unknown ACPI methods on someone's laptop should not exist.
 
 Download page: **https://vomitted.github.io/OmniHub/**
 
-When a release is published it carries a self-contained zip that needs no .NET
-runtime, listed there with a SHA-256 to check it against. The build is not
+When a release is published it carries a setup program: self-contained, needing no
+.NET runtime, and offering the PawnIO driver and a sign-in task as tick-boxes. It is
+listed there with a SHA-256 to check it against. The build is not
 code-signed, so SmartScreen will warn about it — that warning means Microsoft
 has not seen the file vouched for, not that it has been cleared.
 
@@ -158,12 +159,14 @@ driver, no NVIDIA GPU. It stays hidden when everything is present.
 
 **Settings → Updates** shows the installed version, checks the published releases,
 lists what changed in each, and downloads a newer build with progress before
-revealing it in Explorer. It deliberately stops there rather than unpacking over
+revealing it in Explorer. It deliberately stops there rather than installing over
 the running install: OmniHub runs elevated and holds the fan service, and an app
 that replaces its own binary underneath itself — while it is the only thing
-keeping a curve applied — is a bad trade for saving one manual extract.
+keeping a curve applied — is a bad trade for saving one manual run of setup.
 
-Exit OmniHub, extract the new zip over your copy, and start it again.
+Exit OmniHub through the tray, run the new setup, and it installs over the top. Setup
+will stop and ask you to close the app if you forget, rather than killing it: a hard
+kill never reaches the shutdown path that hands fan control back to the BIOS.
 
 If you built from source instead:
 
