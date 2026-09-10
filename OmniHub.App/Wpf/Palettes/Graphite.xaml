@@ -1,12 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- GRAPHITE. Neutral grey, and the one palette whose accent is deliberately not a colour.
-
-         The premise: on this theme the only chromatic thing on screen should be a reading.
-         The accent ramp is steel rather than blue, so a progress track still reads as a track
-         and the application mark still has a gradient, but nothing in the chrome competes with
-         a temperature going amber. -->
+    <!-- GRAPHITE. Neutral grey with a steel ramp, so the only chromatic thing on screen is a reading. Middling shape, generous air. -->
 
     <Color x:Key="BackgroundColor">#FF0E0E0E</Color>
     <Color x:Key="PanelColor">#FF151515</Color>
@@ -37,5 +32,12 @@
 
     <Color x:Key="CaptionColor">#FF0E0E0E</Color>
     <Color x:Key="CaptionTextColor">#FFEDEDED</Color>
+
+    <!-- Shape and density. These are what stop a theme being a recolour: a palette sets how
+         sharp the corners are and how much air a card carries, so switching theme changes the
+         feel of the layout and not only its hue. -->
+    <CornerRadius x:Key="RadiusSm">6</CornerRadius>
+    <CornerRadius x:Key="RadiusMd">8</CornerRadius>
+    <Thickness x:Key="CardPadding">18</Thickness>
 
 </ResourceDictionary>

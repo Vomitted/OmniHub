@@ -65,6 +65,17 @@ public class StyleDictionaryTests
     [Fact]
     public void TheCardPaddingDefaultIsWhatTheCallersRelyOn()
     {
+        // Card padding stopped being one shared value and became part of the palette, so
+        // that a theme can be tight or roomy rather than only a different colour. This
+        // used to assert the literal Thickness(16); asserting a literal now would be
+        // asserting that themes cannot change density, which is the opposite of what the
+        // setting is for.
+        //
+        // What still has to hold is the mechanism: the setter must be a DYNAMIC reference,
+        // because a StaticResource is resolved once when the style is sealed and would bake
+        // one theme's padding into every other theme. That is not a hypothetical -- every
+        // brush in Theme.xaml is DynamicResource for exactly this reason, and live theme
+        // switching is the whole feature.
         WpfTestHost.Run(() =>
         {
             var merged = WpfTestHost.LoadResources();
@@ -74,7 +85,9 @@ public class StyleDictionaryTests
                 .FirstOrDefault(s => s.Property.Name == "Padding");
 
             Assert.True(padding is not null, "CardBorderStyle no longer sets Padding");
-            Assert.Equal(new Thickness(16), padding!.Value);
+
+            var dynamic = Assert.IsType<DynamicResourceExtension>(padding!.Value);
+            Assert.Equal("CardPadding", dynamic.ResourceKey);
         });
     }
 }

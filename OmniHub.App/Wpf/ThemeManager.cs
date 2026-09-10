@@ -22,19 +22,35 @@ public sealed record ThemeDefinition(string Id, string DisplayName, string Descr
 /// </summary>
 public static class ThemeManager
 {
+    // A palette carries shape and density as well as colour: RadiusSm, RadiusMd and
+    // CardPadding live in the palette files, so switching theme changes how sharp the
+    // corners are and how much air a card has, not just its hue. Two themes that differ
+    // only in accent are two themes nobody can tell apart in the picker, which is exactly
+    // what happened when OLED Black and Midnight were given the same ramp.
+    //
+    // The descriptions name the shape deliberately, because that is the part a colour
+    // swatch cannot show.
     public static readonly IReadOnlyList<ThemeDefinition> All = new[]
     {
-        new ThemeDefinition("OledBlack", "OLED Black", "True #000000. Pixels off on an OLED panel.",
-            "Wpf/Palettes/OledBlack.xaml"),
-        new ThemeDefinition("Midnight", "Midnight", "Deep blue-black. Kinder to an IPS panel.",
+        new ThemeDefinition("Midnight", "Midnight", "Blue-tinted black, rounded and roomy.",
             "Wpf/Palettes/Midnight.xaml"),
-        new ThemeDefinition("Graphite", "Graphite", "Neutral grey. Readings are the only colour.",
+        new ThemeDefinition("OledBlack", "OLED Black", "True #000000, sharp and tight. Pixels off on an OLED panel.",
+            "Wpf/Palettes/OledBlack.xaml"),
+        new ThemeDefinition("Graphite", "Graphite", "Neutral grey, steel accent. Readings are the only colour.",
             "Wpf/Palettes/Graphite.xaml"),
-        new ThemeDefinition("Ember", "Ember", "Warm black with a copper accent.",
+        new ThemeDefinition("Ember", "Ember", "Warm black, heat orange, softer corners.",
             "Wpf/Palettes/Ember.xaml"),
+        new ThemeDefinition("Nord", "Nord", "Cool slate and frost. The calmest and airiest.",
+            "Wpf/Palettes/Nord.xaml"),
+        new ThemeDefinition("Terminal", "Terminal", "Green phosphor, square corners, console density.",
+            "Wpf/Palettes/Terminal.xaml"),
+        new ThemeDefinition("Sandstone", "Sandstone", "Warm grey and gold. Softest corners, most air.",
+            "Wpf/Palettes/Sandstone.xaml"),
+        new ThemeDefinition("Mono", "Mono", "Greyscale, fully square, dense. A reading is the only hue.",
+            "Wpf/Palettes/Mono.xaml"),
     };
 
-    public const string DefaultId = "OledBlack";
+    public const string DefaultId = "Midnight";
 
     public static ThemeDefinition Current { get; private set; } = All[0];
 

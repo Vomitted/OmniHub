@@ -24,6 +24,7 @@ public partial class DashboardView : UserControl
 
         ModelText.Text = $"{ctx.Model.Manufacturer} {ctx.Model.Product}".Trim();
         LoadBatteryFooter();
+        StartPowerDrawTimer();
         TrendChart.LineBrush = (Brush)FindResource("DangerBrush");
         TrendChart.MinValue = 20; TrendChart.MaxValue = 100;
 
@@ -110,6 +111,98 @@ public partial class DashboardView : UserControl
 
     // Battery is static enough that polling it every 2s would be waste; read once on open.
     // BatteryInfoReader runs several WMI queries, so it stays off the UI thread.
+    private System.Windows.Threading.DispatcherTimer? _drawTimer;
+    private int _drawInFlight;
+
+    /// <summary>
+    /// Live battery draw in the title bar: what the machine is actually pulling from the
+    /// pack, and how long that leaves.
+    ///
+    /// Its own timer rather than the hardware poll, and the read is pushed to the thread
+    /// pool, because ReadDraw is a WMI query against root\wmi. Every OnReading subscriber
+    /// runs synchronously inside the poll loop's re-entrancy interlock, so a WMI round trip
+    /// there sits directly on the critical path of temperature polling and the fan curve.
+    /// That mistake has been made twice in this file already, once with nvidia-smi and once
+    /// with an SMU read, and both times it presented as the UI stuttering.
+    ///
+    /// Five seconds because a discharge figure that updates faster than that is noise: the
+    /// ACPI rate is itself an average over the firmware's own sampling window.
+    /// </summary>
+    private void StartPowerDrawTimer()
+    {
+        _drawTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(5),
+        };
+        _drawTimer.Tick += (_, _) => RefreshPowerDraw();
+
+        // Runs only while this tab is on screen.
+        //
+        // Views are constructed once and kept, and this one is not IDisposable, so a timer
+        // started in the constructor would query WMI every five seconds for the life of the
+        // process -- including the whole time the window is hidden in the tray, which is how
+        // this application normally sits. TrayFlyout already has that exact bug for the same
+        // reason. IsVisibleChanged is the cheap fix: the chip only matters while something
+        // is reading it.
+        IsVisibleChanged += (_, e) =>
+        {
+            if ((bool)e.NewValue) { _drawTimer.Start(); RefreshPowerDraw(); }
+            else _drawTimer.Stop();
+        };
+
+        if (IsVisible) { _drawTimer.Start(); RefreshPowerDraw(); }
+    }
+
+    private void RefreshPowerDraw()
+    {
+        // Single-flight: a slow WMI provider must not stack reads behind itself.
+        if (Interlocked.Exchange(ref _drawInFlight, 1) == 1) return;
+
+        Task.Run(() =>
+        {
+            OmniHub.Core.Optimize.BatteryDraw? draw = null;
+            try { draw = OmniHub.Core.Optimize.BatterySaver.ReadDraw(); }
+            catch { }
+            finally { Interlocked.Exchange(ref _drawInFlight, 0); }
+
+            Dispatcher.BeginInvoke(() => ShowPowerDraw(draw));
+        });
+    }
+
+    private void ShowPowerDraw(OmniHub.Core.Optimize.BatteryDraw? draw)
+    {
+        if (draw is null)
+        {
+            // No battery, or the provider refused. Not zero watts.
+            PowerDrawText.Text = "unavailable";
+            return;
+        }
+
+        if (draw.OnAc)
+        {
+            // Charging draws real power too, and it is worth seeing, but the pack is not
+            // discharging so there is no runtime to report.
+            PowerDrawText.Text = draw.Charging && draw.ChargeMilliwatts > 0
+                ? $"AC, charging {draw.ChargeMilliwatts / 1000.0:0.0} W"
+                : "AC";
+            return;
+        }
+
+        if (draw.DischargeMilliwatts <= 0)
+        {
+            // On battery but the rate came back zero. That is the firmware not having
+            // sampled yet, not the machine drawing nothing.
+            PowerDrawText.Text = "measuring";
+            return;
+        }
+
+        string watts = $"{draw.DischargeMilliwatts / 1000.0:0.0} W";
+        var left = OmniHub.Core.Optimize.BatterySaver.EstimateRuntime(draw);
+        PowerDrawText.Text = left is { } t
+            ? $"{watts}  {(int)t.TotalHours}h {t.Minutes:00}m left"
+            : watts;
+    }
+
     private void LoadBatteryFooter()
     {
         Task.Run(() => BatteryInfoReader.Read()).ContinueWith(t =>

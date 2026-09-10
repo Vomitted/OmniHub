@@ -212,7 +212,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="Bd" Background="Transparent" CornerRadius="{StaticResource RadiusSm}" BorderThickness="1" BorderBrush="Transparent">
+                    <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource RadiusSm}" BorderThickness="1" BorderBrush="Transparent">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="6,0"/>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -344,13 +344,13 @@
         <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="{StaticResource RadiusMd}"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}"/>
 
         <!-- 16, which is what every card actually uses. This said 18 and was overridden at all
              fifty-eight call sites, so the value here had never once reached the screen. Now
              that the default is the real one, the thirty-eight borders that were repeating
              Padding="16" do not have to say anything at all. -->
-        <Setter Property="Padding" Value="{StaticResource CardPadding}"/>
+        <Setter Property="Padding" Value="{DynamicResource CardPadding}"/>
 
         <!-- Hover warms the edge. It used to also lift the card 1.5px, and that CRASHED the
              app: a Freezable put in a Style.Setter value is frozen when the style is sealed,
@@ -903,14 +903,14 @@
          ==================================================================== -->
     <Style x:Key="TrackStyle" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource TrackBrush}"/>
-        <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}"/>
         <Setter Property="Height" Value="5"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="ClipToBounds" Value="True"/>
     </Style>
 
     <Style x:Key="TrackFillStyle" TargetType="Border">
-        <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}"/>
         <Setter Property="HorizontalAlignment" Value="Left"/>
     </Style>
 
@@ -920,7 +920,7 @@
         <Setter Property="Background" Value="{StaticResource PanelAltBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="{StaticResource RadiusSm}"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}"/>
         <Setter Property="Padding" Value="8,3"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>

@@ -1,0 +1,43 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- MONO. No colour at all in the chrome: a white accent on greyscale, fully square, maximum density. When a reading goes amber it is the only hue on screen. -->
+
+    <Color x:Key="BackgroundColor">#FF0B0B0B</Color>
+    <Color x:Key="PanelColor">#FF121212</Color>
+    <Color x:Key="PanelAltColor">#FF181818</Color>
+    <Color x:Key="PanelHoverColor">#FF1E1E1E</Color>
+    <Color x:Key="BorderColor">#FF242424</Color>
+    <Color x:Key="BorderStrongColor">#FF383838</Color>
+
+    <Color x:Key="TextPrimaryColor">#FFF2F2F2</Color>
+    <Color x:Key="TextMutedColor">#FF9E9E9E</Color>
+    <Color x:Key="TextFaintColor">#FF666666</Color>
+
+    <Color x:Key="AccentColor">#FFE8E8E8</Color>
+    <Color x:Key="AccentColor2">#FFFFFFFF</Color>
+    <Color x:Key="AccentDimColor">#38E8E8E8</Color>
+    <Color x:Key="AccentSoftColor">#1EE8E8E8</Color>
+
+    <Color x:Key="GoodColor">#FF22C55E</Color>
+    <Color x:Key="WarnColor">#FFF59E0B</Color>
+    <Color x:Key="DangerColor">#FFEF4444</Color>
+
+    <Color x:Key="MetricCpuColor">#FFE8E8E8</Color>
+    <Color x:Key="MetricMemColor">#FF22C55E</Color>
+    <Color x:Key="MetricGpuColor">#FFFFFFFF</Color>
+
+    <Color x:Key="CardTopHighlightColor">#12FFFFFF</Color>
+    <Color x:Key="GridLineColor">#FF191919</Color>
+
+    <Color x:Key="CaptionColor">#FF0B0B0B</Color>
+    <Color x:Key="CaptionTextColor">#FFF2F2F2</Color>
+
+    <!-- Shape and density. These are what stop a theme being a recolour: a palette sets how
+         sharp the corners are and how much air a card carries, so switching theme changes the
+         feel of the layout and not only its hue. -->
+    <CornerRadius x:Key="RadiusSm">0</CornerRadius>
+    <CornerRadius x:Key="RadiusMd">0</CornerRadius>
+    <Thickness x:Key="CardPadding">12</Thickness>
+
+</ResourceDictionary>

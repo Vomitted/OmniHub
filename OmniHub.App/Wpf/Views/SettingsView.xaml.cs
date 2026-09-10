@@ -77,25 +77,48 @@ public partial class SettingsView : UserControl
             var bg = Pick("BackgroundColor", Colors.Black);
             var panel = Pick("PanelColor", Colors.DimGray);
             var accent = Pick("AccentColor", Colors.SkyBlue);
+            var accent2 = Pick("AccentColor2", accent);
             var text = Pick("TextPrimaryColor", Colors.White);
             var border = Pick("BorderColor", Colors.Gray);
+
+            // The preview is a miniature CARD, drawn with the theme's own corner radius.
+            //
+            // Three colour chips alone could not tell two themes apart when both used the
+            // same accent, which is precisely how OLED Black and Midnight ended up looking
+            // identical in this picker. Now a palette also sets shape and density, and the
+            // swatch has to show that: the outer border takes RadiusMd, the inner card takes
+            // RadiusSm, and the gap between them is the theme's own CardPadding scaled down.
+            // A square, tight preview and a round, roomy one are distinguishable at a glance
+            // even when the hue is close.
+            var mdRadius = dict["RadiusMd"] is CornerRadius rMd ? rMd : new CornerRadius(6);
+            var smRadius = dict["RadiusSm"] is CornerRadius rSm ? rSm : new CornerRadius(3);
+            var pad = dict["CardPadding"] is Thickness p ? p.Left : 16.0;
+            double inset = Math.Clamp(pad / 3.0, 2, 8);
 
             var preview = new Border
             {
                 Width = 132,
                 Height = 56,
-                CornerRadius = new CornerRadius(3),
+                CornerRadius = mdRadius,
                 Background = new SolidColorBrush(bg),
                 BorderBrush = new SolidColorBrush(border),
                 BorderThickness = new Thickness(1),
-                Child = new StackPanel
+                Padding = new Thickness(inset),
+                Child = new Border
                 {
-                    Orientation = Orientation.Horizontal,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Children =
+                    CornerRadius = smRadius,
+                    Background = new SolidColorBrush(panel),
+                    BorderBrush = new SolidColorBrush(border),
+                    BorderThickness = new Thickness(1),
+                    Child = new StackPanel
                     {
-                        Swatch(panel), Swatch(text), Swatch(accent),
+                        Orientation = Orientation.Horizontal,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        Children =
+                        {
+                            Swatch(text), Swatch(accent), Swatch(accent2),
+                        },
                     },
                 },
             };

@@ -64,7 +64,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{StaticResource RadiusSm}"
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource RadiusSm}"
                                 BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -98,7 +98,7 @@
                  gets read the once it matters. -->
             <Border x:Name="ReadinessCard" Visibility="Collapsed"
                     Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1" CornerRadius="{StaticResource RadiusMd}" Margin="0,0,0,14">
+                    BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Margin="0,0,0,14">
                 <Grid>
                     <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource WarnBrush}" CornerRadius="10,0,0,10"/>
                     <StackPanel Margin="17,13,14,13">
@@ -151,6 +151,13 @@
                             <TextBlock x:Name="StripLoad" Text="--" Style="{StaticResource CardTagText}"/>
                         </StackPanel>
                     </Border>
+                    <Border Style="{StaticResource BarChip}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="power&#160;" Style="{StaticResource CardTagText}"
+                                       Foreground="{StaticResource TextFaintBrush}"/>
+                            <TextBlock x:Name="PowerDrawText" Text="--" Style="{StaticResource CardTagText}"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- Order runs quietest to loudest, left to right, which is the order the
@@ -158,7 +165,7 @@
                      way with names that had to be decoded: MAX TURBO, SMART BALANCED and
                      TRAVEL ECO all describe a mood rather than a setting. -->
                 <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
-                        BorderThickness="1" CornerRadius="{StaticResource RadiusSm}" Padding="3" VerticalAlignment="Center">
+                        BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <RadioButton x:Name="SilentBtn" GroupName="Preset" Content="Eco" Width="86" Height="28" Style="{StaticResource PillRadioStyle}" Checked="SilentBtn_Checked"/>
                         <RadioButton x:Name="BalancedBtn" GroupName="Preset" Content="Balanced" Width="96" Height="28" Margin="3,0" Style="{StaticResource PillRadioStyle}" Checked="BalancedBtn_Checked"/>
@@ -210,8 +217,8 @@
                                 <ColumnDefinition Width="0*"/>
                                 <ColumnDefinition Width="100*"/>
                             </Grid.ColumnDefinitions>
-                            <Border x:Name="ThermalBarFill" Grid.Column="0" Background="{StaticResource CriticalGradientBrush}" CornerRadius="{StaticResource RadiusPill}"/>
-                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                            <Border x:Name="ThermalBarFill" Grid.Column="0" Background="{StaticResource CriticalGradientBrush}" CornerRadius="{DynamicResource RadiusPill}"/>
+                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{DynamicResource RadiusPill}"/>
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -239,8 +246,8 @@
                                 <ColumnDefinition Width="0*"/>
                                 <ColumnDefinition Width="100*"/>
                             </Grid.ColumnDefinitions>
-                            <Border x:Name="GpuBarFill" Grid.Column="0" Background="{StaticResource AccentGradientBrush}" CornerRadius="{StaticResource RadiusPill}"/>
-                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                            <Border x:Name="GpuBarFill" Grid.Column="0" Background="{StaticResource AccentGradientBrush}" CornerRadius="{DynamicResource RadiusPill}"/>
+                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{DynamicResource RadiusPill}"/>
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -268,8 +275,8 @@
                                 <ColumnDefinition Width="0*"/>
                                 <ColumnDefinition Width="100*"/>
                             </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Background="{StaticResource PressureGradientBrush}" CornerRadius="{StaticResource RadiusPill}"/>
-                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                            <Border Grid.Column="0" Background="{StaticResource PressureGradientBrush}" CornerRadius="{DynamicResource RadiusPill}"/>
+                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{DynamicResource RadiusPill}"/>
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -294,8 +301,8 @@
                                 <ColumnDefinition Width="0*"/>
                                 <ColumnDefinition Width="100*"/>
                             </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Background="{StaticResource AccentGradientBrush}" CornerRadius="{StaticResource RadiusPill}"/>
-                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{StaticResource RadiusPill}"/>
+                            <Border Grid.Column="0" Background="{StaticResource AccentGradientBrush}" CornerRadius="{DynamicResource RadiusPill}"/>
+                            <Border Grid.Column="1" Background="{StaticResource TrackBrush}" CornerRadius="{DynamicResource RadiusPill}"/>
                         </Grid>
                     </StackPanel>
                 </Border>

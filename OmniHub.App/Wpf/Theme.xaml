@@ -119,8 +119,6 @@
          it is not true here, because a card now carries a visible 1px border that holds
          the corner's shape whatever the fill does. Sm is for chips, tags and buttons;
          Md is the card. Pill is reserved for the status capsule in the title bar. -->
-    <CornerRadius x:Key="RadiusSm">6</CornerRadius>
-    <CornerRadius x:Key="RadiusMd">10</CornerRadius>
     <CornerRadius x:Key="RadiusPill">999</CornerRadius>
 
     <!-- One spacing scale, to go beside the radius one above.
@@ -128,7 +126,6 @@
          Padding of 16 repeated on thirty-eight separate borders, while CardBorderStyle's own
          default sat at 18, overridden everywhere and therefore never once used. A default no
          caller accepts is not a default, it is a second value to keep in sync. -->
-    <Thickness x:Key="CardPadding">16</Thickness>
     <Thickness x:Key="CardPaddingTight">16,13</Thickness>
     <Thickness x:Key="CardGap">0,0,0,18</Thickness>
 
