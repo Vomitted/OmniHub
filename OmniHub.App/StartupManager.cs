@@ -87,6 +87,29 @@ public static class StartupManager
         }
     }
 
+    /// <summary>
+    /// Builds the task document.
+    ///
+    /// NOTHING in here may be an XML comment. This method used to carry its own reasoning
+    /// inline as a &lt;!-- --&gt; block, and that block contained a double hyphen in ordinary
+    /// prose ("schema 1.3 -- declaring 1.2"). XML forbids a double hyphen inside a comment,
+    /// so schtasks rejected the whole document with "incorrect comment syntax" at that line,
+    /// every single time, on every machine. The fallback then registered a task with the
+    /// command-line form and reported success, which is why this survived several rounds of
+    /// diagnosis: the symptom was a task with the wrong battery flags, not an error anyone
+    /// could see. Explanations belong here, in C#, where a hyphen is just a hyphen.
+    ///
+    /// Two constraints the document itself has to satisfy, since they can no longer be
+    /// written beside the elements they describe:
+    ///
+    /// Element ORDER matters. TaskSettingsType is an xsd:sequence, so the Settings children
+    /// are not interchangeable and a reordering is rejected outright.
+    ///
+    /// The schema version matters. DisallowStartOnRemoteAppSession and
+    /// UseUnifiedSchedulingEngine belong to schema 1.3; declaring 1.2 and including them is
+    /// rejected with "the task XML contains an unexpected node". They are dropped rather
+    /// than the version raised, because neither is wanted.
+    /// </summary>
     private static string TaskXml(string exePath)
     {
         string user = SecurityElement.Escape($@"{Environment.UserDomainName}\{Environment.UserName}") ?? "";
@@ -111,12 +134,6 @@ public static class StartupManager
                   <RunLevel>HighestAvailable</RunLevel>
                 </Principal>
               </Principals>
-              <!-- Element ORDER matters and the schema version matters.
-                   TaskSettingsType is an xsd:sequence, so these are not interchangeable, and
-                   DisallowStartOnRemoteAppSession and UseUnifiedSchedulingEngine belong to
-                   schema 1.3 -- declaring 1.2 and including them is rejected with "the task XML
-                   contains an unexpected node", which is exactly how this failed the first time.
-                   They are dropped rather than the version raised, because neither is wanted. -->
               <Settings>
                 <AllowStartOnDemand>true</AllowStartOnDemand>
                 <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
