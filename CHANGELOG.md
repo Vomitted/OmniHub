@@ -18,6 +18,32 @@ Nothing yet.
 
 ---
 
+## [1.3.3] — 2026-09-10
+
+### Fixed
+
+- **The update checker could not see any release newer than 1.2.0.** It identified an
+  OmniHub release by requiring an asset ending in `.zip`, which was correct until 1.3.0 made
+  the download a setup program. A release that fails that test is skipped rather than
+  reported, so the newest release the application could see was 1.2.0 — which loses to any
+  1.3.x. Two symptoms, one cause: anyone on 1.3.x was told they were already on the latest
+  version, and the release-notes list in Settings had nothing newer than 1.2.0 to show. A
+  setup executable now counts and outranks a zip, so the older releases still resolve.
+  **If you are on 1.3.0, 1.3.1 or 1.3.2 your updater is blind and will not offer you this**
+  — install it by hand once and it works from then on.
+- **Downloading an update saved it under the wrong name.** `DownloadAsync` built
+  `OmniHub-<tag>-win-x64.zip` unconditionally, so from 1.3.0 it would have written a setup
+  executable under a `.zip` name: a file Explorer will not run and no archiver will open. It
+  follows the published asset name now.
+- **The tray flyout cut off its own button.** Its height was hardcoded and the content
+  measured taller, clipping *Open OmniHub* along the bottom edge. It sizes to its content
+  now, which also covers themes that carry more padding than the one it was measured
+  against.
+- **The divider in the tray flyout was a three-pixel dot.** It set both `Width="3"` and
+  `HorizontalAlignment="Stretch"`; width wins.
+
+---
+
 ## [1.3.2] — 2026-09-10
 
 ### Added
@@ -379,7 +405,8 @@ telemetry. If a value cannot be read, the interface says so.
   against your installed version.
 - Throttling detection is not independently verified against known-good hardware.
 
-[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.3.2...HEAD
+[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.3.3...HEAD
+[1.3.3]: https://github.com/Vomitted/OmniHub/releases/tag/v1.3.3
 [1.3.2]: https://github.com/Vomitted/OmniHub/releases/tag/v1.3.2
 [1.3.1]: https://github.com/Vomitted/OmniHub/releases/tag/v1.3.1
 [1.3.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.3.0
