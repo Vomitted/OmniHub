@@ -77,6 +77,10 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent runascurrentuser
+; The silent, self-updating path. No runascurrentuser here on purpose: setup is already
+; elevated and the application requires administrator, so launching it as setup s own child
+; hands it that token and the user never sees a second UAC prompt.
+Filename: "{app}\{#AppExe}"; Flags: nowait; Check: RestartRequested
 
 [UninstallRun]
 ; The sign-in task points at a path that is about to stop existing. Left behind, it becomes a
@@ -84,6 +88,38 @@ Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags
 Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN OmniHub_AutoStart /F"; Flags: runhidden; RunOnceId: "RemoveStartupTask"
 
 [Code]
+
+{ Waits for a running OmniHub to finish its own shutdown before going any further.
+
+  An update started from inside the application launches setup and THEN closes itself, so
+  the two overlap by a second or two. Without this wait, AppMutex would find the app still
+  running and stop to ask the user to close it, which is precisely the friction the in-app
+  updater exists to remove.
+
+  The application closes itself rather than being killed because its shutdown path is what
+  hands fan control back to the BIOS; that is also why setup waits for it instead of
+  hurrying it along. Bounded at thirty seconds so a wedged process cannot stall setup
+  forever -- past that, AppMutex takes over and asks the user, which is the old behaviour
+  rather than a new failure. }
+function InitializeSetup(): Boolean;
+var
+  Waited: Integer;
+begin
+  Waited := 0;
+  while CheckForMutexes('Local\OmniHub_SingleInstance_Mutex') and (Waited < 30000) do
+  begin
+    Sleep(500);
+    Waited := Waited + 500;
+  end;
+  Result := True;
+end;
+
+{ True only when the application asked to be restarted. A silent install run by a
+  deployment script should not start a fan controller on somebody s machine unbidden. }
+function RestartRequested(): Boolean;
+begin
+  Result := WizardSilent and (Pos('/RESTARTAPP', UpperCase(GetCmdTail)) > 0);
+end;
 
 { PawnIO is namazso's ring-0 driver runtime, from pawnio.eu, and it is not redistributed here.
   It is fetched through winget so the user gets it from its own publisher, signed, rather than

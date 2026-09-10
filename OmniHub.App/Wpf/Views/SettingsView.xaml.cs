@@ -739,12 +739,24 @@ public partial class SettingsView : UserControl
     }
 
     /// <summary>
-    /// Downloads the release zip and shows it in Explorer.
+    /// Downloads the update and installs it: progress bar, then the application restarts.
     ///
-    /// It stops at revealing the file rather than unpacking over the running install. OmniHub
-    /// holds the fan service and runs elevated; swapping its own binary underneath itself to
-    /// save one manual extract is not a trade worth making in an app whose absence puts the
-    /// laptop back on the stock curve.
+    /// This used to stop at revealing the file in Explorer, and the reasoning was sound at
+    /// the time: OmniHub holds the fan service and runs elevated, and an application that
+    /// swaps its own binary underneath itself is a bad trade in a program whose absence puts
+    /// the laptop back on the stock BIOS curve. What changed is that there is now an
+    /// installer to hand the job to, so nothing has to overwrite anything underneath itself.
+    ///
+    /// The sequence, and why it is in this order: setup is launched first and OmniHub closes
+    /// itself immediately afterwards. Closing goes through Application.Shutdown, which raises
+    /// Closed, which runs MainWindow.Cleanup -- the path that hands fan control back to the
+    /// BIOS. Setup waits for this process s mutex to disappear before it touches anything, so
+    /// the overlap is safe and the user is never asked to close an application that is
+    /// already closing. Setup then relaunches OmniHub with its own elevated token, so there
+    /// is no second UAC prompt.
+    ///
+    /// A release older than 1.3.0 published a zip rather than an installer, and there is
+    /// nothing to hand off to in that case, so that path still reveals the file.
     /// </summary>
     private async void DownloadBtn_Click(object sender, RoutedEventArgs e)
     {
@@ -766,7 +778,46 @@ public partial class SettingsView : UserControl
             return;
         }
 
-        UpdateStatus.Text = "Downloaded. Exit OmniHub, extract it over your current copy, and start it again.";
+        if (!path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            // A zip, from a release older than 1.3.0. Nothing to hand off to.
+            UpdateStatus.Text = "Downloaded. Exit OmniHub, extract it over your current copy, and start it again.";
+            Reveal(path);
+            return;
+        }
+
+        UpdateStatus.Text = "Installing. OmniHub will close and reopen when it finishes.";
+        DownloadBtn.IsEnabled = false;
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = path,
+                // SILENT shows setup s own progress window and skips the wizard pages; the
+                // user already chose to update and has nothing left to decide. NORESTART
+                // forbids rebooting Windows. RESTARTAPP is ours, and is what tells setup to
+                // start OmniHub again afterwards rather than leaving the machine on the
+                // stock fan curve.
+                Arguments = "/SILENT /NORESTART /RESTARTAPP",
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus.Text = $"The installer would not start ({ex.Message}). The file is in your Downloads folder.";
+            DownloadBtn.IsEnabled = true;
+            Reveal(path);
+            return;
+        }
+
+        // Closed, not killed. Shutdown raises Closed on the main window, which runs Cleanup,
+        // which is what returns the fans to the BIOS before setup replaces the binary.
+        System.Windows.Application.Current.Shutdown();
+    }
+
+    private static void Reveal(string path)
+    {
         try
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
