@@ -3,7 +3,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
-        Width="300" Height="240" Deactivated="Window_Deactivated">
+        Width="300" SizeToContent="Height" Deactivated="Window_Deactivated">
+    <!-- The height is measured, never declared.
+
+         It was Height="240" and the content had grown past it, so the Open button was cut
+         off along the bottom edge. A fixed height on a panel whose text comes from live
+         readings was always going to do that: a theme changing its card padding, a longer
+         fan-mode name, or a reading gaining a digit are all enough. SizeToContent removes
+         the class of bug rather than buying a few more pixels of headroom. -->
     <Border Style="{StaticResource CardBorderStyle}" Padding="18">
         <Border.Effect>
             <DropShadowEffect Color="Black" Opacity="0.4" BlurRadius="24" ShadowDepth="6" Direction="270"/>
@@ -13,7 +20,10 @@
             <TextBlock x:Name="TempText" Style="{StaticResource BigNumberText}" FontSize="32" Text="-- C"/>
             <TextBlock x:Name="ThrottleText" Style="{StaticResource MutedText}" Margin="0,0,0,14"/>
 
-            <Border Width="3" Height="1" Background="{StaticResource BorderBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,14"/>
+            <!-- Width and Stretch together are a contradiction, and Width wins: this was a
+                 three-pixel dot floating in the middle of the panel rather than a rule
+                 across it. Only the height is fixed now. -->
+            <Border Height="1" Background="{StaticResource BorderBrush}" HorizontalAlignment="Stretch" Margin="0,0,0,14"/>
 
             <TextBlock Text="FAN MODE" Style="{StaticResource SubHeadingText}"/>
             <TextBlock x:Name="ModeText" Style="{StaticResource BodyText}" FontFamily="{StaticResource UiFontSemibold}" Margin="0,0,0,4"/>

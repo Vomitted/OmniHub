@@ -41,9 +41,20 @@ public partial class TrayFlyout : Window
     public void ShowNearTray()
     {
         var area = System.Windows.SystemParameters.WorkArea;
-        Left = area.Right - Width - 12;
-        Top = area.Bottom - Height - 12;
+
+        // Positioned AFTER the window has measured itself.
+        //
+        // With SizeToContent, Height is NaN until layout runs, so the old arithmetic would
+        // have produced NaN for Top. Show() performs that first layout pass synchronously,
+        // which makes ActualHeight usable immediately afterwards -- but the window is shown
+        // transparent first so that no frame can be composed at the pre-positioned
+        // location. Setting opacity back before returning to the dispatcher means nothing
+        // is ever painted invisible either.
+        Opacity = 0;
         Show();
+        Left = area.Right - ActualWidth - 12;
+        Top = area.Bottom - ActualHeight - 12;
+        Opacity = 1;
         Activate();
     }
 
