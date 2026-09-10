@@ -207,4 +207,90 @@ public class UpdateCheckTests
         Assert.Null(UpdateCheck.NewerThan(releases, new Version(1, 0, 0)));
         Assert.Null(UpdateCheck.NewerThan(releases, new Version(2, 0, 0)));
     }
+
+    /// <summary>The release shapes that exist now: a setup executable, an old zip, and the
+    /// other application whose asset is also an .exe.</summary>
+    private const string SetupAndZip = """
+    [
+      {
+        "tag_name": "v9.0.0",
+        "name": "OmniControl Suite v9.0.0",
+        "body": "A different application.",
+        "published_at": "2026-08-24T16:28:51Z",
+        "prerelease": false,
+        "assets": [
+          { "name": "OmniControlSuite.exe",
+            "browser_download_url": "https://example.invalid/OmniControlSuite.exe",
+            "size": 8388608 }
+        ]
+      },
+      {
+        "tag_name": "v1.3.2",
+        "name": "OmniHub 1.3.2",
+        "body": "Eight themes and a battery readout.",
+        "published_at": "2026-09-10T05:11:54Z",
+        "prerelease": false,
+        "assets": [
+          { "name": "OmniHub-1.3.2-setup.exe",
+            "browser_download_url": "https://example.invalid/OmniHub-1.3.2-setup.exe",
+            "size": 51436307 }
+        ]
+      },
+      {
+        "tag_name": "v1.2.0",
+        "name": "OmniHub 1.2.0",
+        "body": "The last release that shipped a zip.",
+        "published_at": "2026-09-09T05:55:03Z",
+        "prerelease": false,
+        "assets": [
+          { "name": "OmniHub-1.2.0-win-x64.zip",
+            "browser_download_url": "https://example.invalid/OmniHub-1.2.0-win-x64.zip",
+            "size": 66079216 }
+        ]
+      }
+    ]
+    """;
+
+    /// <summary>
+    /// A release whose only asset is a setup executable is an OmniHub release.
+    ///
+    /// This is the regression that shipped. The rule required an asset ending in ".zip", and
+    /// from 1.3.0 the download became a setup program, so the newest release the application
+    /// could SEE was 1.2.0. Anyone on 1.3.x was told they were on the latest version, and the
+    /// release-notes list stopped at 1.2.0 -- with no error anywhere, because a release that
+    /// fails the identification test is skipped rather than reported.
+    /// </summary>
+    [Fact]
+    public void ASetupExecutableCountsAsAnOmniHubRelease()
+    {
+        var releases = UpdateCheck.ParseReleases(SetupAndZip);
+
+        Assert.Contains(releases, r => r.Tag == "v1.3.2");
+        Assert.DoesNotContain(releases, r => r.Tag == "v9.0.0");
+    }
+
+    /// <summary>The zip releases still resolve, so the check keeps working on older builds.</summary>
+    [Fact]
+    public void TheOlderZipReleasesStillResolve()
+    {
+        var releases = UpdateCheck.ParseReleases(SetupAndZip);
+
+        var zip = Assert.Single(releases, r => r.Tag == "v1.2.0");
+        Assert.EndsWith(".zip", zip.DownloadUrl);
+    }
+
+    /// <summary>
+    /// Someone on 1.3.1 is offered 1.3.2, which is the thing that was broken: the newest
+    /// visible release was 1.2.0, which loses to 1.3.1, so NewerThan returned nothing.
+    /// </summary>
+    [Fact]
+    public void AVersionBehindTheSetupReleaseIsOfferedTheUpgrade()
+    {
+        var releases = UpdateCheck.ParseReleases(SetupAndZip);
+
+        var offer = UpdateCheck.NewerThan(releases, new Version(1, 3, 1));
+
+        Assert.NotNull(offer);
+        Assert.Equal("v1.3.2", offer!.Tag);
+    }
 }

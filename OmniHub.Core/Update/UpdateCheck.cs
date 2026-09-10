@@ -28,7 +28,7 @@ public sealed record ReleaseInfo(
 /// applications: OmniHub, and the older OmniControl Suite whose v9.0.0 tag is numerically the
 /// highest and is what GitHub's own /releases/latest returns. Asking for "latest" would offer
 /// every OmniHub user an unrelated program as an upgrade. A release counts as OmniHub only if
-/// it carries an asset named OmniHub-*.zip -- a structural test rather than a cosmetic one,
+/// it carries an asset named OmniHub-* -- a structural test rather than a cosmetic one,
 /// which additionally guarantees there is something to download.
 /// </summary>
 public static class UpdateCheck
@@ -87,18 +87,34 @@ public static class UpdateCheck
                     if (ParseVersion(tag) is not { } version) continue;
 
                     // The discriminator. No OmniHub asset, not an OmniHub release.
+                    //
+                    // An installer counts, and beats a zip. From 1.3.0 the download is a
+                    // setup program; before that it was a zip. Requiring ".zip" here meant
+                    // the newest release this could SEE was 1.2.0, so the application told
+                    // everyone they were already up to date and listed no notes newer than
+                    // that -- silently, because a release that fails the test is skipped
+                    // rather than reported. Both formats are accepted so the check still
+                    // works on the older releases, and a release carrying both offers the
+                    // installer.
                     string? url = null;
                     long size = 0;
+                    int best = 0;
                     if (el.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
                     {
                         foreach (var a in assets.EnumerateArray())
                         {
                             string name = Str(a, "name");
-                            if (!name.StartsWith("OmniHub", StringComparison.OrdinalIgnoreCase) ||
-                                !name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)) continue;
+                            if (!name.StartsWith("OmniHub", StringComparison.OrdinalIgnoreCase)) continue;
+
+                            int rank =
+                                name.EndsWith("setup.exe", StringComparison.OrdinalIgnoreCase) ? 3 :
+                                name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? 2 :
+                                name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+                            if (rank <= best) continue;
+
+                            best = rank;
                             url = Str(a, "browser_download_url");
                             size = a.TryGetProperty("size", out var s) && s.TryGetInt64(out long n) ? n : 0;
-                            break;
                         }
                     }
                     if (url is null) continue;
@@ -192,13 +208,13 @@ public static class UpdateCheck
     }
 
     /// <summary>
-    /// Downloads a release's zip to a temporary folder and returns the path, reporting progress
+    /// Downloads a release's installer to a temporary folder and returns the path, reporting progress
     /// as a fraction between 0 and 1.
     ///
-    /// It deliberately stops there rather than unpacking over the running installation. OmniHub
-    /// runs elevated and holds the fan service; a process that replaces its own binary while it
-    /// is the only thing keeping a fan curve applied is a bad trade for saving one manual
-    /// extract. The caller reveals the file and lets the user exit and swap it.
+    /// It deliberately stops there rather than running the installer itself. OmniHub runs
+    /// elevated and holds the fan service; a process that launches something to replace its
+    /// own binary while it is the only thing keeping a fan curve applied is a bad trade for
+    /// saving one double-click. The caller reveals the file and lets the user exit and run it.
     ///
     /// ponytail: no self-replace, no delta patching. Revisit only if updating by hand is
     /// actually the friction people report.
@@ -209,7 +225,15 @@ public static class UpdateCheck
         if (release.DownloadUrl is null) return null;
 
         string dir = Path.Combine(Path.GetTempPath(), "OmniHub-update");
-        string file = Path.Combine(dir, $"OmniHub-{release.Tag}-win-x64.zip");
+        // Named after whatever was actually published, not after a guess. This built
+        // "OmniHub-<tag>-win-x64.zip" unconditionally, which from 1.3.0 would have saved a
+        // setup executable under a .zip name -- a file Explorer would refuse to run and
+        // that no archiver could open either.
+        string asset = Uri.TryCreate(release.DownloadUrl, UriKind.Absolute, out var u)
+            ? Path.GetFileName(u.LocalPath)
+            : "";
+        if (asset.Length == 0) asset = $"OmniHub-{release.Tag}-setup.exe";
+        string file = Path.Combine(dir, asset);
 
         try
         {
