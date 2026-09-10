@@ -14,6 +14,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+Nothing yet.
+
+---
+
+## [1.3.0] — 2026-09-10
+
 Three threads. Battery, because 1.2.0 was tuned, measured and released entirely on mains and
 a good deal of it only goes wrong once the charger comes out. A real installer, replacing a
 zip and the instruction to "extract somewhere permanent". And the interface, rebuilt against
@@ -317,7 +323,8 @@ telemetry. If a value cannot be read, the interface says so.
   against your installed version.
 - Throttling detection is not independently verified against known-good hardware.
 
-[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Vomitted/OmniHub/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.3.0
 [1.2.0]: https://github.com/Vomitted/OmniHub/releases/tag/v1.2.0
 [1.1.2]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.2
 [1.1.1]: https://github.com/Vomitted/OmniHub/releases/tag/v1.1.1
