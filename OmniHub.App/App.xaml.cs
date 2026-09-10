@@ -1,3 +1,5 @@
+using System.IO;
+using System.IO;
 using System.Threading;
 using System.Windows;
 using Application = System.Windows.Application;
@@ -107,7 +109,44 @@ public partial class App : Application
         // Above the single-instance guard because setup may run it while OmniHub is open.
         if (e.Args.Length > 0 && e.Args[0].Equals("-InstallStartup", StringComparison.OrdinalIgnoreCase))
         {
-            Environment.ExitCode = StartupManager.SetEnabled(true) ? 0 : 1;
+            // Three outcomes, not two.
+            //
+            // SetEnabled returns true both for a task registered from XML and for one that
+            // fell back to the plain command-line form, and those are not the same result:
+            // the fallback cannot express the battery flags, so the task it leaves behind
+            // will refuse to start unplugged and be killed on unplug. Reporting that as
+            // plain success is how a degraded install stays invisible -- exit code 0 with
+            // the wrong flags is exactly what this flag did on its first real run.
+            //
+            // 0 = registered as intended, 2 = registered but degraded, 1 = not registered.
+            bool ok = StartupManager.SetEnabled(true);
+            string? note = StartupManager.LastError;
+
+            Environment.ExitCode = ok ? (note is { Length: > 0 } ? 2 : 0) : 1;
+
+            // Written to a file, not a console.
+            //
+            // This branch exists so the installer can register the task, and the installer
+            // runs it hidden with no console attached -- AllocConsole would open a window
+            // nobody sees and write into it. A line in the log directory is the only place
+            // this message can be read afterwards, which is the whole point of producing it.
+            if (note is { Length: > 0 })
+            {
+                try
+                {
+                    string dir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "OmniHub", "logs");
+                    Directory.CreateDirectory(dir);
+                    File.AppendAllText(Path.Combine(dir, "startup-task.log"),
+                        $"{DateTime.Now:u}  exit={Environment.ExitCode}{Environment.NewLine}{note}{Environment.NewLine}{Environment.NewLine}");
+                }
+                catch
+                {
+                    // A diagnostic that throws is worse than one that is missing.
+                }
+            }
+
             Shutdown();
             return;
         }

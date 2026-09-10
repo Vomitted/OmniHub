@@ -19,7 +19,7 @@ internal static class Program
     [DllImport("kernel32.dll")]
     private static extern bool AllocConsole();
 
-    private static void AttachVisibleConsole()
+    internal static void AttachVisibleConsole()
     {
         AllocConsole();
         var stdout = new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true };
