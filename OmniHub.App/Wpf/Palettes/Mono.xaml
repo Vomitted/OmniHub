@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
     <!-- MONO. No colour at all in the chrome: a white accent on greyscale, fully square, maximum density. When a reading goes amber it is the only hue on screen. -->
 
@@ -27,7 +28,7 @@
     <Color x:Key="MetricMemColor">#FF22C55E</Color>
     <Color x:Key="MetricGpuColor">#FFFFFFFF</Color>
 
-    <Color x:Key="CardTopHighlightColor">#12FFFFFF</Color>
+    <Color x:Key="CardTopHighlightColor">#00000000</Color>
     <Color x:Key="GridLineColor">#FF191919</Color>
 
     <Color x:Key="CaptionColor">#FF0B0B0B</Color>
@@ -39,5 +40,12 @@
     <CornerRadius x:Key="RadiusSm">0</CornerRadius>
     <CornerRadius x:Key="RadiusMd">0</CornerRadius>
     <Thickness x:Key="CardPadding">12</Thickness>
+    <!-- Character beyond colour and shape. Monospaced and perfectly flat. With no colour and no depth, only size and spacing separate anything.
+
+         HeadingFont is a real face rather than an alias, because a palette is merged ahead of
+         Theme.xaml and cannot reliably point at a key defined there. -->
+    <FontFamily x:Key="HeadingFont">Cascadia Mono, Consolas, Courier New</FontFamily>
+    <sys:Double x:Key="TrackHeight">4</sys:Double>
+    <sys:Double x:Key="MetricValueSize">28</sys:Double>
 
 </ResourceDictionary>

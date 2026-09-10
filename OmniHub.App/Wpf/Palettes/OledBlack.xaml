@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
     <!-- OLED BLACK. True #000000 so the pixels are off, and deliberately the tightest theme here: sharp corners and close padding, an instrument rather than a card deck. -->
 
@@ -27,7 +28,7 @@
     <Color x:Key="MetricMemColor">#FF22C55E</Color>
     <Color x:Key="MetricGpuColor">#FF2DD4BF</Color>
 
-    <Color x:Key="CardTopHighlightColor">#10FFFFFF</Color>
+    <Color x:Key="CardTopHighlightColor">#0CFFFFFF</Color>
     <Color x:Key="GridLineColor">#FF101316</Color>
 
     <Color x:Key="CaptionColor">#FF000000</Color>
@@ -39,5 +40,12 @@
     <CornerRadius x:Key="RadiusSm">3</CornerRadius>
     <CornerRadius x:Key="RadiusMd">4</CornerRadius>
     <Thickness x:Key="CardPadding">12</Thickness>
+    <!-- Character beyond colour and shape. Monospaced headings and a barely-there lift, so the whole window reads as instrumentation rather than as a document.
+
+         HeadingFont is a real face rather than an alias, because a palette is merged ahead of
+         Theme.xaml and cannot reliably point at a key defined there. -->
+    <FontFamily x:Key="HeadingFont">Cascadia Mono, Consolas, Courier New</FontFamily>
+    <sys:Double x:Key="TrackHeight">4</sys:Double>
+    <sys:Double x:Key="MetricValueSize">28</sys:Double>
 
 </ResourceDictionary>

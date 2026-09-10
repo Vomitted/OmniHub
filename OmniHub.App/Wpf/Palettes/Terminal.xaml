@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
     <!-- TERMINAL. Green phosphor on near-black, square corners, minimum padding. The densest theme here on purpose: it is meant to read like a console, not an app. -->
 
@@ -27,7 +28,7 @@
     <Color x:Key="MetricMemColor">#FF3FB950</Color>
     <Color x:Key="MetricGpuColor">#FF7EE787</Color>
 
-    <Color x:Key="CardTopHighlightColor">#0EFFFFFF</Color>
+    <Color x:Key="CardTopHighlightColor">#00000000</Color>
     <Color x:Key="GridLineColor">#FF111611</Color>
 
     <Color x:Key="CaptionColor">#FF060806</Color>
@@ -39,5 +40,12 @@
     <CornerRadius x:Key="RadiusSm">2</CornerRadius>
     <CornerRadius x:Key="RadiusMd">3</CornerRadius>
     <Thickness x:Key="CardPadding">10</Thickness>
+    <!-- Character beyond colour and shape. Monospaced throughout, hairline tracks, no lift at all. Perfectly flat surfaces, the way a console has no depth.
+
+         HeadingFont is a real face rather than an alias, because a palette is merged ahead of
+         Theme.xaml and cannot reliably point at a key defined there. -->
+    <FontFamily x:Key="HeadingFont">Cascadia Mono, Consolas, Courier New</FontFamily>
+    <sys:Double x:Key="TrackHeight">3</sys:Double>
+    <sys:Double x:Key="MetricValueSize">26</sys:Double>
 
 </ResourceDictionary>

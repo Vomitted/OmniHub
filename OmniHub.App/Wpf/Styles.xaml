@@ -623,7 +623,7 @@
     </ControlTemplate>
 
     <Style x:Key="HeadingText" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="{StaticResource UiFontSemibold}"/>
+        <Setter Property="FontFamily" Value="{DynamicResource HeadingFont}"/>
         <Setter Property="FontSize" Value="22"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -904,7 +904,7 @@
     <Style x:Key="TrackStyle" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource TrackBrush}"/>
         <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}"/>
-        <Setter Property="Height" Value="5"/>
+        <Setter Property="Height" Value="{DynamicResource TrackHeight}"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="ClipToBounds" Value="True"/>
     </Style>

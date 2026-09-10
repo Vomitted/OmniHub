@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
     <!-- GRAPHITE. Neutral grey with a steel ramp, so the only chromatic thing on screen is a reading. Middling shape, generous air. -->
 
@@ -39,5 +40,12 @@
     <CornerRadius x:Key="RadiusSm">6</CornerRadius>
     <CornerRadius x:Key="RadiusMd">8</CornerRadius>
     <Thickness x:Key="CardPadding">18</Thickness>
+    <!-- Character beyond colour and shape. Deliberately unremarkable: this theme's whole argument is that nothing in the chrome should draw the eye.
+
+         HeadingFont is a real face rather than an alias, because a palette is merged ahead of
+         Theme.xaml and cannot reliably point at a key defined there. -->
+    <FontFamily x:Key="HeadingFont">Segoe UI Variable Display Semibold, Segoe UI Semibold, Segoe UI</FontFamily>
+    <sys:Double x:Key="TrackHeight">5</sys:Double>
+    <sys:Double x:Key="MetricValueSize">30</sys:Double>
 
 </ResourceDictionary>

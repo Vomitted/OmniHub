@@ -14,7 +14,7 @@
              The value dominates and everything else is deliberately small, so a glance reads
              the number and the supporting detail is there when you go looking for it. -->
         <Style x:Key="MetricTitle" TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource HeadingFont}"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -23,7 +23,7 @@
         </Style>
         <Style x:Key="MetricValue" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
-            <Setter Property="FontSize" Value="30"/>
+            <Setter Property="FontSize" Value="{DynamicResource MetricValueSize}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
             <Setter Property="LineHeight" Value="32"/>
@@ -212,7 +212,7 @@
                             <TextBlock x:Name="HeadroomText" Text="--" Style="{StaticResource MetricFoot}"
                                        Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Right"/>
                         </Grid>
-                        <Grid x:Name="ThermalBar" Height="5">
+                        <Grid x:Name="ThermalBar" Height="{DynamicResource TrackHeight}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="0*"/>
                                 <ColumnDefinition Width="100*"/>
@@ -241,7 +241,7 @@
                         <Grid Margin="0,12,0,6">
                             <TextBlock x:Name="GpuSubText" Style="{StaticResource SubLabel}" TextTrimming="CharacterEllipsis"/>
                         </Grid>
-                        <Grid x:Name="GpuBar" Height="5">
+                        <Grid x:Name="GpuBar" Height="{DynamicResource TrackHeight}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="0*"/>
                                 <ColumnDefinition Width="100*"/>
@@ -270,7 +270,7 @@
                         <Grid Margin="0,12,0,6">
                             <TextBlock x:Name="MemSubText" Style="{StaticResource SubLabel}" TextTrimming="CharacterEllipsis"/>
                         </Grid>
-                        <Grid x:Name="MemLoadBar" Height="5">
+                        <Grid x:Name="MemLoadBar" Height="{DynamicResource TrackHeight}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="0*"/>
                                 <ColumnDefinition Width="100*"/>
@@ -296,7 +296,7 @@
                         <Grid Margin="0,12,0,6">
                             <TextBlock Text="Across all cores" Style="{StaticResource SubLabel}"/>
                         </Grid>
-                        <Grid x:Name="CpuLoadBar" Height="5">
+                        <Grid x:Name="CpuLoadBar" Height="{DynamicResource TrackHeight}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="0*"/>
                                 <ColumnDefinition Width="100*"/>
