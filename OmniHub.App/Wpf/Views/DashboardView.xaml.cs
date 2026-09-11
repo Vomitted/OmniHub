@@ -25,6 +25,11 @@ public partial class DashboardView : UserControl
         ModelText.Text = $"{ctx.Model.Manufacturer} {ctx.Model.Product}".Trim();
         LoadBatteryFooter();
         StartPowerDrawTimer();
+
+        // Warmed off-thread. The first ReadDiscrete resolves the device path with a WMI
+        // query, and the call site is inside a dispatcher callback, so leaving it cold
+        // would put that one query on the UI thread the first time the GPU reads as asleep.
+        Task.Run(() => OmniHub.Core.Hardware.GpuPowerState.ReadDiscrete());
         TrendChart.LineBrush = (Brush)FindResource("DangerBrush");
         TrendChart.MinValue = 20; TrendChart.MaxValue = 100;
 
@@ -743,7 +748,24 @@ public partial class DashboardView : UserControl
                 Animate.Clear(GpuTempText);
                 GpuTempUnit.Visibility = Visibility.Collapsed;
                 SetBar(GpuBar, 0);
-                GpuFootRight.Text = GpuTelemetry.IsAvailable ? "UNAVAILABLE" : "NO GPU REPORTED";
+
+                // "Asleep" and "unavailable" are different facts, and this branch was
+                // reporting both as the second one.
+                //
+                // On battery the GPU is deliberately not queried, because asking nvidia-smi
+                // wakes the card. So there is no temperature to show -- but that is the
+                // feature working, not a reading that failed, and saying UNAVAILABLE made a
+                // success look like a fault. The power state comes from the PCI bus driver
+                // rather than from the card, so reporting it costs nothing and wakes nothing:
+                // it is the one measurement of this that can be taken without destroying it.
+                var dstate = OmniHub.Core.Hardware.GpuPowerState.ReadDiscrete();
+                GpuFootRight.Text =
+                    dstate is OmniHub.Core.Hardware.DevicePowerState.D3
+                        or OmniHub.Core.Hardware.DevicePowerState.D1
+                        or OmniHub.Core.Hardware.DevicePowerState.D2
+                        ? OmniHub.Core.Hardware.GpuPowerState.Describe(dstate).ToUpperInvariant()
+                    : GpuTelemetry.IsAvailable ? "UNAVAILABLE"
+                    : "NO GPU REPORTED";
             }
 
             TrendChart.Push(tempC);
