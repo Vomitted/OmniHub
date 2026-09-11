@@ -285,6 +285,25 @@ public sealed class HardwareContext : IDisposable
         return _lastTemperature;
     }
 
+    /// <summary>
+    /// Stops the poll timer so it can be started again later.
+    ///
+    /// Added for suspend. This machine uses S0 Low Power Idle, where Windows does NOT suspend
+    /// a desktop process -- so without this the poll kept running straight through the sleep
+    /// transition, issuing HP BIOS calls that enter SMM and SMU mailbox transactions every two
+    /// seconds while the platform was trying to reach low-power idle. Three of this machine's
+    /// recorded hard hangs carry SleepInProgress=6 in their Kernel-Power event, meaning they
+    /// died mid-transition, and a firmware call landing in that window is a known way to wedge
+    /// a modern-standby system hard enough that no bugcheck is ever written.
+    ///
+    /// Dispose stays the teardown; this is the pause. StartPolling is idempotent and nulls are
+    /// swapped atomically, so start/stop can interleave with a tick already in flight.
+    /// </summary>
+    public void StopPolling()
+    {
+        var timer = Interlocked.Exchange(ref _pollTimer, null);
+        try { timer?.Dispose(); } catch { }
+    }
     public void StartPolling(TimeSpan interval)
     {
         if (_pollTimer is not null) return; // idempotent; a second call would orphan the first timer

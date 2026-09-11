@@ -117,6 +117,27 @@ public partial class MainWindow : Window
         _service.PredictiveLeadSeconds = _settings.PredictiveLeadSeconds;
         if (_settings.ThermalLogging) _thermalLog = new ThermalLog();
 
+        // Stand down across a sleep transition.
+        //
+        // This laptop has no S3: powercfg reports "Standby (S0 Low Power Idle)", and under
+        // modern standby Windows does not suspend a desktop process. Without this hook OmniHub
+        // kept polling straight through the transition -- an HP BIOS call every two seconds,
+        // each one entering SMM, plus SMU mailbox traffic from adaptive tuning every three --
+        // while the platform was trying to reach low-power idle.
+        //
+        // Three of this machine's hard hangs carry SleepInProgress=6 in their Kernel-Power 41
+        // event, which means the system died mid-transition rather than during use, and none
+        // wrote a bugcheck. A firmware call landing in that window is a well-known way to wedge
+        // a modern-standby machine that completely.
+        //
+        // Honest about what this is: those hangs predate OmniHub 1.0, so the platform has an
+        // instability of its own and this is not proven to be the cause. It is still wrong to
+        // hammer ACPI and the SMU through a power transition, and stopping is free.
+        //
+        // Stopping the fan service also hands the curve back to the BIOS, which is the correct
+        // state to sleep in: the firmware, not a user-mode process, should own the fans while
+        // the machine is idling.
+        Microsoft.Win32.SystemEvents.PowerModeChanged += OnPowerModeChanged;
         _ctx.StartPolling(TimeSpan.FromSeconds(2));
 
         // Build the remaining tabs once the window is idle.
@@ -912,10 +933,38 @@ public partial class MainWindow : Window
         Hide();
     }
 
+    /// <summary>Whether the fan service was running when the machine went to sleep.</summary>
+    private bool _serviceRanBeforeSuspend;
+
+    private void OnPowerModeChanged(object? sender, Microsoft.Win32.PowerModeChangedEventArgs e)
+    {
+        if (e.Mode == Microsoft.Win32.PowerModes.Suspend)
+        {
+            _serviceRanBeforeSuspend = _service.IsRunning;
+
+            // Fan control first: Stop calls RestoreAutomaticControl, so the BIOS owns the fans
+            // before the last poll could command anything on the way down.
+            try { _service.Stop(); } catch { }
+            try { _ctx.StopPolling(); } catch { }
+        }
+        else if (e.Mode == Microsoft.Win32.PowerModes.Resume)
+        {
+            try { _ctx.StartPolling(TimeSpan.FromSeconds(2)); } catch { }
+
+            // Only restarted if it was running. Resuming into a fan curve the user had turned
+            // off would be the machine changing its own settings across a sleep.
+            if (_serviceRanBeforeSuspend)
+            {
+                try { _service.Start(); } catch { }
+            }
+        }
+    }
+
     private void Cleanup()
     {
         if (_cleanedUp) return;
         _cleanedUp = true;
+        try { Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged; } catch { }
         try { _appWatchTimer?.Dispose(); } catch { }
 
         // Views first, and before the hardware context they depend on.
