@@ -444,7 +444,19 @@ public partial class NetworkView : UserControl, IDisposable
         {
             Content = "Copy command",
             Width = 140,
-            Height = 28,
+
+            // No Height.
+            //
+            // It was set to 28, and FlatButtonStyle cannot fit in 28: its padding is 14,8 and its
+            // border is 1, so 13px text needs about 35. The button rendered taller than the slot
+            // it was given and had its bottom edge cut off, which is what the clipping was.
+            //
+            // Left unset rather than corrected to 34 (the figure the XAML views use) so it is
+            // measured from the style's own padding and font size. A fixed height here is a copy
+            // of numbers that live in the style, and it silently clips again the moment either
+            // changes -- which is precisely how this happened.
+            MinHeight = 34,
+
             // Qualified: inside an object initializer the bare name binds to the property being
             // assigned rather than to the enum type.
             HorizontalAlignment = System.Windows.HorizontalAlignment.Left,

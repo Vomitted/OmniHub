@@ -1,4 +1,4 @@
-<UserControl x:Class="OmniHub.App.Wpf.Views.NetworkView"
+﻿<UserControl x:Class="OmniHub.App.Wpf.Views.NetworkView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BackgroundBrush}">
@@ -23,11 +23,11 @@
 
                         <WrapPanel Margin="0,0,0,12">
                             <TextBlock Text="Host" Style="{StaticResource BodyText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <TextBox x:Name="TargetBox" Width="220" Height="34" Margin="0,0,12,0"
+                            <TextBox x:Name="TargetBox" Width="220" Height="36" Margin="0,0,12,0" FontSize="13"
                                      Style="{StaticResource NumericTextBoxStyle}"/>
-                            <Button x:Name="MeasureBtn" Content="Measure" Width="130" Height="34" Margin="0,0,12,0"
+                            <Button x:Name="MeasureBtn" Content="Measure" Width="130" Height="36" Margin="0,0,12,0"
                                     Style="{StaticResource PrimaryButtonStyle}" Click="MeasureBtn_Click"/>
-                            <Button x:Name="WatchBtn" Content="Watch continuously" Width="170" Height="34"
+                            <Button x:Name="WatchBtn" Content="Watch continuously" Width="170" Height="36"
                                     Style="{StaticResource FlatButtonStyle}" Click="WatchBtn_Click"/>
                         </WrapPanel>
 
@@ -92,9 +92,9 @@
                                    Text="The measurement most worth having, and the one almost nothing reports. If your ping is fine until a patch downloads or somebody starts a video call, oversized buffers in the modem and at your ISP are holding your packets rather than dropping them. This measures the connection idle, then again while deliberately filling it, and reports the difference. It downloads a few hundred megabytes to do that."/>
 
                         <WrapPanel Margin="0,0,0,12">
-                            <Button x:Name="LoadTestBtn" Content="Test latency under load" Width="200" Height="34"
+                            <Button x:Name="LoadTestBtn" Content="Test latency under load" Width="200" Height="36"
                                     Margin="0,0,12,0" Style="{StaticResource PrimaryButtonStyle}" Click="LoadTestBtn_Click"/>
-                            <Button x:Name="LoadCancelBtn" Content="Stop" Width="110" Height="34" IsEnabled="False"
+                            <Button x:Name="LoadCancelBtn" Content="Stop" Width="110" Height="36" IsEnabled="False"
                                     Style="{StaticResource FlatButtonStyle}" Click="LoadCancelBtn_Click"/>
                         </WrapPanel>
 
@@ -115,7 +115,7 @@
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="For a far server most of the delay is the speed of light through fibre, and no software removes it. The floor column is the fastest that distance could possibly be answered; the overhead column is everything the real path adds on top. Only the overhead was ever available to improve, and that is precisely what a paid routing service sells you."/>
 
-                        <Button x:Name="RegionBtn" Content="Measure regions" Width="170" Height="34"
+                        <Button x:Name="RegionBtn" Content="Measure regions" Width="170" Height="36"
                                 HorizontalAlignment="Left" Margin="0,0,0,14"
                                 Style="{StaticResource FlatButtonStyle}" Click="RegionBtn_Click"/>
 

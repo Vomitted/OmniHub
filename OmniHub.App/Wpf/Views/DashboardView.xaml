@@ -1,4 +1,4 @@
-<UserControl x:Class="OmniHub.App.Wpf.Views.DashboardView"
+﻿<UserControl x:Class="OmniHub.App.Wpf.Views.DashboardView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:OmniHub.App.Wpf.Controls"
@@ -106,7 +106,7 @@
                         <TextBlock x:Name="ReadinessHeadline" Style="{StaticResource BodyText}" FontSize="12"
                                    TextWrapping="Wrap" MaxWidth="760" Margin="0,0,0,8"/>
                         <StackPanel x:Name="ReadinessRows"/>
-                        <Button x:Name="GetPawnIoBtn" Content="Install the PawnIO driver" Width="200" Height="30"
+                        <Button x:Name="GetPawnIoBtn" Content="Install the PawnIO driver" Width="200" Height="36"
                                 HorizontalAlignment="Left" Margin="0,12,0,0" Visibility="Collapsed"
                                 Style="{StaticResource FlatButtonStyle}" Click="GetPawnIo_Click"/>
                     </StackPanel>

@@ -1,4 +1,4 @@
-<UserControl x:Class="OmniHub.App.Wpf.Views.AppRoutingView"
+﻿<UserControl x:Class="OmniHub.App.Wpf.Views.AppRoutingView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BackgroundBrush}">
@@ -19,9 +19,9 @@
                                Text="Pin individual applications to the discrete GPU or the integrated one. This writes the same Windows setting as Settings &gt; Display &gt; Graphics, so anything set here stays visible and reversible there."/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="Detect Running App" Width="168" Height="34" Margin="0,0,8,0"
+                    <Button Content="Detect Running App" Width="168" Height="36" Margin="0,0,8,0"
                             Style="{StaticResource FlatButtonStyle}" Click="DetectAppBtn_Click"/>
-                    <Button Content="Browse" Width="104" Height="34"
+                    <Button Content="Browse" Width="104" Height="36"
                             Style="{StaticResource PrimaryButtonStyle}" Click="AddAppBtn_Click"/>
                 </StackPanel>
             </Grid>

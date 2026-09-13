@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using UserControl = System.Windows.Controls.UserControl;
 using ComboBox = System.Windows.Controls.ComboBox;
@@ -108,7 +108,9 @@ public partial class AppRoutingView : UserControl
             };
             Grid.SetColumn(combo, 1);
 
-            var removeBtn = new Button { Content = "Remove", Width = 80, Height = 30, Style = (Style)FindResource("FlatButtonStyle") };
+            // MinHeight, not Height: FlatButtonStyle measures 35.29px, so the 30 that used to be
+            // here cut five pixels off the bottom of the button.
+            var removeBtn = new Button { Content = "Remove", Width = 80, MinHeight = 36, Style = (Style)FindResource("FlatButtonStyle") };
             removeBtn.Click += (_, _) => { GpuAppRouting.Remove(route.ExecutablePath); Refresh(); };
             Grid.SetColumn(removeBtn, 2);
 

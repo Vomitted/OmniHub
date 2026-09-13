@@ -1,4 +1,4 @@
-<UserControl x:Class="OmniHub.App.Wpf.Views.FansView"
+﻿<UserControl x:Class="OmniHub.App.Wpf.Views.FansView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:OmniHub.App.Wpf.Controls"
@@ -117,7 +117,7 @@
                             <TextBlock Text="&#176;C, never drop below" Style="{StaticResource BodyText}" Margin="0,0,6,0" VerticalAlignment="Center"/>
                             <TextBox x:Name="FloorLevelBox" Width="62" Style="{StaticResource NumericTextBoxStyle}" Margin="0,0,6,0"/>
                             <TextBlock Text="%" Style="{StaticResource BodyText}" Margin="0,0,16,0" VerticalAlignment="Center"/>
-                            <Button Content="Apply Floor" Width="112" Height="34" Style="{StaticResource FlatButtonStyle}" Click="ApplyFloorBtn_Click"/>
+                            <Button Content="Apply Floor" Width="112" Height="36" Style="{StaticResource FlatButtonStyle}" Click="ApplyFloorBtn_Click"/>
                         </WrapPanel>
                     </StackPanel>
                 </Grid>
@@ -154,13 +154,13 @@
                         <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640" Margin="0,0,0,12"
                                    Text="Steps the fan through raw speed levels one at a time so you can listen for where it stops getting louder. That is your unit's real ceiling, which may not match the 20-55 community default this app otherwise assumes."/>
                         <StackPanel x:Name="CalibrateIdlePanel">
-                            <Button Content="Start Calibration" Width="162" Height="34" Style="{StaticResource FlatButtonStyle}" HorizontalAlignment="Left" Click="StartCalibrate_Click"/>
+                            <Button Content="Start Calibration" Width="162" Height="36" Style="{StaticResource FlatButtonStyle}" HorizontalAlignment="Left" Click="StartCalibrate_Click"/>
                         </StackPanel>
                         <StackPanel x:Name="CalibrateActivePanel" Visibility="Collapsed">
                             <TextBlock x:Name="CalibrateStatusText" Style="{StaticResource BigNumberText}" FontSize="22" Margin="0,0,0,12"/>
                             <WrapPanel>
-                                <Button Content="Next Level" Width="122" Height="34" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,10,0" Click="NextCalibrate_Click"/>
-                                <Button Content="Stop &amp; Restore" Width="142" Height="34" Style="{StaticResource FlatButtonStyle}" Click="StopCalibrate_Click"/>
+                                <Button Content="Next Level" Width="122" Height="36" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,10,0" Click="NextCalibrate_Click"/>
+                                <Button Content="Stop &amp; Restore" Width="142" Height="36" Style="{StaticResource FlatButtonStyle}" Click="StopCalibrate_Click"/>
                             </WrapPanel>
                         </StackPanel>
                     </StackPanel>
