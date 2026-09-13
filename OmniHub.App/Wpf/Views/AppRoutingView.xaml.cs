@@ -51,9 +51,35 @@ public partial class AppRoutingView : UserControl
         catch { return path; }
     }
 
+    /// <summary>
+    /// Current filter text. Held rather than read from the box inside Refresh, because Refresh
+    /// also runs from the add, remove and preference handlers, and reaching into a control from
+    /// those paths is how a rebuild ends up silently discarding what was typed.
+    /// </summary>
+    private string _filter = "";
+
+    private void SearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        _filter = SearchBox.Text.Trim();
+        Refresh();
+    }
+
     private void Refresh()
     {
         var routes = GpuAppRouting.GetAll();
+        int total = routes.Count;
+
+        // Matched against the whole path, not just the file name. Two builds of the same game
+        // share an executable, and "steamapps" or a folder name is often the only thing that
+        // tells the rows apart -- which is exactly why the list shows the folder underneath.
+        if (_filter.Length > 0)
+            routes = routes
+                .Where(r => r.ExecutablePath.Contains(_filter, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        SearchCount.Text = _filter.Length == 0
+            ? (total == 0 ? "" : $"{total} ROUTED")
+            : $"{routes.Count} OF {total}";
         var panel = new StackPanel();
 
         foreach (var route in routes)
@@ -129,7 +155,13 @@ public partial class AppRoutingView : UserControl
             var emptyCard = new Border { Style = (Style)FindResource("CardBorderStyle"), Padding = new Thickness(20) };
             emptyCard.Child = new TextBlock
             {
-                Text = "No applications routed yet. Use \"Detect Running App\" to pick from what is open, or \"Browse\" to select an executable.",
+                // Two different empty states, and telling them apart matters. "Nothing routed
+                // yet, use Browse" is actively wrong when there ARE routes and the filter simply
+                // excluded them all -- it sends someone to add a route they already have. The
+                // comment above this already warned that a stale empty state is worse than none.
+                Text = _filter.Length > 0
+                    ? $"No routed application matches “{_filter}”. There are {total} routed in total."
+                    : "No applications routed yet. Use \"Detect Running App\" to pick from what is open, or \"Browse\" to select an executable.",
                 Style = (Style)FindResource("MutedText"),
                 TextWrapping = TextWrapping.Wrap,
             };

@@ -27,6 +27,20 @@
             </Grid>
 
             <TextBlock Text="ROUTED APPLICATIONS" Style="{StaticResource SubHeadingText}"/>
+
+            <!-- Filters the list below rather than searching the disk. The rows are routes that
+                 already exist, and the only reason to look for one is to change or remove it. -->
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" x:Name="SearchBox" Height="36" FontSize="13"
+                         Style="{StaticResource NumericTextBoxStyle}" TextChanged="SearchBox_TextChanged"/>
+                <TextBlock Grid.Column="1" x:Name="SearchCount" Style="{StaticResource TileFoot}"
+                           VerticalAlignment="Center" Margin="12,0,0,0"/>
+            </Grid>
+
             <ContentControl x:Name="AppList"/>
         </StackPanel>
     </ScrollViewer>
