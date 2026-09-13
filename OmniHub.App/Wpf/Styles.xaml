@@ -154,7 +154,7 @@
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.45"/>
+                            <Setter Property="Opacity" Value="0.55"/>
                             <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -201,7 +201,7 @@
                             <Setter TargetName="Bd" Property="BorderThickness" Value="1"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4"/>
+                            <Setter Property="Opacity" Value="0.55"/>
                             <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -496,7 +496,7 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.45"/>
+                            <Setter Property="Opacity" Value="0.55"/>
                             <Setter Property="Cursor" Value="Arrow"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -845,7 +845,7 @@
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4"/>
+                            <Setter Property="Opacity" Value="0.55"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -889,7 +889,7 @@
                             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.4"/>
+                            <Setter Property="Opacity" Value="0.55"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

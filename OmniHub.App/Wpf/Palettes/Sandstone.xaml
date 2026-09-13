@@ -13,7 +13,7 @@
 
     <Color x:Key="TextPrimaryColor">#FFEFE8DF</Color>
     <Color x:Key="TextMutedColor">#FFA1968A</Color>
-    <Color x:Key="TextFaintColor">#FF8E8780</Color>
+    <Color x:Key="TextFaintColor">#FF9D9791</Color>
 
     <Color x:Key="AccentColor">#FFD4A373</Color>
     <Color x:Key="AccentColor2">#FFE9C46A</Color>

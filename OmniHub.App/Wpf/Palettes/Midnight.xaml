@@ -13,9 +13,9 @@
 
     <Color x:Key="TextPrimaryColor">#FFE6EDF3</Color>
     <Color x:Key="TextMutedColor">#FF8B949E</Color>
-    <Color x:Key="TextFaintColor">#FF7E858E</Color>
+    <Color x:Key="TextFaintColor">#FF8A9098</Color>
 
-    <Color x:Key="AccentColor">#FF3B82F6</Color>
+    <Color x:Key="AccentColor">#FF4D8DF7</Color>
     <Color x:Key="AccentColor2">#FF22D3EE</Color>
     <Color x:Key="AccentDimColor">#383B82F6</Color>
     <Color x:Key="AccentSoftColor">#1E3B82F6</Color>
@@ -30,9 +30,9 @@
 
     <Color x:Key="GoodColor">#FF22C55E</Color>
     <Color x:Key="WarnColor">#FFF59E0B</Color>
-    <Color x:Key="DangerColor">#FFEF4444</Color>
+    <Color x:Key="DangerColor">#FFF15E5E</Color>
 
-    <Color x:Key="MetricCpuColor">#FF3B82F6</Color>
+    <Color x:Key="MetricCpuColor">#FF4D8DF7</Color>
     <Color x:Key="MetricMemColor">#FF22C55E</Color>
     <Color x:Key="MetricGpuColor">#FF22D3EE</Color>
 

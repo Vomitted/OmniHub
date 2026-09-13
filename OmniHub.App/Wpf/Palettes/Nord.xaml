@@ -13,7 +13,7 @@
 
     <Color x:Key="TextPrimaryColor">#FFE5E9F0</Color>
     <Color x:Key="TextMutedColor">#FF9AA5B4</Color>
-    <Color x:Key="TextFaintColor">#FF838C9B</Color>
+    <Color x:Key="TextFaintColor">#FF98A0AC</Color>
 
     <Color x:Key="AccentColor">#FF88C0D0</Color>
     <Color x:Key="AccentColor2">#FF8FBCBB</Color>
@@ -30,7 +30,7 @@
 
     <Color x:Key="GoodColor">#FFA3BE8C</Color>
     <Color x:Key="WarnColor">#FFEBCB8B</Color>
-    <Color x:Key="DangerColor">#FFC7747C</Color>
+    <Color x:Key="DangerColor">#FFD18C92</Color>
 
     <Color x:Key="MetricCpuColor">#FF88C0D0</Color>
     <Color x:Key="MetricMemColor">#FFA3BE8C</Color>

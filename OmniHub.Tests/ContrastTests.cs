@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows;
 using System.Windows.Media;
 
 namespace OmniHub.Tests;
@@ -28,11 +29,73 @@ public class ContrastTests
     private const double MinimumRatio = 4.5;
 
     /// <summary>
-    /// Surfaces text is drawn on. CardSheenStyle lightens the top of a card very slightly over
-    /// PanelColor, which only ever helps against a dark ground, so testing the unlit colour is the
-    /// conservative choice rather than an oversight.
+    /// The dimmest disabled-state Opacity any style in Styles.xaml actually sets.
+    ///
+    /// Read from the file rather than declared as a constant here. The first version of this test
+    /// hardcoded the value it expected, which meant it asserted its own assumption instead of the
+    /// application: dropping the real setters back to 0.45 left it passing happily. A test that
+    /// cannot fail when the thing it describes changes is decoration.
     /// </summary>
-    private static readonly string[] Grounds = { "BackgroundColor", "PanelColor", "PanelAltColor" };
+    private static double DisabledOpacity => LazyDisabledOpacity.Value;
+
+    private static readonly Lazy<double> LazyDisabledOpacity = new(() =>
+    {
+        string styles = File.ReadAllText(Path.Combine(WpfTestHost.WpfDir, "Styles.xaml"));
+
+        // Only Opacity setters inside an IsEnabled=False trigger. Opacity appears elsewhere in
+        // the file for sheens and rails, and those are not what fades a label.
+        var matches = System.Text.RegularExpressions.Regex.Matches(
+            styles,
+            @"IsEnabled""\s+Value=""False"">.*?Property=""Opacity""\s+Value=""(?<v>[\d.]+)""",
+            System.Text.RegularExpressions.RegexOptions.Singleline);
+
+        var values = matches.Select(m => double.Parse(m.Groups["v"].Value,
+            System.Globalization.CultureInfo.InvariantCulture)).ToList();
+
+        Assert.True(values.Count > 0, "no disabled-state Opacity setters found in Styles.xaml");
+        return values.Min();
+    });
+
+    /// <summary>
+    /// Every surface text can actually land on.
+    ///
+    /// The first version of this test listed only Background, Panel and PanelAlt, passed, and
+    /// the user still reported dark text blending in. It was right about what it checked and
+    /// wrong about what it covered:
+    ///
+    ///   PanelHoverColor backs every hovered button, pill, nav item, combo item and grid row.
+    ///   AccentSoftColor backs the "active" status chips in Optimize, Settings and Tuning, and
+    ///   it is TRANSLUCENT, so it has to be composited onto the card underneath before it means
+    ///   anything -- comparing against the raw ARGB would compare against a colour nothing ever
+    ///   paints.
+    ///
+    /// AccentDimColor is deliberately absent. It is declared and never used as a background, and
+    /// including it would force every faint colour several shades brighter to satisfy a pair that
+    /// cannot occur. Grounds belong here when something is drawn on them, not when they exist.
+    /// </summary>
+    private static IEnumerable<(string Name, Color Value)> GroundsFor(ResourceDictionary merged)
+    {
+        foreach (string key in new[] { "BackgroundColor", "PanelColor", "PanelAltColor", "PanelHoverColor" })
+            if (merged[key] is Color c)
+                yield return (key, c);
+
+        if (merged["AccentSoftColor"] is Color soft)
+        {
+            foreach (string under in new[] { "PanelColor", "PanelAltColor" })
+                if (merged[under] is Color bg)
+                    yield return ($"AccentSoft over {under}", Composite(soft, bg));
+        }
+    }
+
+    /// <summary>Alpha-composites a translucent colour onto an opaque one.</summary>
+    private static Color Composite(Color fg, Color bg)
+    {
+        double a = fg.A / 255.0;
+        return Color.FromRgb(
+            (byte)Math.Round(fg.R * a + bg.R * (1 - a)),
+            (byte)Math.Round(fg.G * a + bg.G * (1 - a)),
+            (byte)Math.Round(fg.B * a + bg.B * (1 - a)));
+    }
 
     /// <summary>
     /// Colours used as a Foreground somewhere in the application.
@@ -65,10 +128,8 @@ public class ContrastTests
             {
                 if (merged[textKey] is not Color text) continue;
 
-                foreach (string groundKey in Grounds)
+                foreach ((string groundKey, Color ground) in GroundsFor(merged))
                 {
-                    if (merged[groundKey] is not Color ground) continue;
-
                     double ratio = Contrast(text, ground);
                     if (ratio < MinimumRatio)
                         failures.Add($"{textKey} on {groundKey} = {ratio:0.00}:1");
@@ -109,6 +170,39 @@ public class ContrastTests
                     $"{paletteFile}: OnAccentColor on {stop} = {ratio:0.00}:1, below {MinimumRatio}:1. "
                     + "This is the primary button's own text on its own background.");
             }
+        });
+    }
+
+    /// <summary>
+    /// Disabled controls, which is where the reported "dark text blending into the background"
+    /// actually lived.
+    ///
+    /// Setting Opacity on a control fades the WHOLE element, so its label and its own fill both
+    /// composite toward the card behind at the same rate and the contrast BETWEEN them collapses.
+    /// That is easy to miss because the colours themselves are untouched and every static check
+    /// of them passes. At the 0.40 and 0.45 these styles used to carry, the label measured
+    /// between 3.70 and 4.14 to 1 across the palettes.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Palettes))]
+    public void DisabledControlsKeepTheirLabelReadable(string paletteFile)
+    {
+        WpfTestHost.Run(() =>
+        {
+            var merged = WpfTestHost.LoadResources(paletteFile);
+
+            var card = (Color)merged["PanelColor"]!;
+            var label = (Color)merged["TextPrimaryColor"]!;
+            var fill = (Color)merged["PanelAltColor"]!;
+
+            Color Fade(Color c) => Color.FromRgb(
+                (byte)Math.Round(c.R * DisabledOpacity + card.R * (1 - DisabledOpacity)),
+                (byte)Math.Round(c.G * DisabledOpacity + card.G * (1 - DisabledOpacity)),
+                (byte)Math.Round(c.B * DisabledOpacity + card.B * (1 - DisabledOpacity)));
+
+            double ratio = Contrast(Fade(label), Fade(fill));
+            Assert.True(ratio >= MinimumRatio,
+                $"{paletteFile}: a disabled button's label is {ratio:0.00}:1 at the opacity Styles.xaml sets ({DisabledOpacity}).");
         });
     }
 
