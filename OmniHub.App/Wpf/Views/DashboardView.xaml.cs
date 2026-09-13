@@ -26,6 +26,11 @@ public partial class DashboardView : UserControl
         LoadBatteryFooter();
         StartPowerDrawTimer();
 
+        // Labelled from the saved setting before the first click. A chip reading "BATTERY
+        // REFRESH" says nothing about which way it is currently set, and a switch whose position
+        // you cannot read is not a switch.
+        UpdateRefreshChip();
+
         // Warmed off-thread. The first ReadDiscrete resolves the device path with a WMI
         // query, and the call site is inside a dispatcher callback, so leaving it cold
         // would put that one query on the UI thread the first time the GPU reads as asleep.
@@ -271,6 +276,72 @@ public partial class DashboardView : UserControl
 
     private void ChipTimer_Click(object sender, RoutedEventArgs e) =>
         RunChip(ChipTimer, SystemTuning.ApplyHighResolutionTimer);
+
+    // ---- battery refresh rate ------------------------------------------------
+
+    /// <summary>
+    /// Toggles whether auto-eco is allowed to drop the panel's refresh rate on battery.
+    ///
+    /// This has its own control on the landing screen because it is the one eco setting with a
+    /// continuously visible cost. Dropping 144 Hz to 60 more than doubles the frame interval,
+    /// 6.9ms to 16.7ms, and the most conspicuous casualty is cursor smoothness -- it reads
+    /// exactly as the pointer lagging behind your finger, which is how it was reported here, and
+    /// it survived every input-side fix because the input path was never involved. Something
+    /// that noticeable should not be buried three tabs deep in the tuning screen.
+    ///
+    /// Setting the eco rate to the panel's maximum disables the drop without disabling the rest
+    /// of eco: AutoEco skips the display entirely when its target already equals the current
+    /// rate, so the profile and GPU savings continue untouched.
+    /// </summary>
+    private void ChipRefresh_Click(object sender, RoutedEventArgs e) => RunChip(ChipRefresh, () =>
+    {
+        var modes = DisplayControl.AvailableRefreshHz();
+        if (modes.Count < 2)
+            return new TuningResult(false, "This display reports only one refresh rate, so there is nothing to trade.");
+
+        int fastest = modes.Max();
+        int slowest = modes.Min();
+        bool droppingNow = _settings.AutoEcoRefreshHz > 0 && _settings.AutoEcoRefreshHz < fastest;
+
+        int wanted = droppingNow ? fastest : slowest;
+        _settings.AutoEcoRefreshHz = wanted;
+        _settings.Save();
+
+        // Applied now, not at the next eco cycle. On battery the machine is ALREADY at the old
+        // rate, and a switch that changes a stored preference while the screen stays visibly
+        // wrong is indistinguishable from a switch that did nothing.
+        string applied = "";
+        if (DisplayControl.CurrentRefreshHz() is int current && current != wanted
+            && PowerSourceWatcher.Read() == PowerSource.Battery)
+        {
+            var result = DisplayControl.SetRefreshHz(wanted);
+            applied = result.Applied ? $" Panel now at {wanted} Hz." : $" The display refused {wanted} Hz ({result.Detail}).";
+        }
+
+        UpdateRefreshChip();
+
+        return new TuningResult(true, wanted >= fastest
+            ? $"Battery refresh held at {fastest} Hz. Eco keeps its other savings.{applied}"
+            : $"Battery refresh drops to {slowest} Hz to save power.{applied}");
+    });
+
+    /// <summary>Labels the chip with what it will actually do, rather than with a generic word.</summary>
+    private void UpdateRefreshChip()
+    {
+        try
+        {
+            var modes = DisplayControl.AvailableRefreshHz();
+            if (modes.Count < 2) { ChipRefresh.Visibility = Visibility.Collapsed; return; }
+
+            int fastest = modes.Max();
+            bool dropping = _settings.AutoEcoRefreshHz > 0 && _settings.AutoEcoRefreshHz < fastest;
+
+            ChipRefresh.Content = dropping
+                ? $"BATTERY {_settings.AutoEcoRefreshHz} HZ"
+                : $"BATTERY {fastest} HZ";
+        }
+        catch { }
+    }
 
     private void ChipMaxFans_Click(object sender, RoutedEventArgs e) => RunChip(ChipMaxFans, () =>
     {
