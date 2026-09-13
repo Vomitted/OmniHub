@@ -1,4 +1,4 @@
-<UserControl x:Class="OmniHub.App.Wpf.Views.SettingsView"
+﻿<UserControl x:Class="OmniHub.App.Wpf.Views.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BackgroundBrush}">
@@ -283,6 +283,57 @@
                              is worse than a tall card. The list flows into the page instead and
                              the page scrolls, as it already did for every other card. -->
                         <ItemsControl x:Name="ChangelogList"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="NETWORK" Style="{StaticResource SubHeadingText}"/>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                <TextBlock Text="Watch the connection continuously" Style="{StaticResource BodyText}"/>
+                                <TextBlock Style="{StaticResource SettingNote}"
+                                           Text="One ping every few seconds, kept as a rolling five-minute picture of latency, jitter and packet loss. It runs whether or not the Network screen is open, which is the point: the faults that ruin a match are intermittent, and by the time anyone opens a diagnostics tab the bad thirty seconds is over."/>
+                            </StackPanel>
+                            <CheckBox Grid.Column="1" x:Name="NetMonitorToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                      VerticalAlignment="Center" Checked="NetMonitor_Changed" Unchecked="NetMonitor_Changed"/>
+                        </Grid>
+
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                <TextBlock Text="Host to watch" Style="{StaticResource BodyText}"/>
+                                <TextBlock Style="{StaticResource SettingNote}"
+                                           Text="A nearby resolver by default, because the running figure is about the shape of your connection rather than the distance to anywhere in particular. Point it at a game server to watch that path instead."/>
+                            </StackPanel>
+                            <TextBox Grid.Column="1" x:Name="NetTargetBox" Width="180" Height="36" FontSize="13"
+                                     VerticalAlignment="Center" Style="{StaticResource NumericTextBoxStyle}"
+                                     LostFocus="NetTarget_Changed"/>
+                        </Grid>
+
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                <TextBlock Text="Record a connection log" Style="{StaticResource BodyText}"/>
+                                <TextBlock Style="{StaticResource SettingNote}"
+                                           Text="Writes every probe to a daily CSV beside the thermal one, with the rolling figures alongside. A timeout is recorded as an empty round trip rather than a zero, so nothing reading the file can average a dropped packet in as a fast one."/>
+                            </StackPanel>
+                            <CheckBox Grid.Column="1" x:Name="NetLogToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                      VerticalAlignment="Center" Checked="NetLog_Changed" Unchecked="NetLog_Changed"/>
+                        </Grid>
                     </StackPanel>
                 </Grid>
             </Border>

@@ -37,18 +37,87 @@ public partial class NetworkView : UserControl, IDisposable
     private CancellationTokenSource? _busy;
     private CancellationTokenSource? _watch;
     private bool _disposed;
+    private bool _regionsMeasured;
 
-    public NetworkView()
+    /// <summary>
+    /// The application-wide monitor, or null when the user has switched it off.
+    ///
+    /// Shared rather than owned. A view that started its own sampler would measure only while
+    /// somebody had this tab open, which is the opposite of what is wanted: the faults worth
+    /// catching happen while a game is full-screen and nobody is looking at diagnostics.
+    /// </summary>
+    private readonly NetworkMonitor? _monitor;
+
+    public NetworkView(NetworkMonitor? monitor = null)
     {
         InitializeComponent();
-        TargetBox.Text = DefaultTarget;
+        _monitor = monitor;
+        TargetBox.Text = monitor?.Target ?? DefaultTarget;
 
         // The adapter audit is a local WMI read with no network in it, so it can run immediately
         // rather than waiting for a button. Off the UI thread all the same: WMI is not fast, and
         // this view is built on the idle callback that constructs the rest of the tabs.
         _ = LoadAdapterFindingsAsync();
 
+        if (_monitor is not null)
+        {
+            _monitor.OnSample += OnMonitorSample;
+
+            // Paint immediately from whatever the monitor already has rather than showing dashes
+            // until the next tick. It has usually been running since launch, so the answer exists
+            // before this view does.
+            if (!_monitor.Current.IsEmpty) ShowStats(_monitor.Current, ProbeMethod.Icmp, _monitor.Target);
+        }
+
+        UpdateMonitorStatus();
+
+        // Regions measure themselves the first time this screen is opened. It is nine short TCP
+        // handshakes, it is the slowest thing here, and "which server should I join" is the
+        // question somebody opened this tab to answer -- making them press a button first is
+        // making them ask twice.
+        Loaded += async (_, _) =>
+        {
+            if (_regionsMeasured) return;
+            _regionsMeasured = true;
+            await MeasureRegionsAsync().ConfigureAwait(true);
+        };
+
         Unloaded += (_, _) => StopWatching();
+    }
+
+    /// <summary>Marshals a sample from the monitor's thread onto the UI.</summary>
+    private void OnMonitorSample(LatencyStats stats)
+    {
+        if (_disposed) return;
+        try
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (_disposed || _busy is not null) return;   // a manual run owns the tiles while it lasts
+                ShowStats(stats, ProbeMethod.Icmp, _monitor?.Target ?? DefaultTarget);
+                UpdateMonitorStatus();
+            });
+        }
+        catch (System.ComponentModel.Win32Exception) { }
+        catch (TaskCanceledException) { }
+    }
+
+    private void UpdateMonitorStatus()
+    {
+        if (_monitor is null)
+        {
+            MonitorStatus.Text = "CONTINUOUS MONITORING IS OFF";
+            WatchBtn.Content = "Resume monitoring";
+            WatchBtn.IsEnabled = false;
+            return;
+        }
+
+        var s = _monitor.Current;
+        MonitorStatus.Text = _monitor.IsRunning
+            ? $"WATCHING {_monitor.Target.ToUpperInvariant()} CONTINUOUSLY / {s.Received} OF {s.Sent} SAMPLES IN THE LAST {NetworkMonitor.WindowSize * 5 / 60} MINUTES"
+            : "MONITORING PAUSED";
+        WatchBtn.Content = _monitor.IsRunning ? "Pause monitoring" : "Resume monitoring";
+        WatchBtn.IsEnabled = true;
     }
 
     // ---- connection quality ------------------------------------------------
@@ -60,35 +129,20 @@ public partial class NetworkView : UserControl, IDisposable
     }
 
     /// <summary>
-    /// Continuous sampling.
+    /// Pauses or resumes the shared monitor.
     ///
-    /// Worth its own mode because the faults this screen looks for are intermittent by nature. A
-    /// connection that drops two percent of packets for ten seconds every few minutes measures
-    /// perfectly clean nine times out of ten, and that is exactly the connection that ruins a
-    /// match. One measurement cannot find it; watching can.
+    /// Worth having in reach rather than only in Settings: the one time somebody genuinely wants
+    /// this off is while they are chasing something else on the same connection, and that is
+    /// exactly when they are already looking at this screen.
     /// </summary>
-    private async void WatchBtn_Click(object sender, RoutedEventArgs e)
+    private void WatchBtn_Click(object sender, RoutedEventArgs e)
     {
-        if (_watch is not null) { StopWatching(); return; }
+        if (_monitor is null) return;
 
-        var cts = new CancellationTokenSource();
-        _watch = cts;
-        WatchBtn.Content = "Stop watching";
+        if (_monitor.IsRunning) _monitor.Stop();
+        else _monitor.Start(TimeSpan.FromSeconds(5));
 
-        try
-        {
-            while (!cts.IsCancellationRequested)
-            {
-                await MeasureOnceAsync(cts.Token).ConfigureAwait(true);
-                try { await Task.Delay(2000, cts.Token).ConfigureAwait(true); }
-                catch (OperationCanceledException) { break; }
-            }
-        }
-        catch (OperationCanceledException) { }
-        finally
-        {
-            if (ReferenceEquals(_watch, cts)) StopWatching();
-        }
+        UpdateMonitorStatus();
     }
 
     private void StopWatching()
@@ -96,7 +150,6 @@ public partial class NetworkView : UserControl, IDisposable
         var cts = Interlocked.Exchange(ref _watch, null);
         if (cts is null) return;
         try { cts.Cancel(); cts.Dispose(); } catch { }
-        if (!_disposed) WatchBtn.Content = "Watch continuously";
     }
 
     private async Task MeasureOnceAsync(CancellationToken ct = default)
@@ -127,9 +180,18 @@ public partial class NetworkView : UserControl, IDisposable
         }
     }
 
-    private void ShowQuality(ProbeResult probe)
+    private void ShowQuality(ProbeResult probe) => ShowStats(probe.Stats, probe.Method, probe.Host);
+
+    /// <summary>
+    /// Renders one set of statistics.
+    ///
+    /// Split out from ShowQuality so the continuous monitor and a manual burst reach the tiles by
+    /// the same route. The monitor produces a LatencyStats with no ProbeResult around it, and
+    /// duplicating this formatting for it would be the usual way two displays of the same number
+    /// drift apart.
+    /// </summary>
+    private void ShowStats(LatencyStats s, ProbeMethod method, string host)
     {
-        var s = probe.Stats;
 
         // An unreachable host renders as absent, never as zero. A connection answering in 0 ms
         // with 0% loss is not what "no answer" means, and this project does not dress an
@@ -139,7 +201,7 @@ public partial class NetworkView : UserControl, IDisposable
             RttValue.Text = JitterValue.Text = LossValue.Text = P95Value.Text = "--";
             RttFoot.Text = JitterFoot.Text = LossFoot.Text = P95Foot.Text = "";
             QualityStatus.Text =
-                $"{probe.Host} did not answer, over ICMP or TCP. That is either the host refusing "
+                $"{host} did not answer, over ICMP or TCP. That is either the host refusing "
                 + "to be measured or a real path problem, and this cannot tell you which.";
             return;
         }
@@ -156,14 +218,14 @@ public partial class NetworkView : UserControl, IDisposable
         P95Value.Text = $"{s.P95Ms:0}";
         P95Foot.Text = "19 IN 20 ARE FASTER";
 
-        string method = probe.Method switch
+        string how = method switch
         {
             ProbeMethod.Icmp => "ICMP echo",
-            ProbeMethod.Tcp => $"TCP handshake, since {probe.Host} ignores ping (reads slightly high)",
+            ProbeMethod.Tcp => $"TCP handshake, since {host} ignores ping (reads slightly high)",
             _ => "unavailable",
         };
 
-        QualityStatus.Text = $"{probe.Host} over {method}. " + Interpretation(s);
+        QualityStatus.Text = $"{host} over {how}. " + Interpretation(s);
     }
 
     /// <summary>
@@ -303,8 +365,10 @@ public partial class NetworkView : UserControl, IDisposable
     // ---- server regions ----------------------------------------------------
 
     private async void RegionBtn_Click(object sender, RoutedEventArgs e)
+        => await MeasureRegionsAsync().ConfigureAwait(true);
+
+    private async Task MeasureRegionsAsync()
     {
-        StopWatching();
         RegionBtn.IsEnabled = false;
         RegionRows.Children.Clear();
         RegionStatus.Text = "Measuring each region in turn. One at a time, so they do not compete with each other for the same uplink.";
@@ -486,6 +550,7 @@ public partial class NetworkView : UserControl, IDisposable
         if (_disposed) return;
         _disposed = true;
         StopWatching();
+        if (_monitor is not null) _monitor.OnSample -= OnMonitorSample;
         try { _busy?.Cancel(); } catch { }
     }
 }

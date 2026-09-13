@@ -33,6 +33,9 @@ public partial class SettingsView : UserControl
         else LeadOffBtn.IsChecked = true;
 
         LoggingToggle.IsChecked = _settings.ThermalLogging;
+        NetMonitorToggle.IsChecked = _settings.NetworkMonitorEnabled;
+        NetLogToggle.IsChecked = _settings.NetworkLogging;
+        NetTargetBox.Text = _settings.NetworkMonitorTarget;
         _thermalLoggingAtLoad = _settings.ThermalLogging;
         InitialiseOverlayControls();
         _suppressEvents = false;
@@ -408,6 +411,52 @@ public partial class SettingsView : UserControl
         text.Foreground = (Brush)FindResource(active ? "AccentBrush" : "TextFaintBrush");
         chip.BorderBrush = (Brush)FindResource(active ? "AccentBrush" : "BorderBrush");
         chip.Background = (Brush)FindResource(active ? "AccentSoftBrush" : "PanelAltBrush");
+    }
+
+    /// <summary>
+    /// Network settings take effect immediately rather than on next launch.
+    ///
+    /// The thermal log's toggle warns that it waits for a restart, and that is a wart rather than
+    /// a pattern worth copying: a switch that does nothing yet, while saying it is on, is
+    /// indistinguishable from a switch that is broken. MainWindow.StartNetworkMonitor is
+    /// idempotent and re-reads every one of these, so calling it is the whole implementation.
+    /// </summary>
+    private void ApplyNetworkSettings()
+    {
+        _settings.Save();
+        if (Window.GetWindow(this) is MainWindow main) main.StartNetworkMonitor();
+    }
+
+    private void NetMonitor_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressEvents) return;
+        _settings.NetworkMonitorEnabled = NetMonitorToggle.IsChecked == true;
+        ApplyNetworkSettings();
+    }
+
+    private void NetLog_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressEvents) return;
+        _settings.NetworkLogging = NetLogToggle.IsChecked == true;
+        ApplyNetworkSettings();
+    }
+
+    private void NetTarget_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressEvents) return;
+        string wanted = NetTargetBox.Text.Trim();
+
+        // An empty box means the default, not "watch nothing". Silently monitoring an empty
+        // string would leave the feature switched on and permanently reporting no answer.
+        if (wanted.Length == 0)
+        {
+            wanted = "1.1.1.1";
+            NetTargetBox.Text = wanted;
+        }
+
+        if (string.Equals(wanted, _settings.NetworkMonitorTarget, StringComparison.OrdinalIgnoreCase)) return;
+        _settings.NetworkMonitorTarget = wanted;
+        ApplyNetworkSettings();
     }
 
     private void OpenLogsBtn_Click(object sender, RoutedEventArgs e)

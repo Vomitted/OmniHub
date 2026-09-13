@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using OmniHub.Core.Fan;
 using OmniHub.Core.Optimize;
@@ -50,6 +50,32 @@ public sealed class AppSettings
     /// <summary>Writes a rolling temperature/fan/throttle CSV under %AppData%\OmniHub\logs.
     /// Off by default: it is a diagnostic aid, not something to leave running permanently.</summary>
     public bool ThermalLogging { get; set; } = false;
+
+    /// <summary>
+    /// Watch the connection continuously rather than only when the Network screen is open.
+    ///
+    /// On by default, which the rest of this file's defaults do not lightly do. The justification
+    /// is cost and usefulness together: one ICMP echo every five seconds is a few bytes, far less
+    /// than any single page load, and the faults it exists to catch are intermittent -- a
+    /// connection that misbehaves for ten seconds every few minutes reads perfectly clean to
+    /// anyone who presses a button, and ruins a match anyway.
+    /// </summary>
+    public bool NetworkMonitorEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Host the monitor samples. A nearby resolver by default, because the point of the running
+    /// figure is the SHAPE of the connection -- variance and loss -- rather than the distance to
+    /// any particular server. Set it to a game server to watch that path instead.
+    /// </summary>
+    public string NetworkMonitorTarget { get; set; } = "1.1.1.1";
+
+    /// <summary>Seconds between probes. Five is the default; below two this stops being a
+    /// measurement and starts being traffic.</summary>
+    public int NetworkMonitorIntervalSeconds { get; set; } = 5;
+
+    /// <summary>Writes a rolling latency/jitter/loss CSV beside the thermal one. Off by default,
+    /// for the same reason: a diagnostic aid rather than something to leave running forever.</summary>
+    public bool NetworkLogging { get; set; } = false;
 
     /// <summary>Active colour palette id, matching a ThemeManager.All entry (e.g. "OledBlack").
     /// An unknown value falls back to the default rather than failing to start.</summary>

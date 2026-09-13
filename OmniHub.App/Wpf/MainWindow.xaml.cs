@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -41,6 +41,8 @@ public partial class MainWindow : Window
     private string? _suggestedAppPath;
     private System.Threading.Timer? _appWatchTimer;
     private ThermalLog? _thermalLog;
+    private OmniHub.Core.Network.NetworkMonitor? _netMonitor;
+    private OmniHub.Core.Network.NetworkLog? _netLog;
     private OverlayWindow? _overlay;
 
     public MainWindow()
@@ -103,7 +105,7 @@ public partial class MainWindow : Window
         // one screen and the measurements that justify changing them on another.
         _viewFactories["system"] = () => new GroupView(
             ("Windows", () => new OptimizeView(_settings, _ctx)),
-            ("Network", () => new NetworkView()),
+            ("Network", () => new NetworkView(NetworkMonitor)),
             ("App GPU routing", () => new AppRoutingView()));
 
         // Neither the timer resolution nor the MMCSS request survives a process restart, so
@@ -120,6 +122,7 @@ public partial class MainWindow : Window
         // (disabled), so an existing install keeps behaving exactly as it did until opted in.
         _service.PredictiveLeadSeconds = _settings.PredictiveLeadSeconds;
         if (_settings.ThermalLogging) _thermalLog = new ThermalLog();
+        StartNetworkMonitor();
 
         // Stand down across a sleep transition.
         //
@@ -950,6 +953,12 @@ public partial class MainWindow : Window
             // before the last poll could command anything on the way down.
             try { _service.Stop(); } catch { }
             try { _ctx.StopPolling(); } catch { }
+
+            // The network monitor stands down for the same reason everything else here does.
+            // It is a timer firing into the network stack, and the stack is being torn down
+            // underneath it; polling through a suspend is the pattern this whole handler exists
+            // to stop.
+            try { _netMonitor?.Stop(); } catch { }
         }
         else if (e.Mode == Microsoft.Win32.PowerModes.Resume)
         {
@@ -961,8 +970,56 @@ public partial class MainWindow : Window
             {
                 try { _service.Start(); } catch { }
             }
+
+            // Reset before restarting. The samples either side of a sleep describe different
+            // conditions -- often a different network entirely -- and splicing them together
+            // would invent one enormous jitter spike at the join that nothing experienced.
+            try { _netMonitor?.Reset(); } catch { }
+            StartNetworkMonitor();
         }
     }
+
+    /// <summary>
+    /// Brings the connection monitor up, or leaves it down if the user turned it off.
+    ///
+    /// Public rather than private because Settings toggles it at runtime: flipping the switch has
+    /// to take effect now, not at the next launch, or the toggle is lying about what it did.
+    /// Calling it while already running is harmless -- Start returns immediately.
+    /// </summary>
+    public void StartNetworkMonitor()
+    {
+        if (!_settings.NetworkMonitorEnabled)
+        {
+            try { _netMonitor?.Stop(); } catch { }
+            return;
+        }
+
+        if (_netMonitor is null)
+        {
+            _netMonitor = new OmniHub.Core.Network.NetworkMonitor();
+            _netMonitor.OnProbe += (utc, rtt) =>
+            {
+                var log = _netLog;
+                if (log is null) return;
+                try { log.Append(utc, _netMonitor.Target, rtt, _netMonitor.Current); } catch { }
+            };
+        }
+
+        _netMonitor.Target = string.IsNullOrWhiteSpace(_settings.NetworkMonitorTarget)
+            ? "1.1.1.1"
+            : _settings.NetworkMonitorTarget.Trim();
+
+        if (_settings.NetworkLogging) _netLog ??= new OmniHub.Core.Network.NetworkLog();
+        else { try { _netLog?.Dispose(); } catch { } _netLog = null; }
+
+        // Clamped rather than trusted. settings.json is hand-editable, and an interval of zero
+        // is not a faster monitor, it is a tight loop issuing ICMP as quickly as the machine can.
+        int seconds = Math.Clamp(_settings.NetworkMonitorIntervalSeconds, 2, 60);
+        _netMonitor.Start(TimeSpan.FromSeconds(seconds));
+    }
+
+    /// <summary>The running connection monitor, or null when it is switched off. Views read it rather than starting their own.</summary>
+    public OmniHub.Core.Network.NetworkMonitor? NetworkMonitor => _netMonitor;
 
     private void Cleanup()
     {
@@ -992,6 +1049,8 @@ public partial class MainWindow : Window
         // is anything disposed for it to reach for.
         try { _overlay?.Close(); } catch { }
         try { _ctx.Dispose(); } catch { }
+        try { _netMonitor?.Dispose(); } catch { }
+        try { _netLog?.Dispose(); } catch { }
         try { _thermalLog?.Dispose(); } catch { }
         try { ThemeManager.ThemeChanged -= OnThemeChanged; } catch { }
         try { if (_hotkeyHwnd != IntPtr.Zero) UnregisterHotKey(_hotkeyHwnd, OverlayHotkeyId); } catch { }

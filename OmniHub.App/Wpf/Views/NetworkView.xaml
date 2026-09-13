@@ -25,9 +25,9 @@
                             <TextBlock Text="Host" Style="{StaticResource BodyText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <TextBox x:Name="TargetBox" Width="220" Height="36" Margin="0,0,12,0" FontSize="13"
                                      Style="{StaticResource NumericTextBoxStyle}"/>
-                            <Button x:Name="MeasureBtn" Content="Measure" Width="130" Height="36" Margin="0,0,12,0"
+                            <Button x:Name="MeasureBtn" Content="Measure now" Width="140" Height="36" Margin="0,0,12,0"
                                     Style="{StaticResource PrimaryButtonStyle}" Click="MeasureBtn_Click"/>
-                            <Button x:Name="WatchBtn" Content="Watch continuously" Width="170" Height="36"
+                            <Button x:Name="WatchBtn" Content="Pause monitoring" Width="170" Height="36"
                                     Style="{StaticResource FlatButtonStyle}" Click="WatchBtn_Click"/>
                         </WrapPanel>
 
@@ -76,8 +76,9 @@
                             </StackPanel>
                         </Grid>
 
+                        <TextBlock x:Name="MonitorStatus" Style="{StaticResource TileFoot}" Margin="0,12,0,0"/>
                         <TextBlock x:Name="QualityStatus" Style="{StaticResource MutedText}" FontSize="11.5"
-                                   Margin="0,12,0,0" TextWrapping="Wrap" Text="Not measured yet."/>
+                                   Margin="0,4,0,0" TextWrapping="Wrap" Text="Waiting for the first sample..."/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -115,7 +116,7 @@
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="For a far server most of the delay is the speed of light through fibre, and no software removes it. The floor column is the fastest that distance could possibly be answered; the overhead column is everything the real path adds on top. Only the overhead was ever available to improve, and that is precisely what a paid routing service sells you."/>
 
-                        <Button x:Name="RegionBtn" Content="Measure regions" Width="170" Height="36"
+                        <Button x:Name="RegionBtn" Content="Measure again" Width="170" Height="36"
                                 HorizontalAlignment="Left" Margin="0,0,0,14"
                                 Style="{StaticResource FlatButtonStyle}" Click="RegionBtn_Click"/>
 
