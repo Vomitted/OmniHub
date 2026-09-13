@@ -98,8 +98,12 @@ public partial class MainWindow : Window
             ("CPU", () => new TuningView(_ctx, _settings)),
             ("GPU", () => _gpuView));
 
+        // Network sits here rather than under Diagnostics because it is a Windows-side subject
+        // like the rest of this group, and because splitting it would put the adapter settings on
+        // one screen and the measurements that justify changing them on another.
         _viewFactories["system"] = () => new GroupView(
             ("Windows", () => new OptimizeView(_settings, _ctx)),
+            ("Network", () => new NetworkView()),
             ("App GPU routing", () => new AppRoutingView()));
 
         // Neither the timer resolution nor the MMCSS request survives a process restart, so

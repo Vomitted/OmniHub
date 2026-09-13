@@ -1,0 +1,479 @@
+using System.Windows;
+using System.Windows.Controls;
+using OmniHub.Core.Network;
+
+// Aliased per file, as every other view here does: this project sets both UseWindowsForms and
+// UseWPF, so these names exist in both stacks and a bare reference is ambiguous.
+using UserControl = System.Windows.Controls.UserControl;
+using Button = System.Windows.Controls.Button;
+using TextBlock = System.Windows.Controls.TextBlock;
+using TextBox = System.Windows.Controls.TextBox;
+using Orientation = System.Windows.Controls.Orientation;
+using Clipboard = System.Windows.Clipboard;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
+
+namespace OmniHub.App.Wpf.Views;
+
+/// <summary>
+/// Connection measurement.
+///
+/// Everything on this screen is a measurement or a statement about one. There is no button
+/// claiming to make the connection faster, because a local application cannot make a connection
+/// faster and the ones that say otherwise are selling something. What it can do is answer the
+/// questions that actually decide whether a game plays well -- how much the delay varies, how
+/// much is lost, how far the link falls apart when something else is using it, and how much of a
+/// distant server's latency is simply the width of the planet -- and answer them with numbers a
+/// person can act on.
+/// </summary>
+public partial class NetworkView : UserControl, IDisposable
+{
+    /// <summary>
+    /// Default probe target. A resolver rather than a game server, because the headline
+    /// measurement is about the SHAPE of the connection (variance, loss) rather than distance,
+    /// and a near, reliable, always-up host measures that with the least borrowed noise.
+    /// </summary>
+    private const string DefaultTarget = "1.1.1.1";
+
+    private CancellationTokenSource? _busy;
+    private CancellationTokenSource? _watch;
+    private bool _disposed;
+
+    public NetworkView()
+    {
+        InitializeComponent();
+        TargetBox.Text = DefaultTarget;
+
+        // The adapter audit is a local WMI read with no network in it, so it can run immediately
+        // rather than waiting for a button. Off the UI thread all the same: WMI is not fast, and
+        // this view is built on the idle callback that constructs the rest of the tabs.
+        _ = LoadAdapterFindingsAsync();
+
+        Unloaded += (_, _) => StopWatching();
+    }
+
+    // ---- connection quality ------------------------------------------------
+
+    private async void MeasureBtn_Click(object sender, RoutedEventArgs e)
+    {
+        StopWatching();
+        await MeasureOnceAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Continuous sampling.
+    ///
+    /// Worth its own mode because the faults this screen looks for are intermittent by nature. A
+    /// connection that drops two percent of packets for ten seconds every few minutes measures
+    /// perfectly clean nine times out of ten, and that is exactly the connection that ruins a
+    /// match. One measurement cannot find it; watching can.
+    /// </summary>
+    private async void WatchBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_watch is not null) { StopWatching(); return; }
+
+        var cts = new CancellationTokenSource();
+        _watch = cts;
+        WatchBtn.Content = "Stop watching";
+
+        try
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                await MeasureOnceAsync(cts.Token).ConfigureAwait(true);
+                try { await Task.Delay(2000, cts.Token).ConfigureAwait(true); }
+                catch (OperationCanceledException) { break; }
+            }
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            if (ReferenceEquals(_watch, cts)) StopWatching();
+        }
+    }
+
+    private void StopWatching()
+    {
+        var cts = Interlocked.Exchange(ref _watch, null);
+        if (cts is null) return;
+        try { cts.Cancel(); cts.Dispose(); } catch { }
+        if (!_disposed) WatchBtn.Content = "Watch continuously";
+    }
+
+    private async Task MeasureOnceAsync(CancellationToken ct = default)
+    {
+        string host = string.IsNullOrWhiteSpace(TargetBox.Text) ? DefaultTarget : TargetBox.Text.Trim();
+
+        MeasureBtn.IsEnabled = false;
+        QualityStatus.Text = $"Measuring {host}...";
+
+        try
+        {
+            var probe = await Task.Run(
+                () => NetworkProbe.MeasureAsync(host, count: 20, intervalMs: 150, ct: ct), ct)
+                .ConfigureAwait(true);
+
+            if (ct.IsCancellationRequested) return;
+            ShowQuality(probe);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            ShowQuality(ProbeResult.Unreachable(host));
+            QualityStatus.Text = ex.Message;
+        }
+        finally
+        {
+            if (!_disposed) MeasureBtn.IsEnabled = true;
+        }
+    }
+
+    private void ShowQuality(ProbeResult probe)
+    {
+        var s = probe.Stats;
+
+        // An unreachable host renders as absent, never as zero. A connection answering in 0 ms
+        // with 0% loss is not what "no answer" means, and this project does not dress an
+        // unavailable reading up as a plausible number.
+        if (s.IsEmpty)
+        {
+            RttValue.Text = JitterValue.Text = LossValue.Text = P95Value.Text = "--";
+            RttFoot.Text = JitterFoot.Text = LossFoot.Text = P95Foot.Text = "";
+            QualityStatus.Text =
+                $"{probe.Host} did not answer, over ICMP or TCP. That is either the host refusing "
+                + "to be measured or a real path problem, and this cannot tell you which.";
+            return;
+        }
+
+        RttValue.Text = $"{s.AvgMs:0}";
+        RttFoot.Text = $"MIN {s.MinMs:0} / MAX {s.MaxMs:0}";
+
+        JitterValue.Text = $"{s.JitterMs:0.0}";
+        JitterFoot.Text = JitterVerdict(s.JitterMs);
+
+        LossValue.Text = $"{s.LossPercent:0.#}";
+        LossFoot.Text = $"{s.Received} OF {s.Sent} RETURNED";
+
+        P95Value.Text = $"{s.P95Ms:0}";
+        P95Foot.Text = "19 IN 20 ARE FASTER";
+
+        string method = probe.Method switch
+        {
+            ProbeMethod.Icmp => "ICMP echo",
+            ProbeMethod.Tcp => $"TCP handshake, since {probe.Host} ignores ping (reads slightly high)",
+            _ => "unavailable",
+        };
+
+        QualityStatus.Text = $"{probe.Host} over {method}. " + Interpretation(s);
+    }
+
+    /// <summary>
+    /// Says what the numbers mean in words, because the reason this screen exists is that people
+    /// read a ping figure and cannot tell a good connection from a bad one.
+    ///
+    /// Loss is reported before jitter and jitter before the mean, which is the reverse of how
+    /// every speed test orders them and the right order for a game: any loss at all outranks any
+    /// amount of steady delay.
+    /// </summary>
+    private static string Interpretation(LatencyStats s)
+    {
+        if (s.LossPercent >= 1)
+            return $"Losing {s.LossPercent:0.#}% of packets, which matters more than the delay does. "
+                 + "Anything above about 1% is felt as rubber-banding and shots that do not register.";
+
+        if (s.JitterMs >= 15)
+            return $"Delay varies by {s.JitterMs:0.0} ms between packets. That variance, not the "
+                 + $"{s.AvgMs:0} ms average, is what a game's prediction keeps having to correct for.";
+
+        if (s.LossPercent > 0)
+            return $"Steady, with {s.LossPercent:0.#}% loss. Worth watching if it repeats, since "
+                 + "occasional loss is usually intermittent rather than absent.";
+
+        return $"Steady and complete: {s.JitterMs:0.0} ms of variation and nothing lost. At this "
+             + $"point the {s.AvgMs:0} ms average is mostly distance, which no setting changes.";
+    }
+
+    private static string JitterVerdict(double jitterMs) => jitterMs switch
+    {
+        < 3 => "STEADY",
+        < 8 => "SLIGHT VARIATION",
+        < 15 => "NOTICEABLE",
+        _ => "ERRATIC",
+    };
+
+    // ---- latency under load ------------------------------------------------
+
+    private async void LoadTestBtn_Click(object sender, RoutedEventArgs e)
+    {
+        StopWatching();
+
+        var cts = new CancellationTokenSource();
+        _busy = cts;
+
+        LoadTestBtn.IsEnabled = false;
+        LoadCancelBtn.IsEnabled = true;
+        LoadDetail.Children.Clear();
+        LoadHeadline.Text = "--";
+        LoadStatus.Text = "Measuring idle, then filling the connection. About fifteen seconds, and it downloads a few hundred megabytes to do it.";
+
+        try
+        {
+            string target = string.IsNullOrWhiteSpace(TargetBox.Text) ? DefaultTarget : TargetBox.Text.Trim();
+            var result = await Task.Run(
+                () => LoadedLatencyTest.RunAsync(target, ct: cts.Token), cts.Token).ConfigureAwait(true);
+
+            if (!cts.IsCancellationRequested) ShowLoadResult(result);
+        }
+        catch (OperationCanceledException)
+        {
+            LoadStatus.Text = "Stopped before it finished, so there is no result.";
+        }
+        catch (Exception ex)
+        {
+            LoadStatus.Text = $"Could not complete: {ex.Message}";
+        }
+        finally
+        {
+            if (!_disposed)
+            {
+                LoadTestBtn.IsEnabled = true;
+                LoadCancelBtn.IsEnabled = false;
+            }
+            if (ReferenceEquals(_busy, cts)) _busy = null;
+            cts.Dispose();
+        }
+    }
+
+    private void LoadCancelBtn_Click(object sender, RoutedEventArgs e)
+    {
+        try { _busy?.Cancel(); } catch { }
+    }
+
+    private void ShowLoadResult(LoadedLatencyResult r)
+    {
+        LoadDetail.Children.Clear();
+
+        LoadHeadline.Text = r.Verdict == LoadVerdict.Inconclusive
+            ? "No result"
+            : $"+{Math.Max(0, r.AddedMs):0} ms under load";
+
+        LoadStatus.Text = r.Verdict switch
+        {
+            LoadVerdict.Bloated =>
+                $"Latency rises {r.AddedMs:0} ms when the connection is busy, peaking {r.WorstAddedMs:0} ms above idle. "
+                + "This is bufferbloat: queues in your modem or at your ISP are holding packets rather than dropping them. "
+                + "It is the most likely reason a game feels fine alone and terrible while anything else downloads. "
+                + "The fix is SQM or QoS in the router, running fq_codel or CAKE shaped to about 90% of your real line rate.",
+
+            LoadVerdict.Clean =>
+                $"Latency held steady while {r.ThroughputMbps:0} Mbps was flowing, moving only {r.AddedMs:0.0} ms. "
+                + "Your queueing is genuinely in good shape, so a busy connection is not what costs you here.",
+
+            _ => r.Note ?? "The test could not reach a conclusion.",
+        };
+
+        AddDetail("Idle", r.Idle.IsEmpty ? "unavailable" : $"{r.Idle.AvgMs:0.0} ms average, {r.Idle.JitterMs:0.0} ms jitter");
+        AddDetail("Under load", r.Loaded.IsEmpty ? "unavailable" : $"{r.Loaded.AvgMs:0.0} ms average, peak {r.Loaded.MaxMs:0} ms");
+        AddDetail("Throughput reached", r.ThroughputMbps >= 0.1 ? $"{r.ThroughputMbps:0.0} Mbps" : "none");
+
+        // Stated even on a good result, because a flat latency reading only means anything if the
+        // link was genuinely busy, and a reader has no way to know that unless it is shown.
+        AddDetail("Test valid", r.Verdict == LoadVerdict.Inconclusive
+            ? "no, see above"
+            : $"yes, {r.ThroughputMbps:0.0} Mbps was moving while sampling");
+    }
+
+    private void AddDetail(string label, string value)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
+        row.Children.Add(new TextBlock
+        {
+            Text = label.ToUpperInvariant(),
+            Style = (Style)FindResource("TileLabel"),
+            Width = 150,
+        });
+        row.Children.Add(new TextBlock
+        {
+            Text = value,
+            Style = (Style)FindResource("BodyText"),
+            FontSize = 11.5,
+        });
+        LoadDetail.Children.Add(row);
+    }
+
+    // ---- server regions ----------------------------------------------------
+
+    private async void RegionBtn_Click(object sender, RoutedEventArgs e)
+    {
+        StopWatching();
+        RegionBtn.IsEnabled = false;
+        RegionRows.Children.Clear();
+        RegionStatus.Text = "Measuring each region in turn. One at a time, so they do not compete with each other for the same uplink.";
+
+        var cts = new CancellationTokenSource();
+        _busy = cts;
+
+        try
+        {
+            var progress = new Progress<RegionLatency>(AddRegionRow);
+            var all = await Task.Run(
+                () => ServerRegions.MeasureAllAsync(6, progress, cts.Token), cts.Token).ConfigureAwait(true);
+
+            var reached = all.Where(r => !r.Probe.Stats.IsEmpty).ToList();
+            var best = reached.OrderBy(r => r.Probe.Stats.MinMs).FirstOrDefault();
+            var worstOverhead = reached.OrderByDescending(r => r.OverheadMs).FirstOrDefault();
+
+            RegionStatus.Text = best is null
+                ? "No region answered, which is odd enough to suggest the measurement is being blocked rather than the network being down."
+                : $"Nearest is {best.Region.Name} at {best.Probe.Stats.MinMs:0} ms. "
+                  + (worstOverhead is null ? "" :
+                     $"The largest routing overhead is to {worstOverhead.Region.Name}, {worstOverhead.OverheadMs:0} ms above its physical floor. That gap is the only part any routing service could sell back to you.");
+        }
+        catch (OperationCanceledException) { RegionStatus.Text = "Stopped."; }
+        catch (Exception ex) { RegionStatus.Text = ex.Message; }
+        finally
+        {
+            if (!_disposed) RegionBtn.IsEnabled = true;
+            if (ReferenceEquals(_busy, cts)) _busy = null;
+            cts.Dispose();
+        }
+    }
+
+    private void AddRegionRow(RegionLatency row)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 7) };
+        foreach (var w in new[] { 1.4, 1.0, 1.0, 1.0, 1.0 })
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(w, GridUnitType.Star) });
+
+        bool has = !row.Probe.Stats.IsEmpty;
+
+        Cell(grid, 0, row.Region.Name, "BodyText");
+        Cell(grid, 1, has ? $"{row.Probe.Stats.MinMs:0} ms" : "no answer", "BodyText");
+        Cell(grid, 2, has ? $"{row.Probe.Stats.JitterMs:0.0} ms" : "--", "MutedText");
+        Cell(grid, 3, $"{row.PhysicsFloorMs:0} ms", "MutedText");
+        Cell(grid, 4, has ? $"+{row.OverheadMs:0} ms" : "--", "MutedText");
+
+        RegionRows.Children.Add(grid);
+    }
+
+    private void Cell(Grid grid, int column, string text, string styleKey)
+    {
+        var tb = new TextBlock
+        {
+            Text = text,
+            Style = (Style)FindResource(styleKey),
+            FontSize = 11.5,
+        };
+        Grid.SetColumn(tb, column);
+        grid.Children.Add(tb);
+    }
+
+    // ---- adapter audit -----------------------------------------------------
+
+    private async Task LoadAdapterFindingsAsync()
+    {
+        List<AdapterFinding> findings;
+        try { findings = await Task.Run(NetworkAdapterAudit.Run).ConfigureAwait(true); }
+        catch { return; }
+
+        if (_disposed) return;
+
+        AdapterRows.Children.Clear();
+
+        if (findings.Count == 0)
+        {
+            AdapterStatus.Text = "Nothing to report: none of the settings known to cost latency are switched on.";
+            return;
+        }
+
+        foreach (var f in findings) AdapterRows.Children.Add(BuildFindingRow(f));
+
+        int worthwhile = findings.Count(f => f.Weight == FindingWeight.Worthwhile);
+        AdapterStatus.Text = worthwhile == findings.Count
+            ? $"{worthwhile} found. Each drops the link briefly when changed, so do it between sessions rather than during one."
+            : $"{worthwhile} worth acting on; {findings.Count - worthwhile} marginal, listed only for completeness.";
+    }
+
+    private Border BuildFindingRow(AdapterFinding f)
+    {
+        var stack = new StackPanel();
+
+        var head = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
+        head.Children.Add(new TextBlock
+        {
+            Text = f.Setting,
+            Style = (Style)FindResource("BodyText"),
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 0, 8, 0),
+        });
+        head.Children.Add(new TextBlock
+        {
+            // The weight rides alongside the name rather than being encoded as a colour: this
+            // project states a judgement in words, where it can be read rather than decoded.
+            Text = f.Weight == FindingWeight.Worthwhile
+                ? $"currently {f.CurrentValue}"
+                : $"currently {f.CurrentValue} / marginal",
+            Style = (Style)FindResource("TileFoot"),
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        stack.Children.Add(head);
+
+        stack.Children.Add(new TextBlock
+        {
+            Text = f.Why,
+            Style = (Style)FindResource("MutedText"),
+            FontSize = 11,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 660,
+            Margin = new Thickness(0, 0, 0, 6),
+        });
+
+        stack.Children.Add(new TextBox
+        {
+            Text = f.FixCommand,
+            IsReadOnly = true,
+            FontFamily = new System.Windows.Media.FontFamily("Consolas, Cascadia Mono, monospace"),
+            FontSize = 10.5,
+            TextWrapping = TextWrapping.Wrap,
+            BorderThickness = new Thickness(0),
+            Background = System.Windows.Media.Brushes.Transparent,
+            Foreground = (System.Windows.Media.Brush)FindResource("TextFaintBrush"),
+            Margin = new Thickness(0, 0, 0, 4),
+        });
+
+        var copy = new Button
+        {
+            Content = "Copy command",
+            Width = 140,
+            Height = 28,
+            // Qualified: inside an object initializer the bare name binds to the property being
+            // assigned rather than to the enum type.
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+            Style = (Style)FindResource("FlatButtonStyle"),
+        };
+        copy.Click += (_, _) =>
+        {
+            // Clipboard access fails when another process holds it open, which is common enough
+            // and not worth taking the view down for.
+            try { Clipboard.SetText(f.FixCommand); copy.Content = "Copied"; }
+            catch { copy.Content = "Could not copy"; }
+        };
+        stack.Children.Add(copy);
+
+        return new Border
+        {
+            Child = stack,
+            Margin = new Thickness(0, 0, 0, 14),
+            Padding = new Thickness(0, 0, 0, 12),
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            BorderBrush = (System.Windows.Media.Brush)FindResource("BorderBrush"),
+        };
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        StopWatching();
+        try { _busy?.Cancel(); } catch { }
+    }
+}
