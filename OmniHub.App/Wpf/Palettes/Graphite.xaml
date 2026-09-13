@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                      xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
@@ -13,12 +13,20 @@
 
     <Color x:Key="TextPrimaryColor">#FFEDEDED</Color>
     <Color x:Key="TextMutedColor">#FF9A9A9A</Color>
-    <Color x:Key="TextFaintColor">#FF636363</Color>
+    <Color x:Key="TextFaintColor">#FF848484</Color>
 
     <Color x:Key="AccentColor">#FF7D8894</Color>
     <Color x:Key="AccentColor2">#FFA9B4C0</Color>
     <Color x:Key="AccentDimColor">#387D8894</Color>
     <Color x:Key="AccentSoftColor">#1E7D8894</Color>
+
+    <!-- Text drawn ON the accent, not beside it.
+         The primary button used to hardcode white here, which is fine on a deep blue and
+         invisible on a pale one. Measured across the eight palettes, white on the accent
+         gradient scored between 1.00 and 2.15 to 1, and 1.00 is literally white on white.
+         The ground colour is used instead: dark on a bright fill, which clears 4.5 in every
+         palette here and stays correct for any future one whose accent is lighter still. -->
+    <Color x:Key="OnAccentColor">#FF0E0E0E</Color>
 
     <Color x:Key="GoodColor">#FF22C55E</Color>
     <Color x:Key="WarnColor">#FFF59E0B</Color>
