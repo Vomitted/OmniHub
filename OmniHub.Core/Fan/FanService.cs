@@ -51,21 +51,6 @@ public sealed class FanService : IDisposable
     public double LastReadTempC { get; private set; }
 
     /// <summary>
-    /// Accumulated chassis heat, used to keep airflow up after a load ends.
-    ///
-    /// Exposed so the Fans screen can show it. A boost with no visible cause is indistinguishable
-    /// from the fan misbehaving, and this project has already spent a round of diagnosis on a fan
-    /// that was running high for a reason nothing on screen explained.
-    /// </summary>
-    public ThermalSoak Soak { get; } = new();
-
-    /// <summary>Whether the soak term is allowed to add airflow. Off restores the previous behaviour exactly.</summary>
-    public bool SoakEnabled { get; set; } = true;
-
-    /// <summary>Percentage points the soak term added on the last tick. Zero when it did nothing.</summary>
-    public double LastSoakBoost { get; private set; }
-
-    /// <summary>
     /// Trend of the CONTROL temperature -- the hotter of CPU and GPU -- which is what the
     /// curve steers on and what the predictive lead forecasts.
     /// </summary>
@@ -177,26 +162,6 @@ public sealed class FanService : IDisposable
                     effectiveTemp = Math.Max(temp, Trend.ForecastC(PredictiveLeadSeconds));
 
                 byte levelPercent = _curve.Evaluate(effectiveTemp);
-
-                // Thermal soak: heat the curve cannot see.
-                //
-                // The curve reads the die, and the die is not where the heat is after a long load.
-                // The heatsink and chassis stay saturated for far longer, so a level chosen from
-                // the die reading alone lets that heat flow back and the temperature rebounds.
-                // ThermalSoak accumulates time spent above a baseline and decays it, so this adds
-                // airflow in proportion to heat that is genuinely still in the machine.
-                //
-                // ADDED, bounded, and never subtracted. Same safety argument as the predictive
-                // lead: the curve is monotonic, so more airflow cannot quieten the fan, and a
-                // wrong estimate therefore costs noise rather than cooling.
-                Soak.Ingest(temp, DateTime.UtcNow);
-                LastSoakBoost = 0;
-                if (SoakEnabled && Soak.BoostPercent > 0)
-                {
-                    byte boosted = (byte)Math.Min(100, levelPercent + Soak.BoostPercent);
-                    LastSoakBoost = boosted - levelPercent;
-                    levelPercent = boosted;
-                }
 
                 // The ACPI zone saturates at its ceiling and reports that same value however
                 // much hotter the die actually gets (measured: it pins at 85.05C through

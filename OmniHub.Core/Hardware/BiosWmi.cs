@@ -158,15 +158,6 @@ public readonly struct GpuPowerData
         CustomTgp = customTgp; Ppab = ppab; DState = dState; PeakTemperatureC = peakTempC;
     }
 
-    /// <summary>
-    /// A preset expressed as the two fields this project actually understands.
-    ///
-    /// DState and PeakTemperature are placeholders here and are NOT what gets written:
-    /// GpuController.SetPower replaces both with whatever the firmware currently holds. They were
-    /// previously a hardcoded GpuDState.D1 that every caller sent on every write, which is a guess
-    /// about firmware behaviour made once and then applied everywhere, and it matched an observed
-    /// case of the discrete GPU refusing to leave P4.
-    /// </summary>
     public GpuPowerData(GpuPowerLevel level) : this(
         level == GpuPowerLevel.Eco ? GpuCustomTgp.Off : GpuCustomTgp.On,
         level == GpuPowerLevel.Performance ? GpuPpab.On : GpuPpab.Off,

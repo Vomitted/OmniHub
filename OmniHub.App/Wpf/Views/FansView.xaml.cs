@@ -261,14 +261,7 @@ public partial class FansView : UserControl
                 if (_service.HasCommanded)
                 {
                     byte targetRaw = FanService.PercentToRawLevel(_service.LastCommandedLevelPercent);
-                    // The soak contribution is named when it is doing something. A fan sitting
-                    // above the curve with nothing on screen to explain it is indistinguishable
-                    // from the fan misbehaving, and this project has already lost a round of
-                    // diagnosis to exactly that.
-                    string soak = _service.LastSoakBoost >= 1
-                        ? $" - SOAK +{_service.LastSoakBoost:0}%"
-                        : "";
-                    LevelFoot.Text = $"NOW {measured} - CURVE WANTS {FanService.RawToRpm(targetRaw)} RPM (RAW {targetRaw}){soak}";
+                    LevelFoot.Text = $"NOW {measured} - CURVE WANTS {FanService.RawToRpm(targetRaw)} RPM (RAW {targetRaw})";
                 }
                 else
                 {

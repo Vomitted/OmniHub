@@ -26,17 +26,7 @@ public sealed class ThermalLog : IDisposable
     // with the fans at 100% throughout -- meant inferring it from whether the temperatures had
     // decimal places. That is a real diagnosis from an accidental signal; the column makes it
     // a recorded fact instead.
-    // soak_pct records how many percentage points the thermal-soak term added on this tick, so
-    // a commanded level sitting above what the curve alone would ask for is explicable from the
-    // file rather than only from the screen. Without it a boosted row is indistinguishable from
-    // the curve misbehaving, which is the exact ambiguity the on-screen readout was added to
-    // remove -- leaving it out of the log would have reintroduced it for anyone reading back a
-    // session afterwards.
-    //
-    // Adding a column changes the schema, and EnsureWriterFor below already rolls to a suffixed
-    // file when an existing day's header does not match. That is what keeps a single file from
-    // ending up with rows of two different widths.
-    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,soak_pct,limit,limit_pct,watts,gpu_pstate,gpu_dstate";
+    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor";
 
     private readonly object _lock = new();
     private StreamWriter? _writer;
@@ -57,10 +47,7 @@ public sealed class ThermalLog : IDisposable
     // ambiguous about which sensor produced a row -- an ACPI 85 and a die 85.2 looked identical,
     // which is exactly what made diagnosing a "temp is wrong" report harder than it needed to be.
     public void Append(DateTime utcNow, double tempC, double forecastC, byte fan1Raw, byte fan2Raw,
-                       int commandedPercent, bool throttling, string mode, string sensor,
-                       double soakPercent = 0, string? bindingLimit = null, double bindingLimitPercent = 0,
-                       double packageWatts = double.NaN,
-                       string? gpuPState = null, string gpuPowerState = "")
+                       int commandedPercent, bool throttling, string mode, string sensor)
     {
         if (_failed) return;
 
@@ -83,22 +70,7 @@ public sealed class ThermalLog : IDisposable
                   .Append(commandedPercent.ToString(CultureInfo.InvariantCulture)).Append(',')
                   .Append(throttling ? "True" : "False").Append(',')
                   .Append(Sanitize(mode)).Append(',')
-                  .Append(Sanitize(sensor)).Append(',')
-                  .Append(soakPercent.ToString("0.#", CultureInfo.InvariantCulture)).Append(',')
-
-                  // Empty rather than a placeholder name when the SMU is not open. A row that
-                  // claims a limit it never read is worse than a row with a hole in it.
-                  .Append(Sanitize(bindingLimit ?? "")).Append(',')
-                  .Append(bindingLimitPercent.ToString("0.#", CultureInfo.InvariantCulture)).Append(',')
-
-                  // Empty for an unread value, never 0. Zero watts is a real measurement and
-                  // would drag any per-watt figure computed from this file toward infinity.
-                  .Append(double.IsNaN(packageWatts) ? "" : packageWatts.ToString("0.##", CultureInfo.InvariantCulture)).Append(',')
-
-                  // Both empty when unread. On battery the P-state is deliberately absent,
-                  // because asking for it would wake the card this column exists to watch.
-                  .Append(Sanitize(gpuPState ?? "")).Append(',')
-                  .Append(Sanitize(gpuPowerState));
+                  .Append(Sanitize(sensor));
 
                 _writer.WriteLine(sb.ToString());
 
