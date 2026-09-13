@@ -6,7 +6,8 @@ namespace OmniHub.Core.Diagnostics;
 public readonly record struct ThermalRow(
     DateTime Utc, double TempC, double? ForecastC, int CommandedPercent,
     bool Throttling, string Mode, string Sensor, double SoakPercent = 0,
-    string BindingLimit = "", double BindingLimitPercent = 0, double? PackageWatts = null);
+    string BindingLimit = "", double BindingLimitPercent = 0, double? PackageWatts = null,
+    string GpuPState = "", string GpuPowerState = "");
 
 /// <summary>One row of the connection log. RttMs is null for a probe that never returned.</summary>
 public readonly record struct NetworkRow(DateTime Utc, double? RttMs, bool Lost);
@@ -234,6 +235,25 @@ public static class SessionAnalysis
                        + "heatsink after a load, which the die temperature alone does not show.");
         }
 
+        // The "stuck at P4" report, made checkable. A discrete GPU sitting in a high performance
+        // state while doing nothing is burning 12 to 14 watts on this machine for no work, and it
+        // is intermittent enough that it was previously only ever a memory.
+        var gpuStates = thermal.Where(t => t.GpuPState.Length > 0).ToList();
+        if (gpuStates.Count > 0)
+        {
+            // P8 is idle, P0 is flat out. Anything numerically below P8 while the machine is not
+            // gaming is the condition worth naming.
+            int busy = gpuStates.Count(t => t.GpuPState.Length >= 2
+                && int.TryParse(t.GpuPState.AsSpan(1), out int n) && n <= 5);
+
+            double share = (double)busy / gpuStates.Count;
+            if (share >= 0.2)
+                findings.Add($"The discrete GPU sat in a high performance state for {share:P0} of the "
+                           + "samples that could see it. If you were not gaming for that long, something "
+                           + "is holding a GPU context open: an animated wallpaper and a hardware-accelerated "
+                           + "browser both do it, and on battery that is 12 to 14 watts for no work.");
+        }
+
         if (r.NetworkSamples > 0 && r.NetworkLossPercent >= 1)
             findings.Add($"The connection lost {r.NetworkLossPercent:0.#}% of probes over {r.NetworkSamples} "
                        + "samples. Above about 1% is felt in a game as rubber-banding and shots that do "
@@ -317,7 +337,8 @@ public static class SessionAnalysis
                 ? w : null;
 
             rows.Add(new ThermalRow(utc, temp, forecast, commanded,
-                f[6].Equals("True", StringComparison.OrdinalIgnoreCase), f[7], f[8], soak, limit, limitPct, watts));
+                f[6].Equals("True", StringComparison.OrdinalIgnoreCase), f[7], f[8], soak, limit, limitPct, watts,
+                f.Length >= 14 ? f[13] : "", f.Length >= 15 ? f[14].TrimEnd() : ""));
         }
 
         return rows;

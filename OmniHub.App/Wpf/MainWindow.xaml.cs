@@ -632,7 +632,8 @@ public partial class MainWindow : Window
                    r.Throttling == ThrottlingState.On,
                    _settings.FanControlMode.ToString(),
                    r.TemperatureSource.ToString(),
-                   _service.LastSoakBoost, r.BindingLimit, r.BindingLimitPercent, r.PackageWatts);
+                   _service.LastSoakBoost, r.BindingLimit, r.BindingLimitPercent, r.PackageWatts,
+                   r.GpuPState, r.GpuPowerState);
     }
 
     private void ScanForNewApps()

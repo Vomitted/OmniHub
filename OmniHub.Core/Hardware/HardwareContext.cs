@@ -33,7 +33,16 @@ public sealed record Reading(
     // Sustained package power. NaN when the SMU is not open, which is distinct from zero watts.
     // Needed because temperature on its own says nothing about how well the machine is cooling:
     // 80C drawing 15W and 80C drawing 50W describe a blocked heatsink and a healthy one.
-    double PackageWatts = double.NaN);
+    double PackageWatts = double.NaN,
+
+    // What the discrete GPU is doing, for the "stuck at P4" report that nobody could ever check.
+    //
+    // GpuPState comes from nvidia-smi and is therefore only present when something was already
+    // willing to wake the card. GpuPowerState comes from the configuration manager instead: it
+    // reads the PCI power state out of Windows' own bookkeeping, with no PCIe transaction and no
+    // wake, so it is safe to record on battery where nvidia-smi deliberately is not called.
+    string? GpuPState = null,
+    string GpuPowerState = "");
 
 /// <summary>
 /// Owns the one BiosInterop connection and hands out the specialized
@@ -435,6 +444,19 @@ public sealed class HardwareContext : IDisposable
                     }
                 }
 
+                // GPU state. The P-state rides along from whatever telemetry was already
+                // cached -- this never triggers a query of its own, so it cannot be the thing
+                // that wakes the card. The D-state is read directly because it is free.
+                string? gpuPState = null;
+                string gpuDState = "";
+                try
+                {
+                    gpuPState = GpuTelemetry.Peek()?.PState;
+                    var d = GpuPowerState.ReadDiscrete();
+                    gpuDState = d == DevicePowerState.Unknown ? "" : d.ToString();
+                }
+                catch { }
+
                 long slowMs = tick.ElapsedMilliseconds - tempMs - fanMs;
 
                 var levels = _lastLevels;
@@ -445,7 +467,8 @@ public sealed class HardwareContext : IDisposable
                     levels.Length > 1 ? levels[1] : (byte)0,
                     maxFan, throttle,
                     reading.Celsius, reading.Source,
-                    limitName, limitPercent, watts);
+                    limitName, limitPercent, watts,
+                    gpuPState, gpuDState);
 
                 // Each subscriber is invoked separately, in its own try.
                 //

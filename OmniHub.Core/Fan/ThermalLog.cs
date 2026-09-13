@@ -36,7 +36,7 @@ public sealed class ThermalLog : IDisposable
     // Adding a column changes the schema, and EnsureWriterFor below already rolls to a suffixed
     // file when an existing day's header does not match. That is what keeps a single file from
     // ending up with rows of two different widths.
-    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,soak_pct,limit,limit_pct,watts";
+    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,soak_pct,limit,limit_pct,watts,gpu_pstate,gpu_dstate";
 
     private readonly object _lock = new();
     private StreamWriter? _writer;
@@ -59,7 +59,8 @@ public sealed class ThermalLog : IDisposable
     public void Append(DateTime utcNow, double tempC, double forecastC, byte fan1Raw, byte fan2Raw,
                        int commandedPercent, bool throttling, string mode, string sensor,
                        double soakPercent = 0, string? bindingLimit = null, double bindingLimitPercent = 0,
-                       double packageWatts = double.NaN)
+                       double packageWatts = double.NaN,
+                       string? gpuPState = null, string gpuPowerState = "")
     {
         if (_failed) return;
 
@@ -92,7 +93,12 @@ public sealed class ThermalLog : IDisposable
 
                   // Empty for an unread value, never 0. Zero watts is a real measurement and
                   // would drag any per-watt figure computed from this file toward infinity.
-                  .Append(double.IsNaN(packageWatts) ? "" : packageWatts.ToString("0.##", CultureInfo.InvariantCulture));
+                  .Append(double.IsNaN(packageWatts) ? "" : packageWatts.ToString("0.##", CultureInfo.InvariantCulture)).Append(',')
+
+                  // Both empty when unread. On battery the P-state is deliberately absent,
+                  // because asking for it would wake the card this column exists to watch.
+                  .Append(Sanitize(gpuPState ?? "")).Append(',')
+                  .Append(Sanitize(gpuPowerState));
 
                 _writer.WriteLine(sb.ToString());
 
