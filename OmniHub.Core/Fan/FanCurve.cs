@@ -1,4 +1,4 @@
-namespace OmniHub.Core.Fan;
+﻿namespace OmniHub.Core.Fan;
 
 public readonly record struct CurvePoint(double TempC, byte LevelPercent);
 
@@ -103,22 +103,33 @@ public sealed class FanCurve
             }
         }
 
-        // The reference temperature moves ONLY when the level actually changes.
+        // The reference temperature moves only when the level goes UP.
         //
-        // Updating it every evaluation made the deadband unsatisfiable: on a gradual cooldown
+        // Two earlier versions of this line were both wrong, in opposite directions, and the
+        // difference between them is the whole behaviour of the fan on a cooldown.
+        //
+        // Moving it on every evaluation made the deadband unsatisfiable: on a gradual cooldown
         // each tick lowers the temperature by a fraction of a degree, so "has it dropped 4C
         // since last time" was really "has it dropped 4C in the last two seconds", which never
-        // happens outside a crash in load. The fan latched at whatever peak it reached and
-        // stayed there -- observed at 100% and 5600 rpm while the die sat at 76C.
+        // happens outside a crash in load. The fan latched at its peak -- observed at 100% and
+        // 5600 rpm while the die sat at 76C.
         //
-        // Anchoring to the temperature at which the current level was set is what makes this a
-        // deadband rather than a ratchet: the fan steps down once the die is genuinely 4C
-        // cooler than when it stepped up, however long that takes.
-        if (raw != _lastLevel)
-        {
-            _lastLevel = raw;
-            _lastEvalTemp = tempC;
-        }
+        // Moving it whenever the level CHANGED fixed that case and introduced a subtler one: a
+        // staircase ratchet. Each step down re-anchored to the temperature that had just
+        // justified it, so the next step needed another full 4C of cooling BELOW that. On a
+        // flat temperature there is no further drop to give, and the fan stops descending
+        // partway. Measured on this machine: after a two-second burst, 70% held for seventeen
+        // seconds with the die flat at 63.1C, where the curve asks for 25%. Across a 90-minute
+        // log, 48% of samples sat 10 or more points above the curve's own answer, including
+        // 50% at 44C. That is the "fans spike on light tasks and stay up" report.
+        //
+        // Anchoring to the last temperature that RAISED the level is what makes this a deadband
+        // rather than a ratchet. Going down, the anchor stays at the peak, so once the die is
+        // genuinely 4C below it every following tick is free to take another step until the
+        // level meets the curve -- the clamp above already stops it undershooting. Going up
+        // re-anchors, so the deadband is measured from the new peak.
+        if (raw > _lastLevel) _lastEvalTemp = tempC;
+        _lastLevel = raw;
         return raw;
     }
 

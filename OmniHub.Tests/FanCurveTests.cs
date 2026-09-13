@@ -1,4 +1,4 @@
-using OmniHub.Core.Fan;
+﻿using OmniHub.Core.Fan;
 
 namespace OmniHub.Tests;
 
@@ -30,6 +30,36 @@ public class FanCurveTests
         for (double t = 92; t >= 60; t -= 0.5) level = curve.Evaluate(t);
 
         Assert.True(level < peak, $"fan latched at {level}% while the die fell from 92C to 60C");
+    }
+
+    /// <summary>
+    /// A transient spike must not leave the fan parked above the curve once the die settles.
+    ///
+    /// This is the case the continuous-cooldown test above cannot catch. There the temperature
+    /// falls every tick, which feeds the deadband a fresh drop each time; here it spikes once
+    /// and then holds perfectly flat, which is what a laptop actually does when a burst of
+    /// light work ends. Taken from a real log: a two-second burst to 84C, then the die flat at
+    /// 63.1C, where the default curve asks for about 25% -- and the fan held 70% for seventeen
+    /// seconds because every step down had re-armed the deadband against itself.
+    /// </summary>
+    [Fact]
+    public void FanReturnsToTheCurveWhenTemperatureSettlesFlatAfterASpike()
+    {
+        var curve = FanCurve.CreateDefault();
+
+        curve.Evaluate(50);
+        byte peak = curve.Evaluate(84);
+
+        // Thirty ticks -- a minute at the service's two-second interval -- with the die
+        // pinned at exactly the same temperature the whole time.
+        byte level = peak;
+        for (int tick = 0; tick < 30; tick++) level = curve.Evaluate(63.1);
+
+        byte target = FanCurve.CreateDefault().Evaluate(63.1);
+
+        Assert.True(level < peak, $"fan never left its peak of {peak}% on a flat 63.1C die");
+        Assert.True(level <= target,
+            $"fan settled at {level}% with the die flat at 63.1C, where the curve asks {target}%");
     }
 
     [Fact]
