@@ -6,7 +6,7 @@ namespace OmniHub.Core.Diagnostics;
 public readonly record struct ThermalRow(
     DateTime Utc, double TempC, double? ForecastC, int CommandedPercent,
     bool Throttling, string Mode, string Sensor, double SoakPercent = 0,
-    string BindingLimit = "", double BindingLimitPercent = 0);
+    string BindingLimit = "", double BindingLimitPercent = 0, double? PackageWatts = null);
 
 /// <summary>One row of the connection log. RttMs is null for a probe that never returned.</summary>
 public readonly record struct NetworkRow(DateTime Utc, double? RttMs, bool Lost);
@@ -312,8 +312,12 @@ public static class SessionAnalysis
             double limitPct = 0;
             if (f.Length >= 12) double.TryParse(f[11], NumberStyles.Float, CultureInfo.InvariantCulture, out limitPct);
 
+            double? watts = f.Length >= 13
+                && double.TryParse(f[12], NumberStyles.Float, CultureInfo.InvariantCulture, out double w)
+                ? w : null;
+
             rows.Add(new ThermalRow(utc, temp, forecast, commanded,
-                f[6].Equals("True", StringComparison.OrdinalIgnoreCase), f[7], f[8], soak, limit, limitPct));
+                f[6].Equals("True", StringComparison.OrdinalIgnoreCase), f[7], f[8], soak, limit, limitPct, watts));
         }
 
         return rows;

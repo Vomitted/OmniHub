@@ -49,7 +49,43 @@ public partial class DiagnosticsView : UserControl
         BuildCapabilityRows();
         LoadReportDates();
         _ = LoadStabilityAsync();
+        _ = LoadCoolingHealthAsync();
     }
+
+    // ------------------------------------------------------------- cooling health
+
+    private async Task LoadCoolingHealthAsync()
+    {
+        List<CoolingSample> history;
+        try { history = await Task.Run(() => CoolingHealth.History(ThermalLog.LogDirectory)).ConfigureAwait(true); }
+        catch (Exception ex) { CoolingSummary.Text = $"Could not read the logs: {ex.Message}"; return; }
+
+        if (_disposedView) return;
+
+        CoolingSummary.Text = CoolingHealth.Summarise(history);
+        CoolingRows.Children.Clear();
+
+        // Newest first, and capped. This is a trend, not a ledger; twenty rows of history is
+        // enough to see a slope and more than anyone reads.
+        foreach (var s in history.AsEnumerable().Reverse().Take(14))
+        {
+            var row = new StackPanel { Margin = new Thickness(0, 0, 0, 5) };
+            row.Children.Add(new TextBlock
+            {
+                Text = $"{s.Date:ddd d MMM}   {s.DegreesPerWatt:0.00} C per watt",
+                Style = (Style)FindResource("BodyText"),
+                FontSize = 11.5,
+            });
+            row.Children.Add(new TextBlock
+            {
+                Text = $"{s.MedianWatts:0} W MEDIAN / FAN {s.MedianFanPercent:0}% / {s.LoadSamples:N0} LOADED SAMPLES",
+                Style = (Style)FindResource("TileFoot"),
+            });
+            CoolingRows.Children.Add(row);
+        }
+    }
+
+    private bool _disposedView;
 
     // ------------------------------------------------------------------ stability
 

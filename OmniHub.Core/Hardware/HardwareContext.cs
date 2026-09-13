@@ -28,7 +28,12 @@ public sealed record Reading(
     // says plainly that raising the power limit will achieve nothing -- a conclusion nobody can
     // reach from a wattage, and one that decides whether tuning or cooling is worth the effort.
     string? BindingLimit = null,
-    double BindingLimitPercent = 0);
+    double BindingLimitPercent = 0,
+
+    // Sustained package power. NaN when the SMU is not open, which is distinct from zero watts.
+    // Needed because temperature on its own says nothing about how well the machine is cooling:
+    // 80C drawing 15W and 80C drawing 50W describe a blocked heatsink and a healthy one.
+    double PackageWatts = double.NaN);
 
 /// <summary>
 /// Owns the one BiosInterop connection and hands out the specialized
@@ -411,6 +416,7 @@ public sealed class HardwareContext : IDisposable
                 // tick with the fan readback.
                 string? limitName = null;
                 double limitPercent = 0;
+                double watts = double.NaN;
                 if (Smu is { } smu)
                 {
                     try
@@ -420,6 +426,7 @@ public sealed class HardwareContext : IDisposable
                             var (name, percent) = snap.TightestLimit();
                             limitName = name;
                             limitPercent = percent;
+                            watts = snap.StapmWatts;
                         }
                     }
                     catch
@@ -438,7 +445,7 @@ public sealed class HardwareContext : IDisposable
                     levels.Length > 1 ? levels[1] : (byte)0,
                     maxFan, throttle,
                     reading.Celsius, reading.Source,
-                    limitName, limitPercent);
+                    limitName, limitPercent, watts);
 
                 // Each subscriber is invoked separately, in its own try.
                 //
