@@ -121,6 +121,7 @@ public partial class MainWindow : Window
         // Predictive lead is applied from settings rather than hardcoded, and defaults to 0
         // (disabled), so an existing install keeps behaving exactly as it did until opted in.
         _service.PredictiveLeadSeconds = _settings.PredictiveLeadSeconds;
+        _service.SoakEnabled = _settings.ThermalSoakEnabled;
         if (_settings.ThermalLogging) _thermalLog = new ThermalLog();
         StartNetworkMonitor();
 
@@ -975,6 +976,12 @@ public partial class MainWindow : Window
             // conditions -- often a different network entirely -- and splicing them together
             // would invent one enormous jitter spike at the join that nothing experienced.
             try { _netMonitor?.Reset(); } catch { }
+
+            // Accumulated heat does not survive a sleep either. The machine was cooling the whole
+            // time it was away with nothing recording it, so the residue from before describes a
+            // chassis that has since had minutes or hours to shed it. Carrying it over would boost
+            // the fan on resume for heat that is long gone.
+            try { _service.Soak.Reset(); } catch { }
             StartNetworkMonitor();
         }
     }
