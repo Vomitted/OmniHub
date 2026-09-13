@@ -47,6 +47,196 @@ public partial class DiagnosticsView : UserControl
         DurationCombo.SelectedIndex = 1;
 
         BuildCapabilityRows();
+        LoadReportDates();
+        _ = LoadStabilityAsync();
+    }
+
+    // ------------------------------------------------------------------ stability
+
+    /// <summary>
+    /// Reads the event log off the UI thread and renders the result.
+    ///
+    /// The query is filtered server-side and returns in milliseconds, but the System log is large
+    /// and this runs while the tab is being constructed, so it does not belong on the thread
+    /// drawing it.
+    /// </summary>
+    private async Task LoadStabilityAsync()
+    {
+        List<UnexpectedShutdown> events;
+        try
+        {
+            events = await Task.Run(() => StabilityHistory.Read(60, ThermalLog.LogDirectory))
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            StabilitySummary.Text = $"Could not read the event log: {ex.Message}";
+            return;
+        }
+
+        StabilitySummary.Text = StabilityHistory.Summarise(events, 60);
+        StabilityRows.Children.Clear();
+
+        foreach (var e in events.Take(12))
+        {
+            string context = e.LastTempC is double t && e.LastFanPercent is int f
+                ? $"  /  LAST READING {t:0.#}°C, FAN {f}%"
+                : "";
+
+            var row = new StackPanel { Margin = new Thickness(0, 0, 0, 6) };
+            row.Children.Add(new TextBlock
+            {
+                Text = $"{e.LocalTime:ddd d MMM, HH:mm}  {e.Describe()}",
+                Style = (Style)FindResource("BodyText"),
+                FontSize = 11.5,
+            });
+            row.Children.Add(new TextBlock
+            {
+                Text = $"SLEEPINPROGRESS {e.SleepInProgress} / BUGCHECK 0x{e.BugcheckCode:X}{context}",
+                Style = (Style)FindResource("TileFoot"),
+            });
+            StabilityRows.Children.Add(row);
+        }
+
+        if (events.Count > 12)
+            StabilityRows.Children.Add(new TextBlock
+            {
+                Text = $"and {events.Count - 12} older.",
+                Style = (Style)FindResource("MutedText"),
+                FontSize = 11,
+                Margin = new Thickness(0, 4, 0, 0),
+            });
+    }
+
+    // -------------------------------------------------------------- session report
+
+    private SessionReport? _report;
+
+    /// <summary>
+    /// Fills the day list from whatever logs exist, newest first, and shows the newest.
+    ///
+    /// Driven by the files on disk rather than by a date range, because a day with no log is not
+    /// a day with a quiet session and offering it would invite exactly that misreading.
+    /// </summary>
+    private void LoadReportDates()
+    {
+        List<DateTime> dates;
+        try { dates = SessionAnalysis.AvailableDates(ThermalLog.LogDirectory); }
+        catch { dates = new List<DateTime>(); }
+
+        if (dates.Count == 0)
+        {
+            ReportDateCombo.IsEnabled = false;
+            ReportCopyBtn.IsEnabled = false;
+            ShowReport(SessionReport.Empty);
+            return;
+        }
+
+        ReportDateCombo.ItemsSource = dates.Select(d => d.ToString("ddd d MMM", CultureInfo.CurrentCulture)).ToList();
+        _reportDates = dates;
+        ReportDateCombo.SelectedIndex = 0;   // raises SelectionChanged, which loads it
+    }
+
+    private List<DateTime> _reportDates = new();
+
+    private void ReportDate_Changed(object sender, SelectionChangedEventArgs e) => LoadSelectedReport();
+
+    private void ReportRefresh_Click(object sender, RoutedEventArgs e)
+    {
+        // Re-reads the directory as well as the file: a session that crosses midnight creates a
+        // day the list did not have when this view was built.
+        LoadReportDates();
+    }
+
+    private void LoadSelectedReport()
+    {
+        int i = ReportDateCombo.SelectedIndex;
+        if (i < 0 || i >= _reportDates.Count) return;
+
+        try
+        {
+            _report = SessionAnalysis.ForDate(ThermalLog.LogDirectory, _reportDates[i]);
+            ShowReport(_report);
+        }
+        catch (Exception ex)
+        {
+            ReportFindings.Children.Clear();
+            ReportFindings.Children.Add(new TextBlock
+            {
+                Text = $"Could not read that day's log: {ex.Message}",
+                Style = (Style)FindResource("MutedText"),
+                FontSize = 11.5,
+                TextWrapping = TextWrapping.Wrap,
+            });
+        }
+    }
+
+    private void ShowReport(SessionReport r)
+    {
+        bool has = r.Samples > 0;
+
+        RepDuration.Text = has ? Short(r.Duration) : "--";
+        RepSamples.Text = has ? $"{r.Samples:N0} SAMPLES" : "";
+
+        RepMedianTemp.Text = has ? $"{r.MedianTempC:0}" : "--";
+        RepTempFoot.Text = has ? $"P90 {r.P90TempC:0} / PEAK {r.MaxTempC:0.#}" : "";
+
+        RepMedianFan.Text = has ? $"{r.MedianFanPercent:0}" : "--";
+        RepFanFoot.Text = has ? $"PEAK {r.MaxFanPercent:0}%" : "";
+
+        // "none" rather than "0m". Zero throttling is a result worth stating in words, and a bare
+        // zero beside three real numbers reads as a missing value.
+        RepThrottled.Text = !has ? "--" : r.Throttled > TimeSpan.Zero ? Short(r.Throttled) : "none";
+        RepThrottleFoot.Text = has && r.SensorBlind > TimeSpan.Zero
+            ? $"SENSOR BLIND {Short(r.SensorBlind)}"
+            : has ? "FIRMWARE REPORTED NONE" : "";
+
+        ReportFindings.Children.Clear();
+        foreach (string finding in r.Findings)
+        {
+            ReportFindings.Children.Add(new TextBlock
+            {
+                Text = "•  " + finding,
+                Style = (Style)FindResource("BodyText"),
+                FontSize = 11.5,
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 700,
+                Margin = new Thickness(0, 0, 0, 8),
+            });
+        }
+
+        ReportCopyBtn.IsEnabled = has;
+    }
+
+    private static string Short(TimeSpan t) =>
+        t.TotalHours >= 1 ? $"{(int)t.TotalHours}h {t.Minutes}m"
+        : t.TotalMinutes >= 1 ? $"{(int)t.TotalMinutes}m"
+        : $"{t.Seconds}s";
+
+    /// <summary>
+    /// Puts the report on the clipboard as plain text, so it can be pasted into an issue.
+    ///
+    /// That is the point of it being readable prose rather than a chart: the hardest part of
+    /// reporting a thermal problem is saying what happened, and this is already that sentence.
+    /// </summary>
+    private void ReportCopy_Click(object sender, RoutedEventArgs e)
+    {
+        if (_report is not { Samples: > 0 } r) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"OmniHub session report, {r.From:yyyy-MM-dd HH:mm} to {r.To:HH:mm} UTC");
+        sb.AppendLine($"{r.Samples:N0} samples over {Short(r.Duration)}");
+        sb.AppendLine($"Temperature: median {r.MedianTempC:0.#}C, p90 {r.P90TempC:0.#}C, peak {r.MaxTempC:0.#}C");
+        sb.AppendLine($"Fan: median {r.MedianFanPercent:0}%, peak {r.MaxFanPercent:0}%");
+        sb.AppendLine($"Throttled: {(r.Throttled > TimeSpan.Zero ? Short(r.Throttled) : "none")}");
+        if (r.SensorBlind > TimeSpan.Zero) sb.AppendLine($"Sensor at its ceiling for {Short(r.SensorBlind)}");
+        if (r.NetworkSamples > 0)
+            sb.AppendLine($"Connection: {r.NetworkSamples:N0} probes, {r.NetworkLossPercent:0.#}% lost, worst {r.NetworkWorstRttMs:0} ms");
+        sb.AppendLine();
+        foreach (string f in r.Findings) sb.AppendLine("- " + f);
+
+        try { System.Windows.Clipboard.SetText(sb.ToString()); ReportCopyBtn.Content = "Copied"; }
+        catch { ReportCopyBtn.Content = "Could not copy"; }
     }
 
     // ------------------------------------------------------------------ load test
