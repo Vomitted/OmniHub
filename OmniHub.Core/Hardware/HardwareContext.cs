@@ -415,47 +415,31 @@ public sealed class HardwareContext : IDisposable
                         // default to "not max fan" and "unknown throttling" -- both honest.
                     }
                 }
-                // The binding limit, read every tick rather than on the slow path.
+                // The per-tick SMU and GPU power-state reads that used to sit here have been
+                // REMOVED, and deliberately so.
                 //
-                // This is a PM table read through PawnIO, not a WMI round trip: it copies a
-                // block the SMU already maintains, with no provider process and no SMM entry.
-                // It is expected to cost far less than the temperature read beside it. That
-                // expectation is checked rather than assumed -- avg_total_ms in the poll timing
-                // log is the number to watch, and if this shows up there it moves to the slow
-                // tick with the fan readback.
+                // They were added to record which limit was binding and what the discrete GPU was
+                // doing. Both are genuinely useful and neither is worth what happened next: within
+                // hours of shipping them the machine hard-hung while awake and in use, with
+                // Kernel-Power 41 reporting SleepInProgress=0 -- a different signature from the
+                // three earlier hangs on this laptop, which all died mid-sleep-transition.
+                //
+                // That is not proof. This machine has a history of unexplained hangs predating any
+                // of this work, and one event is one event. But the change under suspicion added
+                // ring-0 hardware access, through a kernel driver, to a loop that runs every two
+                // seconds forever, and "we could not prove it" is not a reason to keep new
+                // kernel-level polling running on somebody's laptop after it froze.
+                //
+                // The columns these fed stay in the log schema and simply go empty, which the
+                // readers already handle: they were written to treat a missing limit as unmeasured
+                // rather than as "nothing was binding". If this comes back it should come back on
+                // a slow cadence, off the critical path, and only after the hangs have a
+                // confirmed cause.
                 string? limitName = null;
                 double limitPercent = 0;
                 double watts = double.NaN;
-                if (Smu is { } smu)
-                {
-                    try
-                    {
-                        if (smu.ReadPowerSnapshot() is { } snap)
-                        {
-                            var (name, percent) = snap.TightestLimit();
-                            limitName = name;
-                            limitPercent = percent;
-                            watts = snap.StapmWatts;
-                        }
-                    }
-                    catch
-                    {
-                        // Left null. A failed read is not a report that nothing is binding.
-                    }
-                }
-
-                // GPU state. The P-state rides along from whatever telemetry was already
-                // cached -- this never triggers a query of its own, so it cannot be the thing
-                // that wakes the card. The D-state is read directly because it is free.
                 string? gpuPState = null;
                 string gpuDState = "";
-                try
-                {
-                    gpuPState = GpuTelemetry.Peek()?.PState;
-                    var d = GpuPowerState.ReadDiscrete();
-                    gpuDState = d == DevicePowerState.Unknown ? "" : d.ToString();
-                }
-                catch { }
 
                 long slowMs = tick.ElapsedMilliseconds - tempMs - fanMs;
 
