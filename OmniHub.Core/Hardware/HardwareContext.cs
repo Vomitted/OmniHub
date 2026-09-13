@@ -18,7 +18,31 @@ public sealed record Reading(
     bool MaxFanActive,
     ThrottlingState Throttling,
     double PreciseTemperatureC = double.NaN,
-    TemperatureSource TemperatureSource = TemperatureSource.AcpiThermalZone);
+    TemperatureSource TemperatureSource = TemperatureSource.AcpiThermalZone,
+
+    // Which constraint the processor is closest to, and how close. Null when the SMU is not
+    // open, which is an honest "not measured" rather than a claim that nothing is binding.
+    //
+    // This is the single most useful thing the SMU reports and it was only ever shown live on
+    // the Tuning tab, never recorded. Being at 99% of core current and 60% of the power limit
+    // says plainly that raising the power limit will achieve nothing -- a conclusion nobody can
+    // reach from a wattage, and one that decides whether tuning or cooling is worth the effort.
+    string? BindingLimit = null,
+    double BindingLimitPercent = 0,
+
+    // Sustained package power. NaN when the SMU is not open, which is distinct from zero watts.
+    // Needed because temperature on its own says nothing about how well the machine is cooling:
+    // 80C drawing 15W and 80C drawing 50W describe a blocked heatsink and a healthy one.
+    double PackageWatts = double.NaN,
+
+    // What the discrete GPU is doing, for the "stuck at P4" report that nobody could ever check.
+    //
+    // GpuPState comes from nvidia-smi and is therefore only present when something was already
+    // willing to wake the card. GpuPowerState comes from the configuration manager instead: it
+    // reads the PCI power state out of Windows' own bookkeeping, with no PCIe transaction and no
+    // wake, so it is safe to record on battery where nvidia-smi deliberately is not called.
+    string? GpuPState = null,
+    string GpuPowerState = "");
 
 /// <summary>
 /// Owns the one BiosInterop connection and hands out the specialized
@@ -391,6 +415,32 @@ public sealed class HardwareContext : IDisposable
                         // default to "not max fan" and "unknown throttling" -- both honest.
                     }
                 }
+                // The per-tick SMU and GPU power-state reads that used to sit here have been
+                // REMOVED, and deliberately so.
+                //
+                // They were added to record which limit was binding and what the discrete GPU was
+                // doing. Both are genuinely useful and neither is worth what happened next: within
+                // hours of shipping them the machine hard-hung while awake and in use, with
+                // Kernel-Power 41 reporting SleepInProgress=0 -- a different signature from the
+                // three earlier hangs on this laptop, which all died mid-sleep-transition.
+                //
+                // That is not proof. This machine has a history of unexplained hangs predating any
+                // of this work, and one event is one event. But the change under suspicion added
+                // ring-0 hardware access, through a kernel driver, to a loop that runs every two
+                // seconds forever, and "we could not prove it" is not a reason to keep new
+                // kernel-level polling running on somebody's laptop after it froze.
+                //
+                // The columns these fed stay in the log schema and simply go empty, which the
+                // readers already handle: they were written to treat a missing limit as unmeasured
+                // rather than as "nothing was binding". If this comes back it should come back on
+                // a slow cadence, off the critical path, and only after the hangs have a
+                // confirmed cause.
+                string? limitName = null;
+                double limitPercent = 0;
+                double watts = double.NaN;
+                string? gpuPState = null;
+                string gpuDState = "";
+
                 long slowMs = tick.ElapsedMilliseconds - tempMs - fanMs;
 
                 var levels = _lastLevels;
@@ -400,7 +450,9 @@ public sealed class HardwareContext : IDisposable
                     levels.Length > 0 ? levels[0] : (byte)0,
                     levels.Length > 1 ? levels[1] : (byte)0,
                     maxFan, throttle,
-                    reading.Celsius, reading.Source);
+                    reading.Celsius, reading.Source,
+                    limitName, limitPercent, watts,
+                    gpuPState, gpuDState);
 
                 // Each subscriber is invoked separately, in its own try.
                 //

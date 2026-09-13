@@ -12,6 +12,24 @@
                            Text="Measure what this machine actually does, and read back what its firmware says it can do."/>
             </StackPanel>
 
+            <TextBlock Text="COOLING HEALTH" Style="{StaticResource SubHeadingText}"/>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                                   MaxWidth="700" TextWrapping="Wrap"
+                                   Text="How many degrees of temperature rise each watt buys. Temperature on its own cannot tell a blocked heatsink from a healthy one: 80 degrees drawing 15 watts and 80 degrees drawing 50 watts are completely different machines. This ratio is a property of the heatsink, the paste and the dust in the fins, and it degrades far too slowly to notice by feel."/>
+                        <TextBlock x:Name="CoolingSummary" Style="{StaticResource BodyText}" FontSize="11.5"
+                                   TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,12" Text="Reading the logs..."/>
+                        <StackPanel x:Name="CoolingRows"/>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,0"
+                                   TextWrapping="Wrap" MaxWidth="700"
+                                   Text="Ambient temperature is not measured. Each day's own idle floor stands in for it, which is fair while the laptop lives in the same room and wrong the week it moves somewhere hotter. The power and fan level beside each day are there so you can see whether two days are comparable at all."/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <TextBlock Text="STABILITY" Style="{StaticResource SubHeadingText}"/>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>

@@ -5,7 +5,9 @@ namespace OmniHub.Core.Diagnostics;
 /// <summary>One row of the thermal log. Fields that could not be parsed stay null rather than defaulting.</summary>
 public readonly record struct ThermalRow(
     DateTime Utc, double TempC, double? ForecastC, int CommandedPercent,
-    bool Throttling, string Mode, string Sensor);
+    bool Throttling, string Mode, string Sensor, double SoakPercent = 0,
+    string BindingLimit = "", double BindingLimitPercent = 0, double? PackageWatts = null,
+    string GpuPState = "", string GpuPowerState = "");
 
 /// <summary>One row of the connection log. RttMs is null for a probe that never returned.</summary>
 public readonly record struct NetworkRow(DateTime Utc, double? RttMs, bool Lost);
@@ -24,6 +26,8 @@ public sealed record SessionReport(
     double MaxFanPercent,
     double HotAndQuietFraction,
     double CoolAndLoudFraction,
+    double SoakActiveFraction,
+    IReadOnlyList<(string Limit, double Fraction)> LimitBreakdown,
     int NetworkSamples,
     double NetworkLossPercent,
     double NetworkWorstRttMs,
@@ -32,9 +36,30 @@ public sealed record SessionReport(
     public TimeSpan Duration => To - From;
 
     /// <summary>Nothing was logged, so there is nothing to report. Distinct from a quiet session.</summary>
+    ///
+    /// Built with NAMED arguments. This record has grown twice and both times the positional
+    /// form here broke, because adding a field in the middle silently shifts every value after
+    /// it onto the wrong property -- a failure that compiles perfectly whenever the types line
+    /// up. Naming them costs a few characters and removes the entire class of mistake.
     public static SessionReport Empty { get; } = new(
-        default, default, 0, 0, 0, 0, TimeSpan.Zero, TimeSpan.Zero, 0, 0, 0, 0, 0, 0, 0,
-        new[] { "No log rows for this day. Turn on thermal logging in Settings to record one." });
+        From: default,
+        To: default,
+        Samples: 0,
+        MedianTempC: 0,
+        P90TempC: 0,
+        MaxTempC: 0,
+        Throttled: TimeSpan.Zero,
+        SensorBlind: TimeSpan.Zero,
+        MedianFanPercent: 0,
+        MaxFanPercent: 0,
+        HotAndQuietFraction: 0,
+        CoolAndLoudFraction: 0,
+        SoakActiveFraction: 0,
+        LimitBreakdown: Array.Empty<(string, double)>(),
+        NetworkSamples: 0,
+        NetworkLossPercent: 0,
+        NetworkWorstRttMs: 0,
+        Findings: new[] { "No log rows for this day. Turn on thermal logging in Settings to record one." });
 }
 
 /// <summary>
@@ -123,6 +148,18 @@ public static class SessionAnalysis
             MaxFanPercent: fans.Max(),
             HotAndQuietFraction: hotQuiet,
             CoolAndLoudFraction: coolLoud,
+            SoakActiveFraction: Fraction(r => r.SoakPercent >= 1),
+
+            // Only samples where a limit was genuinely read. Rows from before this column
+            // existed, or from a session where the SMU never opened, carry an empty name, and
+            // counting those as "no limit" would dilute every fraction toward a reassuring zero.
+            LimitBreakdown: thermal
+                .Where(r => !string.IsNullOrEmpty(r.BindingLimit))
+                .GroupBy(r => r.BindingLimit)
+                .Select(g => (Limit: g.Key, Fraction: (double)g.Count()
+                    / thermal.Count(r => !string.IsNullOrEmpty(r.BindingLimit))))
+                .OrderByDescending(x => x.Fraction)
+                .ToList(),
             NetworkSamples: netCount,
             NetworkLossPercent: loss,
             NetworkWorstRttMs: worstRtt,
@@ -171,6 +208,51 @@ public static class SessionAnalysis
             findings.Add($"{r.CoolAndLoudFraction:P0} of samples were at or below {CoolC:0}C with the fan "
                        + $"above {LoudPercent}%. That is airflow bought for nothing, and it is what a "
                        + "long predictive lead does on a chip that bursts.");
+
+        // What actually held the machine back, which is the question that decides whether
+        // tuning or cooling is the useful thing to work on at all. Being pinned at core current
+        // while the power limit has headroom says plainly that raising the power limit will
+        // achieve nothing, and no wattage on its own conveys that.
+        if (r.LimitBreakdown.Count > 0)
+        {
+            var top = r.LimitBreakdown[0];
+            string rest = r.LimitBreakdown.Count > 1
+                ? ", then " + string.Join(", ", r.LimitBreakdown.Skip(1).Take(2)
+                    .Select(x => $"{x.Limit.ToLowerInvariant()} {x.Fraction:P0}"))
+                : "";
+            findings.Add($"The closest constraint was {top.Limit.ToLowerInvariant()} for {top.Fraction:P0} "
+                       + $"of samples{rest}. That is the limit worth attacking; the others have room.");
+        }
+
+        // Reported whenever it did anything, including when it did nothing measurable. A
+        // control term that silently contributes is one nobody can evaluate, and this one adds
+        // airflow the curve did not ask for -- that has to be attributable after the fact.
+        if (r.SoakActiveFraction >= 0.02)
+        {
+            double peak = thermal.Count == 0 ? 0 : thermal.Max(t => t.SoakPercent);
+            findings.Add($"Thermal soak added airflow on {r.SoakActiveFraction:P0} of samples, "
+                       + $"peaking at {peak:0.#} points above the curve. That is heat still in the "
+                       + "heatsink after a load, which the die temperature alone does not show.");
+        }
+
+        // The "stuck at P4" report, made checkable. A discrete GPU sitting in a high performance
+        // state while doing nothing is burning 12 to 14 watts on this machine for no work, and it
+        // is intermittent enough that it was previously only ever a memory.
+        var gpuStates = thermal.Where(t => t.GpuPState.Length > 0).ToList();
+        if (gpuStates.Count > 0)
+        {
+            // P8 is idle, P0 is flat out. Anything numerically below P8 while the machine is not
+            // gaming is the condition worth naming.
+            int busy = gpuStates.Count(t => t.GpuPState.Length >= 2
+                && int.TryParse(t.GpuPState.AsSpan(1), out int n) && n <= 5);
+
+            double share = (double)busy / gpuStates.Count;
+            if (share >= 0.2)
+                findings.Add($"The discrete GPU sat in a high performance state for {share:P0} of the "
+                           + "samples that could see it. If you were not gaming for that long, something "
+                           + "is holding a GPU context open: an animated wallpaper and a hardware-accelerated "
+                           + "browser both do it, and on battery that is 12 to 14 watts for no work.");
+        }
 
         if (r.NetworkSamples > 0 && r.NetworkLossPercent >= 1)
             findings.Add($"The connection lost {r.NetworkLossPercent:0.#}% of probes over {r.NetworkSamples} "
@@ -236,8 +318,27 @@ public static class SessionAnalysis
                 ? fc : null;
             int.TryParse(f[5], NumberStyles.Integer, CultureInfo.InvariantCulture, out int commanded);
 
+            // The tenth column is optional, because every log written before the soak term
+            // existed has nine. Those files are still the evidence for everything that happened
+            // before today and must keep parsing; a reader that rejected them would throw away
+            // the history at the moment it became worth comparing against.
+            double soak = 0;
+            if (f.Length >= 10)
+                double.TryParse(f[9], NumberStyles.Float, CultureInfo.InvariantCulture, out soak);
+
+            // Columns eleven and twelve are optional for the same reason the tenth is: they did
+            // not exist when most of this history was written.
+            string limit = f.Length >= 11 ? f[10] : "";
+            double limitPct = 0;
+            if (f.Length >= 12) double.TryParse(f[11], NumberStyles.Float, CultureInfo.InvariantCulture, out limitPct);
+
+            double? watts = f.Length >= 13
+                && double.TryParse(f[12], NumberStyles.Float, CultureInfo.InvariantCulture, out double w)
+                ? w : null;
+
             rows.Add(new ThermalRow(utc, temp, forecast, commanded,
-                f[6].Equals("True", StringComparison.OrdinalIgnoreCase), f[7], f[8]));
+                f[6].Equals("True", StringComparison.OrdinalIgnoreCase), f[7], f[8], soak, limit, limitPct, watts,
+                f.Length >= 14 ? f[13] : "", f.Length >= 15 ? f[14].TrimEnd() : ""));
         }
 
         return rows;

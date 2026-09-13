@@ -336,6 +336,9 @@
                 <Button x:Name="ChipMaxFans" Content="100% FANS" Style="{StaticResource ChipButton}" Click="ChipMaxFans_Click"/>
                 <Button x:Name="ChipAutoFans" Content="AUTO FANS" Style="{StaticResource ChipButton}" Click="ChipAutoFans_Click"/>
                 <Button x:Name="ChipTimer" Content="HI-RES TIMER" Style="{StaticResource ChipButton}" Click="ChipTimer_Click"/>
+                <!-- Reads the panel rather than assuming 144 and 60: the label has to say what
+                     this machine's display actually supports, not what the developer's did. -->
+                <Button x:Name="ChipRefresh" Content="BATTERY REFRESH" Style="{StaticResource ChipButton}" Click="ChipRefresh_Click"/>
                 <TextBlock x:Name="ChipResult" Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center"
                            Margin="6,0,0,7" TextWrapping="Wrap" MaxWidth="360"/>
             </WrapPanel>
