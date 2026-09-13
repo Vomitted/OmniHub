@@ -297,4 +297,58 @@ public class SessionReportTests
         Assert.Equal(0, r.SoakActiveFraction, 3);
         Assert.DoesNotContain(r.Findings, f => f.Contains("Thermal soak"));
     }
+
+    // ---- binding limit ------------------------------------------------------
+
+    private static List<ThermalRow> Limited(string limit, int count, double percent = 99)
+    {
+        var start = new DateTime(2026, 9, 14, 10, 0, 0, DateTimeKind.Utc);
+        return Enumerable.Range(0, count)
+            .Select(i => new ThermalRow(start.AddSeconds(i * 2), 75, null, 50, false, "Auto",
+                "SmuDieTctl", 0, limit, percent))
+            .ToList();
+    }
+
+    /// <summary>
+    /// The conclusion the whole column exists for: knowing WHICH limit binds decides whether
+    /// tuning or cooling is worth the effort. A machine pinned at core current gains nothing
+    /// from a higher power limit, and no wattage on its own conveys that.
+    /// </summary>
+    [Fact]
+    public void TheBindingLimitIsReportedWithItsShare()
+    {
+        var rows = Limited("Core current (EDC)", 80).Concat(Limited("Temperature", 20)).ToList();
+
+        var r = SessionAnalysis.Analyse(rows);
+
+        Assert.Equal("Core current (EDC)", r.LimitBreakdown[0].Limit);
+        Assert.Equal(0.8, r.LimitBreakdown[0].Fraction, 2);
+        Assert.Contains(r.Findings, f => f.Contains("core current (edc)") && f.Contains("80%"));
+    }
+
+    /// <summary>
+    /// Rows from before the column existed carry an empty name. Counting those as "nothing was
+    /// binding" would dilute every fraction toward a reassuring zero and invent a conclusion out
+    /// of missing data.
+    /// </summary>
+    [Fact]
+    public void SamplesWithNoLimitReadAreExcludedRatherThanCountedAsUnconstrained()
+    {
+        var measured = Limited("Core current (EDC)", 20);
+        var blank = Session(count: 180, tempC: 75, fanPercent: 50);   // no limit column
+
+        var r = SessionAnalysis.Analyse(measured.Concat(blank).ToList());
+
+        Assert.Single(r.LimitBreakdown);
+        Assert.Equal(1.0, r.LimitBreakdown[0].Fraction, 2);
+    }
+
+    [Fact]
+    public void NoLimitDataMeansNoClaimAboutLimits()
+    {
+        var r = SessionAnalysis.Analyse(Session(count: 50, tempC: 60, fanPercent: 20));
+
+        Assert.Empty(r.LimitBreakdown);
+        Assert.DoesNotContain(r.Findings, f => f.Contains("closest constraint"));
+    }
 }

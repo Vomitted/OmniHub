@@ -18,7 +18,17 @@ public sealed record Reading(
     bool MaxFanActive,
     ThrottlingState Throttling,
     double PreciseTemperatureC = double.NaN,
-    TemperatureSource TemperatureSource = TemperatureSource.AcpiThermalZone);
+    TemperatureSource TemperatureSource = TemperatureSource.AcpiThermalZone,
+
+    // Which constraint the processor is closest to, and how close. Null when the SMU is not
+    // open, which is an honest "not measured" rather than a claim that nothing is binding.
+    //
+    // This is the single most useful thing the SMU reports and it was only ever shown live on
+    // the Tuning tab, never recorded. Being at 99% of core current and 60% of the power limit
+    // says plainly that raising the power limit will achieve nothing -- a conclusion nobody can
+    // reach from a wattage, and one that decides whether tuning or cooling is worth the effort.
+    string? BindingLimit = null,
+    double BindingLimitPercent = 0);
 
 /// <summary>
 /// Owns the one BiosInterop connection and hands out the specialized
@@ -391,6 +401,33 @@ public sealed class HardwareContext : IDisposable
                         // default to "not max fan" and "unknown throttling" -- both honest.
                     }
                 }
+                // The binding limit, read every tick rather than on the slow path.
+                //
+                // This is a PM table read through PawnIO, not a WMI round trip: it copies a
+                // block the SMU already maintains, with no provider process and no SMM entry.
+                // It is expected to cost far less than the temperature read beside it. That
+                // expectation is checked rather than assumed -- avg_total_ms in the poll timing
+                // log is the number to watch, and if this shows up there it moves to the slow
+                // tick with the fan readback.
+                string? limitName = null;
+                double limitPercent = 0;
+                if (Smu is { } smu)
+                {
+                    try
+                    {
+                        if (smu.ReadPowerSnapshot() is { } snap)
+                        {
+                            var (name, percent) = snap.TightestLimit();
+                            limitName = name;
+                            limitPercent = percent;
+                        }
+                    }
+                    catch
+                    {
+                        // Left null. A failed read is not a report that nothing is binding.
+                    }
+                }
+
                 long slowMs = tick.ElapsedMilliseconds - tempMs - fanMs;
 
                 var levels = _lastLevels;
@@ -400,7 +437,8 @@ public sealed class HardwareContext : IDisposable
                     levels.Length > 0 ? levels[0] : (byte)0,
                     levels.Length > 1 ? levels[1] : (byte)0,
                     maxFan, throttle,
-                    reading.Celsius, reading.Source);
+                    reading.Celsius, reading.Source,
+                    limitName, limitPercent);
 
                 // Each subscriber is invoked separately, in its own try.
                 //

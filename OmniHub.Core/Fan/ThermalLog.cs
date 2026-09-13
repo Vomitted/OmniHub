@@ -36,7 +36,7 @@ public sealed class ThermalLog : IDisposable
     // Adding a column changes the schema, and EnsureWriterFor below already rolls to a suffixed
     // file when an existing day's header does not match. That is what keeps a single file from
     // ending up with rows of two different widths.
-    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,soak_pct";
+    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,soak_pct,limit,limit_pct";
 
     private readonly object _lock = new();
     private StreamWriter? _writer;
@@ -58,7 +58,7 @@ public sealed class ThermalLog : IDisposable
     // which is exactly what made diagnosing a "temp is wrong" report harder than it needed to be.
     public void Append(DateTime utcNow, double tempC, double forecastC, byte fan1Raw, byte fan2Raw,
                        int commandedPercent, bool throttling, string mode, string sensor,
-                       double soakPercent = 0)
+                       double soakPercent = 0, string? bindingLimit = null, double bindingLimitPercent = 0)
     {
         if (_failed) return;
 
@@ -82,7 +82,12 @@ public sealed class ThermalLog : IDisposable
                   .Append(throttling ? "True" : "False").Append(',')
                   .Append(Sanitize(mode)).Append(',')
                   .Append(Sanitize(sensor)).Append(',')
-                  .Append(soakPercent.ToString("0.#", CultureInfo.InvariantCulture));
+                  .Append(soakPercent.ToString("0.#", CultureInfo.InvariantCulture)).Append(',')
+
+                  // Empty rather than a placeholder name when the SMU is not open. A row that
+                  // claims a limit it never read is worse than a row with a hole in it.
+                  .Append(Sanitize(bindingLimit ?? "")).Append(',')
+                  .Append(bindingLimitPercent.ToString("0.#", CultureInfo.InvariantCulture));
 
                 _writer.WriteLine(sb.ToString());
 
