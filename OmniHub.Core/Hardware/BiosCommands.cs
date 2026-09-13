@@ -113,8 +113,44 @@ public sealed class GpuController
     /// </summary>
     public bool ForceMaxPower { get; set; }
 
+    /// <summary>
+    /// Writes the GPU power state, PRESERVING the two bytes this project does not understand.
+    ///
+    /// The four-byte block is CustomTgp, Ppab, DState and PeakTemperature. Only the first two are
+    /// understood here: they are the TGP unlock and Dynamic Boost, both documented, both measured
+    /// on this machine. The other two were being overwritten anyway -- every caller went through
+    /// a constructor that hardcoded GpuDState.D1 with no comment, in a file that explains every
+    /// other constant it contains.
+    ///
+    /// That is a guess about firmware behaviour written into every GPU write the application
+    /// makes, and it is the same class of mistake this project refused to make with SMU mailbox
+    /// addresses. It also fits an observed symptom exactly: on this laptop the discrete GPU idled
+    /// correctly at P8 and 1.8 W until OmniHub wrote to this register on an unplug, after which it
+    /// sat at P4, 2010 MHz and 17 W with nothing running, survived the application being closed,
+    /// and could not be cleared by any in-app control -- because every one of those controls wrote
+    /// D1 again on its way past.
+    ///
+    /// Read-modify-write fixes that without needing to know what the byte means. The firmware's
+    /// own value is whatever it should be; this no longer has an opinion about it. The cost is one
+    /// extra BIOS round trip per GPU power change, and these happen on a rail change or a click,
+    /// not on a timer.
+    ///
+    /// A failed read falls back to sending what the caller asked for, unchanged. That is the old
+    /// behaviour, which is worse than preserving and better than refusing to apply a TGP unlock
+    /// because a read went wrong.
+    /// </summary>
     public void SetPower(GpuPowerData data)
     {
+        try
+        {
+            var current = GetPower();
+            data = new GpuPowerData(data.CustomTgp, data.Ppab, current.DState, current.PeakTemperatureC);
+        }
+        catch
+        {
+            // Keep the caller's values rather than abandoning the write.
+        }
+
         if (ForceMaxPower)
             data = new GpuPowerData(GpuCustomTgp.On, GpuPpab.On, data.DState, data.PeakTemperatureC);
 
