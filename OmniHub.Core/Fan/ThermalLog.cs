@@ -26,7 +26,17 @@ public sealed class ThermalLog : IDisposable
     // with the fans at 100% throughout -- meant inferring it from whether the temperatures had
     // decimal places. That is a real diagnosis from an accidental signal; the column makes it
     // a recorded fact instead.
-    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor";
+    // soak_pct records how many percentage points the thermal-soak term added on this tick, so
+    // a commanded level sitting above what the curve alone would ask for is explicable from the
+    // file rather than only from the screen. Without it a boosted row is indistinguishable from
+    // the curve misbehaving, which is the exact ambiguity the on-screen readout was added to
+    // remove -- leaving it out of the log would have reintroduced it for anyone reading back a
+    // session afterwards.
+    //
+    // Adding a column changes the schema, and EnsureWriterFor below already rolls to a suffixed
+    // file when an existing day's header does not match. That is what keeps a single file from
+    // ending up with rows of two different widths.
+    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,soak_pct";
 
     private readonly object _lock = new();
     private StreamWriter? _writer;
@@ -47,7 +57,8 @@ public sealed class ThermalLog : IDisposable
     // ambiguous about which sensor produced a row -- an ACPI 85 and a die 85.2 looked identical,
     // which is exactly what made diagnosing a "temp is wrong" report harder than it needed to be.
     public void Append(DateTime utcNow, double tempC, double forecastC, byte fan1Raw, byte fan2Raw,
-                       int commandedPercent, bool throttling, string mode, string sensor)
+                       int commandedPercent, bool throttling, string mode, string sensor,
+                       double soakPercent = 0)
     {
         if (_failed) return;
 
@@ -70,7 +81,8 @@ public sealed class ThermalLog : IDisposable
                   .Append(commandedPercent.ToString(CultureInfo.InvariantCulture)).Append(',')
                   .Append(throttling ? "True" : "False").Append(',')
                   .Append(Sanitize(mode)).Append(',')
-                  .Append(Sanitize(sensor));
+                  .Append(Sanitize(sensor)).Append(',')
+                  .Append(soakPercent.ToString("0.#", CultureInfo.InvariantCulture));
 
                 _writer.WriteLine(sb.ToString());
 

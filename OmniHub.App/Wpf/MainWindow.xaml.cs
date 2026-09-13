@@ -630,7 +630,8 @@ public partial class MainWindow : Window
                    _service.IsRunning && _service.HasCommanded ? _service.LastCommandedLevelPercent : -1,
                    r.Throttling == ThrottlingState.On,
                    _settings.FanControlMode.ToString(),
-                   r.TemperatureSource.ToString());
+                   r.TemperatureSource.ToString(),
+                   _service.LastSoakBoost);
     }
 
     private void ScanForNewApps()

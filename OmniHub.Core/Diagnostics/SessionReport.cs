@@ -5,7 +5,7 @@ namespace OmniHub.Core.Diagnostics;
 /// <summary>One row of the thermal log. Fields that could not be parsed stay null rather than defaulting.</summary>
 public readonly record struct ThermalRow(
     DateTime Utc, double TempC, double? ForecastC, int CommandedPercent,
-    bool Throttling, string Mode, string Sensor);
+    bool Throttling, string Mode, string Sensor, double SoakPercent = 0);
 
 /// <summary>One row of the connection log. RttMs is null for a probe that never returned.</summary>
 public readonly record struct NetworkRow(DateTime Utc, double? RttMs, bool Lost);
@@ -24,6 +24,7 @@ public sealed record SessionReport(
     double MaxFanPercent,
     double HotAndQuietFraction,
     double CoolAndLoudFraction,
+    double SoakActiveFraction,
     int NetworkSamples,
     double NetworkLossPercent,
     double NetworkWorstRttMs,
@@ -33,7 +34,7 @@ public sealed record SessionReport(
 
     /// <summary>Nothing was logged, so there is nothing to report. Distinct from a quiet session.</summary>
     public static SessionReport Empty { get; } = new(
-        default, default, 0, 0, 0, 0, TimeSpan.Zero, TimeSpan.Zero, 0, 0, 0, 0, 0, 0, 0,
+        default, default, 0, 0, 0, 0, TimeSpan.Zero, TimeSpan.Zero, 0, 0, 0, 0, 0, 0, 0, 0,
         new[] { "No log rows for this day. Turn on thermal logging in Settings to record one." });
 }
 
@@ -123,6 +124,7 @@ public static class SessionAnalysis
             MaxFanPercent: fans.Max(),
             HotAndQuietFraction: hotQuiet,
             CoolAndLoudFraction: coolLoud,
+            SoakActiveFraction: Fraction(r => r.SoakPercent >= 1),
             NetworkSamples: netCount,
             NetworkLossPercent: loss,
             NetworkWorstRttMs: worstRtt,
@@ -171,6 +173,17 @@ public static class SessionAnalysis
             findings.Add($"{r.CoolAndLoudFraction:P0} of samples were at or below {CoolC:0}C with the fan "
                        + $"above {LoudPercent}%. That is airflow bought for nothing, and it is what a "
                        + "long predictive lead does on a chip that bursts.");
+
+        // Reported whenever it did anything, including when it did nothing measurable. A
+        // control term that silently contributes is one nobody can evaluate, and this one adds
+        // airflow the curve did not ask for -- that has to be attributable after the fact.
+        if (r.SoakActiveFraction >= 0.02)
+        {
+            double peak = thermal.Count == 0 ? 0 : thermal.Max(t => t.SoakPercent);
+            findings.Add($"Thermal soak added airflow on {r.SoakActiveFraction:P0} of samples, "
+                       + $"peaking at {peak:0.#} points above the curve. That is heat still in the "
+                       + "heatsink after a load, which the die temperature alone does not show.");
+        }
 
         if (r.NetworkSamples > 0 && r.NetworkLossPercent >= 1)
             findings.Add($"The connection lost {r.NetworkLossPercent:0.#}% of probes over {r.NetworkSamples} "
@@ -236,8 +249,16 @@ public static class SessionAnalysis
                 ? fc : null;
             int.TryParse(f[5], NumberStyles.Integer, CultureInfo.InvariantCulture, out int commanded);
 
+            // The tenth column is optional, because every log written before the soak term
+            // existed has nine. Those files are still the evidence for everything that happened
+            // before today and must keep parsing; a reader that rejected them would throw away
+            // the history at the moment it became worth comparing against.
+            double soak = 0;
+            if (f.Length >= 10)
+                double.TryParse(f[9], NumberStyles.Float, CultureInfo.InvariantCulture, out soak);
+
             rows.Add(new ThermalRow(utc, temp, forecast, commanded,
-                f[6].Equals("True", StringComparison.OrdinalIgnoreCase), f[7], f[8]));
+                f[6].Equals("True", StringComparison.OrdinalIgnoreCase), f[7], f[8], soak));
         }
 
         return rows;

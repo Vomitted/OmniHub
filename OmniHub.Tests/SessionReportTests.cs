@@ -1,3 +1,4 @@
+using System.IO;
 using OmniHub.Core.Diagnostics;
 using Xunit;
 
@@ -211,5 +212,89 @@ public class SessionReportTests
 
         Assert.Contains("1 with a bugcheck", text);
         Assert.DoesNotContain("No bugchecks at all", text);
+    }
+
+    // ---- log schema ---------------------------------------------------------
+
+    /// <summary>
+    /// Every log written before the soak term existed has nine columns, and those files are the
+    /// entire history this machine has. A reader that rejected them would throw away the evidence
+    /// at exactly the moment it became worth comparing a change against.
+    /// </summary>
+    [Fact]
+    public void NineColumnLogsFromOlderBuildsStillParse()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"omni-old-{Guid.NewGuid():N}.csv");
+        File.WriteAllLines(path, new[]
+        {
+            "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor",
+            "2026-09-13T10:00:00Z,72.5,-1,30,29,45,False,Auto,SmuDieTctl",
+            "2026-09-13T10:00:02Z,73.1,-1,31,30,47,True,Auto,SmuDieTctl",
+        });
+
+        try
+        {
+            var rows = SessionAnalysis.ReadThermal(path);
+
+            Assert.Equal(2, rows.Count);
+            Assert.Equal(72.5, rows[0].TempC, 3);
+            Assert.Equal(45, rows[0].CommandedPercent);
+            Assert.True(rows[1].Throttling);
+
+            // Absent, not guessed. A build that never had the term contributed nothing.
+            Assert.Equal(0, rows[0].SoakPercent, 3);
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
+    public void TenColumnLogsCarryTheSoakContribution()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"omni-new-{Guid.NewGuid():N}.csv");
+        File.WriteAllLines(path, new[]
+        {
+            "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,soak_pct",
+            "2026-09-13T10:00:00Z,72.5,-1,30,29,45,False,Auto,SmuDieTctl,0",
+            "2026-09-13T10:00:02Z,66.0,-1,31,30,48,False,Auto,SmuDieTctl,12.5",
+        });
+
+        try
+        {
+            var rows = SessionAnalysis.ReadThermal(path);
+
+            Assert.Equal(2, rows.Count);
+            Assert.Equal(0, rows[0].SoakPercent, 3);
+            Assert.Equal(12.5, rows[1].SoakPercent, 3);
+        }
+        finally { File.Delete(path); }
+    }
+
+    /// <summary>
+    /// A term that quietly adds airflow has to be attributable afterwards, or a raised fan level
+    /// in the log is indistinguishable from the curve misbehaving.
+    /// </summary>
+    [Fact]
+    public void SoakContributionIsReportedWhenItDidSomething()
+    {
+        var start = new DateTime(2026, 9, 14, 10, 0, 0, DateTimeKind.Utc);
+        var rows = Enumerable.Range(0, 60)
+            .Select(i => new ThermalRow(start.AddSeconds(i * 2), 64, null, 40, false, "Auto",
+                "SmuDieTctl", SoakPercent: i < 40 ? 11.0 : 0))
+            .ToList();
+
+        var r = SessionAnalysis.Analyse(rows);
+
+        Assert.InRange(r.SoakActiveFraction, 0.6, 0.7);
+        Assert.Contains(r.Findings, f => f.Contains("Thermal soak added airflow"));
+    }
+
+    /// <summary>And a session where it never contributed must not mention it at all.</summary>
+    [Fact]
+    public void SoakIsNotMentionedWhenItContributedNothing()
+    {
+        var r = SessionAnalysis.Analyse(Session(count: 100, tempC: 58, fanPercent: 20));
+
+        Assert.Equal(0, r.SoakActiveFraction, 3);
+        Assert.DoesNotContain(r.Findings, f => f.Contains("Thermal soak"));
     }
 }
