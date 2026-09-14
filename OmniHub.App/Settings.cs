@@ -47,18 +47,6 @@ public sealed class AppSettings
     /// </summary>
     public double PredictiveLeadSeconds { get; set; } = 0;
 
-    /// <summary>
-    /// Let the fan curve respond to accumulated chassis heat as well as to the current
-    /// temperature (see OmniHub.Core.Fan.ThermalSoak).
-    ///
-    /// On by default, unlike the predictive lead beside it. The lead is a forecast and can be
-    /// wrong about the future; this is an integral of heat that has already happened, it is
-    /// bounded, and it can only ever add airflow. The failure mode is some extra noise after a
-    /// heavy session, which is the right side to err on for an application whose entire purpose
-    /// is that this machine does not cool itself properly.
-    /// </summary>
-    public bool ThermalSoakEnabled { get; set; } = true;
-
     /// <summary>Writes a rolling temperature/fan/throttle CSV under %AppData%\OmniHub\logs.
     /// Off by default: it is a diagnostic aid, not something to leave running permanently.</summary>
     public bool ThermalLogging { get; set; } = false;

@@ -10,19 +10,6 @@
 
   <ItemGroup>
     <PackageReference Include="System.Management" Version="8.0.0" />
-
-    <!-- Needed for EventLogReader, which is the only route to Kernel-Power 41's NAMED event
-         data. The dependency-free alternative is WMI's Win32_NTLogEvent, already reachable
-         through System.Management above, and it was rejected on two counts: it scans the whole
-         System log rather than seeking, taking tens of seconds, and it flattens the event
-         payload into positional insertion strings. SleepInProgress, the field distinguishing
-         "died mid-sleep" from "lost power" and the entire reason for reading these, would then
-         be an index into an array whose shape is not contractual.
-
-         NOTE: no double hyphen anywhere in this comment. XML forbids it, and this project has
-         now lost time to that rule three times: once in the generated scheduled-task XML, once
-         across several XAML dictionaries, and once here. -->
-    <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

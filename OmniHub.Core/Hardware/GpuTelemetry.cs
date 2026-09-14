@@ -22,16 +22,7 @@ public sealed record GpuReading(
     int? ClockMhz,
     int? UtilisationPercent,
     string Vendor = "",
-    GpuSource Source = GpuSource.NvidiaSmi,
-
-    // Performance state, P0 (flat out) to P8 (idle), as nvidia-smi reports it. Null on the
-    // Windows path, which cannot see it.
-    //
-    // Recorded because "the GPU is stuck at P4" is a report nobody could previously check: it
-    // is intermittent, it is gone by the time anyone looks, and the only instrument for it wakes
-    // the card it is measuring. Logged alongside the power source and what the machine was
-    // doing, it becomes a thing with evidence rather than a thing with a memory.
-    string? PState = null);
+    GpuSource Source = GpuSource.NvidiaSmi);
 
 /// <summary>
 /// GPU telemetry, from nvidia-smi where it exists and from Windows itself everywhere else.
@@ -141,20 +132,6 @@ public static class GpuTelemetry
         }
     }
 
-    /// <summary>
-    /// The cached reading, without ever scheduling a refresh.
-    ///
-    /// Read() triggers a background query when the cache is stale, which is right for a caller
-    /// that wants current telemetry and wrong for one that only wants to record what is already
-    /// known. The poll loop logs GPU state on every tick, and if that logging could start a query
-    /// it would become the thing waking the card -- an instrument causing the condition it exists
-    /// to detect, which is the exact trap this file already documents for nvidia-smi on battery.
-    /// </summary>
-    public static GpuReading? Peek()
-    {
-        lock (Gate) return _cached;
-    }
-
     private static void RefreshCache()
     {
         var reading = Query();   // deliberately outside Gate
@@ -202,7 +179,7 @@ public static class GpuTelemetry
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             };
-            psi.ArgumentList.Add("--query-gpu=name,temperature.gpu,power.draw,clocks.sm,utilization.gpu,pstate");
+            psi.ArgumentList.Add("--query-gpu=name,temperature.gpu,power.draw,clocks.sm,utilization.gpu");
             psi.ArgumentList.Add("--format=csv,noheader,nounits");
 
             using var proc = Process.Start(psi);
@@ -241,13 +218,7 @@ public static class GpuTelemetry
                 (int?)Number(parts[3]),
                 (int?)Number(parts[4]),
                 "NVIDIA",
-                GpuSource.NvidiaSmi,
-
-                // Sixth field only when the driver supplied it. An older nvidia-smi that does
-                // not know --query-gpu=pstate returns five, and five fields is still a perfectly
-                // good reading; refusing it over a missing extra would lose the temperature too.
-                parts.Length >= 6 && parts[5].Length > 0 && !parts[5].Equals("[N/A]", StringComparison.OrdinalIgnoreCase)
-                    ? parts[5] : null);
+                GpuSource.NvidiaSmi);
         }
         catch
         {
