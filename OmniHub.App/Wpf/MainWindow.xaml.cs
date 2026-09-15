@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     private ThermalLog? _thermalLog;
     private OmniHub.Core.Network.NetworkMonitor? _netMonitor;
     private OmniHub.Core.Network.NetworkLog? _netLog;
+    private readonly OmniHub.Core.Diagnostics.PowerTransitionLog _powerLog = new();
     private OverlayWindow? _overlay;
 
     public MainWindow()
@@ -734,8 +735,38 @@ public partial class MainWindow : Window
         _hotkeyHwnd = hwnd;
         RegisterHotKey(hwnd, OverlayHotkeyId, ModControl | ModAlt | ModNoRepeat, VkO);
 
+        // Power-setting notifications ride the same window, because they need a HWND and this
+        // one already has a message hook. GUID_CONSOLE_DISPLAY_STATE is the earliest warning a
+        // desktop application gets that a modern-standby machine is heading for idle -- the
+        // screen goes off first, and the platform drops into DRIPS afterwards.
+        //
+        // Registered to OBSERVE, not yet to act on. Display-off is not the same as sleeping: the
+        // screen also turns off on a plain idle timeout while a long job keeps running, and
+        // handing the fans back to the BIOS then would reintroduce the 0%-while-hot failure this
+        // application exists to prevent. What these rows establish is which signals this machine
+        // actually sends and in what order, which is the thing nobody currently knows.
+        _displayStateHandle = RegisterPowerSettingNotification(hwnd, ref GuidConsoleDisplayState, 0);
+
+        // A startup row, so a gap in this file is not ambiguous. The shutdown row below says
+        // "clean exit"; if the rows before a gap do not, the application did not get to write
+        // one -- and the uptime here says whether the machine had just rebooted, which is the
+        // difference between the user closing the app and the machine hanging hard enough to
+        // need the power button.
+        try
+        {
+            _powerLog.Append(DateTime.UtcNow, "OmniHub", "Startup", "",
+                $"up {TimeSpan.FromMilliseconds(Environment.TickCount64).TotalMinutes:0.0} min");
+        }
+        catch { }
+
         System.Windows.Interop.HwndSource.FromHwnd(hwnd)?.AddHook((IntPtr h, int msg, IntPtr w, IntPtr l, ref bool handled) =>
         {
+            if (msg == WmPowerBroadcast)
+            {
+                OnPowerBroadcast(w.ToInt32(), l);
+                return IntPtr.Zero;
+            }
+
             if (msg != WmHotkey || w.ToInt32() != OverlayHotkeyId) return IntPtr.Zero;
 
             _settings.OverlayEnabled = !_settings.OverlayEnabled;
@@ -744,6 +775,76 @@ public partial class MainWindow : Window
             handled = true;
             return IntPtr.Zero;
         });
+    }
+
+    private const int WmPowerBroadcast = 0x0218;
+    private const int PbtApmSuspend = 0x0004;
+    private const int PbtApmResumeSuspend = 0x0007;
+    private const int PbtApmResumeAutomatic = 0x0012;
+    private const int PbtPowerSettingChange = 0x8013;
+
+    // GUID_CONSOLE_DISPLAY_STATE {6FE69556-704A-47A0-8F24-C28D936FDA47}
+    private static Guid GuidConsoleDisplayState = new("6fe69556-704a-47a0-8f24-c28d936fda47");
+    private IntPtr _displayStateHandle = IntPtr.Zero;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr RegisterPowerSettingNotification(IntPtr hRecipient, ref Guid guid, uint flags);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool UnregisterPowerSettingNotification(IntPtr handle);
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct PowerBroadcastSetting
+    {
+        public Guid PowerSetting;
+        public uint DataLength;
+        public byte Data;
+    }
+
+    /// <summary>
+    /// Writes down every power transition Windows announces.
+    ///
+    /// Observation only. The deliberate question this answers is whether PBT_APMSUSPEND ever
+    /// arrives on this machine at all: the existing stand-down hangs off SystemEvents, which
+    /// wraps exactly that message, and on a platform with no S3 it may simply never be sent.
+    /// A fix that never runs is indistinguishable from a fix that works until the fault returns.
+    /// </summary>
+    private void OnPowerBroadcast(int eventType, IntPtr data)
+    {
+        string evt = eventType switch
+        {
+            PbtApmSuspend => "PBT_APMSUSPEND",
+            PbtApmResumeSuspend => "PBT_APMRESUMESUSPEND",
+            PbtApmResumeAutomatic => "PBT_APMRESUMEAUTOMATIC",
+            PbtPowerSettingChange => "PBT_POWERSETTINGCHANGE",
+            _ => $"0x{eventType:X}",
+        };
+
+        string detail = "";
+        if (eventType == PbtPowerSettingChange && data != IntPtr.Zero)
+        {
+            try
+            {
+                var setting = System.Runtime.InteropServices.Marshal
+                    .PtrToStructure<PowerBroadcastSetting>(data);
+
+                if (setting.PowerSetting == GuidConsoleDisplayState)
+                    detail = setting.Data switch
+                    {
+                        0 => "display off",
+                        1 => "display on",
+                        2 => "display dimmed",
+                        _ => $"display state {setting.Data}",
+                    };
+                else
+                    detail = setting.PowerSetting.ToString();
+            }
+            catch { detail = "unreadable payload"; }
+        }
+
+        try { _powerLog.Append(DateTime.UtcNow, "WM_POWERBROADCAST", evt, detail, "observed only"); }
+        catch { }
     }
 
     private void OnOverlayReading(Reading r)
@@ -951,6 +1052,8 @@ public partial class MainWindow : Window
 
             // Fan control first: Stop calls RestoreAutomaticControl, so the BIOS owns the fans
             // before the last poll could command anything on the way down.
+            try { _powerLog.Append(DateTime.UtcNow, "SystemEvents", "Suspend", "", "stood down"); } catch { }
+
             try { _service.Stop(); } catch { }
             try { _ctx.StopPolling(); } catch { }
 
@@ -962,6 +1065,8 @@ public partial class MainWindow : Window
         }
         else if (e.Mode == Microsoft.Win32.PowerModes.Resume)
         {
+            try { _powerLog.Append(DateTime.UtcNow, "SystemEvents", "Resume", "", "restarting"); } catch { }
+
             try { _ctx.StartPolling(TimeSpan.FromSeconds(2)); } catch { }
 
             // Only restarted if it was running. Resuming into a fan curve the user had turned
@@ -1051,6 +1156,9 @@ public partial class MainWindow : Window
         try { _ctx.Dispose(); } catch { }
         try { _netMonitor?.Dispose(); } catch { }
         try { _netLog?.Dispose(); } catch { }
+        try { if (_displayStateHandle != IntPtr.Zero) UnregisterPowerSettingNotification(_displayStateHandle); } catch { }
+        try { _powerLog.Append(DateTime.UtcNow, "OmniHub", "Shutdown", "", "clean exit"); } catch { }
+        try { _powerLog.Dispose(); } catch { }
         try { _thermalLog?.Dispose(); } catch { }
         try { ThemeManager.ThemeChanged -= OnThemeChanged; } catch { }
         try { if (_hotkeyHwnd != IntPtr.Zero) UnregisterHotKey(_hotkeyHwnd, OverlayHotkeyId); } catch { }
