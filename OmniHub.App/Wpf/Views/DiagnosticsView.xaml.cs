@@ -217,8 +217,31 @@ public partial class DiagnosticsView : UserControl
             + (band.MaxRawLevelFan2 != band.MaxRawLevelFan1 ? $" / {band.MaxRawLevelFan2} on fan 2" : "")
             + $"  ({_ctx.FanCalibrationSource})");
 
+        // Which fan is which.
+        //
+        // GetFanType has been implemented since the fan controller was written and reached only
+        // the -Probe console path, so the UI has always said "fan 1" and "fan 2" about a board
+        // that will state plainly which one cools the processor and which one cools the graphics.
+        AddRow(CapabilityRows, "Fan roles", DescribeFanTypes());
+
+        // The charger.
+        //
+        // GetAdapter returns a direct "this power supply is below what this laptop requires"
+        // diagnosis, and it has never reached a screen. On a machine that throttles under load
+        // it is the first thing worth ruling out, and it is one BIOS call away.
+        AddRow(CapabilityRows, "Power adapter", DescribeAdapter());
+
         AddRow(CapabilityRows, "Graphics switching",
             _ctx.GpuModeSwitchAllowed ? "offered" : "the board reports none, and the control is disabled");
+
+        // Where GPU readings come from.
+        //
+        // GpuSource's own doc comment says "Shown in the UI, because the two sources differ" --
+        // and it had zero references in the App project. nvidia-smi reports temperature, power
+        // and clock; the Windows counters report utilisation and a name, and nothing else. A
+        // reader looking at a blank GPU temperature deserves to know which of those they are
+        // looking at, in an application whose first rule is that a reading names its source.
+        AddRow(CapabilityRows, "GPU telemetry source", DescribeGpuSource());
 
         AddRow(CapabilityRows, "Processor tuning",
             _ctx.Smu is null ? _ctx.SmuUnavailableReason ?? "the SMU could not be opened" : "available");
@@ -227,6 +250,88 @@ public partial class DiagnosticsView : UserControl
         // real cadence, and it is the number two rounds of optimisation aimed at and missed.
         // Averages are appended to polltiming-*.csv beside the thermal logs.
         AddRow(CapabilityRows, "Poll tick cost", _ctx.LastTickTimings);
+    }
+
+    /// <summary>
+    /// What the board says each fan is for.
+    ///
+    /// The reply is a 128-byte block, one byte per fan. Anything past the reported fan count is
+    /// not a fan, and an Unsupported entry is the board declining to say rather than a fan that
+    /// does nothing -- so both are reported as such instead of being dressed up.
+    /// </summary>
+    private string DescribeFanTypes()
+    {
+        try
+        {
+            byte[] raw = _ctx.Fan.GetFanType();
+            if (raw.Length == 0) return "the command returned nothing";
+
+            int count = _ctx.FanCount is byte n && n > 0 ? Math.Min(n, raw.Length) : Math.Min(2, raw.Length);
+
+            var named = new List<string>(count);
+            for (int i = 0; i < count; i++)
+            {
+                var type = (FanType)raw[i];
+                named.Add($"fan {i + 1}: " + (Enum.IsDefined(type) && type != FanType.Unsupported
+                    ? type.ToString().ToLowerInvariant()
+                    : $"not stated (0x{raw[i]:X2})"));
+            }
+
+            return string.Join(", ", named);
+        }
+        catch (Exception ex)
+        {
+            return $"could not be read ({ex.Message})";
+        }
+    }
+
+    /// <summary>
+    /// Whether the attached power supply is big enough for this laptop.
+    ///
+    /// BelowRequirement is the reading worth having: it is the board stating that the charger
+    /// cannot deliver what the machine may ask for, which shows up as throttling under load and
+    /// is otherwise invisible. The others are reported plainly rather than collapsed into "OK".
+    /// </summary>
+    private string DescribeAdapter()
+    {
+        try
+        {
+            return _ctx.System.ReadAdapterStatus() switch
+            {
+                HpAdapterStatus.MeetsRequirement => "meets this laptop's requirement",
+                HpAdapterStatus.BelowRequirement =>
+                    "BELOW this laptop's requirement. The board is saying the attached supply cannot "
+                    + "deliver what the machine may draw, which shows up as throttling under load.",
+                HpAdapterStatus.BatteryPower => "on battery; nothing to report",
+                HpAdapterStatus.NotFunctioning => "the board reports the adapter as not functioning",
+                HpAdapterStatus.NotSupported => "the board does not report adapter status",
+                null => "not reported",
+                var other => $"reported as {other}",
+            };
+        }
+        catch (Exception ex)
+        {
+            return $"could not be read ({ex.Message})";
+        }
+    }
+
+    /// <summary>Which provider answered for the GPU, and what that provider can report.</summary>
+    private static string DescribeGpuSource()
+    {
+        var reading = GpuTelemetry.Read();
+
+        if (reading is null)
+            return GpuTelemetry.IsAvailable ? "no reading yet" : "no GPU reported";
+
+        return reading.Source switch
+        {
+            GpuSource.NvidiaSmi =>
+                $"nvidia-smi ({reading.Name}): temperature, power, clock and utilisation",
+            GpuSource.WindowsCounters =>
+                $"Windows performance counters ({reading.Name}): utilisation only. "
+                + "Temperature, power and clock are not exposed by this source and read as unavailable.",
+            var other => other.ToString(),
+        };
     }
 
     /// <summary>A label and a value on one line, sharing the fixed label column.</summary>

@@ -245,6 +245,13 @@ public partial class DashboardView : UserControl
         });
     }
 
+    private static string SourceName(GpuSource source) => source switch
+    {
+        GpuSource.NvidiaSmi => "nvidia-smi",
+        GpuSource.WindowsCounters => "Windows counters",
+        var other => other.ToString(),
+    };
+
     private void ShowPowerDraw(OmniHub.Core.Optimize.BatteryDraw? draw)
     {
         if (draw is null)
@@ -401,6 +408,18 @@ public partial class DashboardView : UserControl
                 subText = $"{modeText} · TGP {power.CustomTgp} / BOOST {power.Ppab}";
             }
             catch { }
+
+            // Name the provider on the card itself.
+            //
+            // The two sources genuinely differ: nvidia-smi gives temperature, power and clock,
+            // while the Windows counters give utilisation and nothing else. Without this, a blank
+            // temperature reads as a broken sensor rather than as a source that does not report
+            // one -- and "say which sensor answered" is a rule this application already applies
+            // to its CPU readings and had simply never applied here.
+            if (GpuTelemetry.Read() is { } gpu)
+                subText += subText.Length > 0
+                    ? $" · via {SourceName(gpu.Source)}"
+                    : $"via {SourceName(gpu.Source)}";
 
             Dispatcher.Invoke(() =>
             {
