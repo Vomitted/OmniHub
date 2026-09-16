@@ -243,6 +243,10 @@ public partial class DiagnosticsView : UserControl
         // looking at, in an application whose first rule is that a reading names its source.
         AddRow(CapabilityRows, "GPU telemetry source", DescribeGpuSource());
 
+        // Per-logical-processor clocks, rather than the one averaged figure from WMI whose own
+        // source comment warns it may not track turbo at all.
+        AddRow(CapabilityRows, "Processor clocks", DescribeClocks());
+
         AddRow(CapabilityRows, "Processor tuning",
             _ctx.Smu is null ? _ctx.SmuUnavailableReason ?? "the SMU could not be opened" : "available");
 
@@ -332,6 +336,34 @@ public partial class DiagnosticsView : UserControl
                 + "Temperature, power and clock are not exposed by this source and read as unavailable.",
             var other => other.ToString(),
         };
+    }
+
+    /// <summary>
+    /// What each logical processor is doing, and whether Windows is holding any of them down.
+    ///
+    /// The cap is the part worth having. When a power policy or a thermal event lowers the
+    /// ceiling, MhzLimit drops below MaxMhz and the platform says so -- a constraint the machine
+    /// is genuinely under, reported rather than inferred from a clock that happens to look low.
+    /// </summary>
+    private static string DescribeClocks()
+    {
+        var clocks = ProcessorClocks.Read();
+        if (clocks.Count == 0) return "not reported by this platform";
+
+        int peak = ProcessorClocks.PeakMhz(clocks) ?? 0;
+        int max = clocks.Max(c => c.MaxMhz);
+        int parked = clocks.Count(c => c.CurrentMhz < max / 4);
+
+        string text = $"{clocks.Count} logical, peak {peak} MHz of {max} MHz nominal";
+        if (parked > 0) text += $", {parked} near idle";
+
+        if (ProcessorClocks.IsCapped(clocks))
+        {
+            int limit = clocks.Where(c => c.LimitMhz > 0).Min(c => c.LimitMhz);
+            text += $". Windows is holding the ceiling at {limit} MHz, below the {max} MHz nominal.";
+        }
+
+        return text;
     }
 
     /// <summary>A label and a value on one line, sharing the fixed label column.</summary>
