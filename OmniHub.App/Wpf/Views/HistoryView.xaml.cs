@@ -20,7 +20,7 @@ namespace OmniHub.App.Wpf.Views;
 /// here rather than on the Dashboard means the landing tab is not where a rendering regression
 /// would show up first.
 /// </summary>
-public partial class HistoryView : UserControl
+public partial class HistoryView : UserControl, IDisposable
 {
     private readonly TelemetryHistory _history = new();
     private readonly TimeSeriesChart _chart = new();
@@ -87,6 +87,22 @@ public partial class HistoryView : UserControl
         BuildWindowPills();
         Loaded += (_, _) => Load(Initial);
         Unloaded += (_, _) => { _loading?.Cancel(); _loading = null; };
+    }
+
+    /// <summary>
+    /// Cancels any read in flight and stops the chart.
+    ///
+    /// Without this the view was invisible to shutdown: MainWindow disposes whatever in its view
+    /// dictionary is IDisposable and GroupView forwards to whichever of its sections are, so a
+    /// view that implements nothing is simply skipped. A fourteen-day read is around 200,000 rows,
+    /// and leaving one running while the application tears down is a loose end whether or not it
+    /// is the one that cost a clean exit.
+    /// </summary>
+    public void Dispose()
+    {
+        try { _loading?.Cancel(); } catch { }
+        _loading = null;
+        try { _chart.Dispose(); } catch { }
     }
 
     private void BuildWindowPills()

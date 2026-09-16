@@ -1154,8 +1154,35 @@ public partial class MainWindow : Window
     {
         if (_cleanedUp) return;
         _cleanedUp = true;
+
+        // The fans go back to the BIOS FIRST, before anything else in this method.
+        //
+        // It used to sit tenth, after view disposal. That ordering was fine as long as every
+        // step above it completed, and on 16 September one did not: a tray Exit produced no
+        // "clean exit" row, which means Cleanup stopped somewhere between its first line and
+        // that row. Windows recorded no error and no hang, so the process ended without
+        // crashing -- it simply never got there.
+        //
+        // Whatever was blocking, the consequence is the part that matters: FanService.Stop is
+        // what calls RestoreAutomaticControl, and while it does not run the fans stay wherever
+        // the curve last commanded them. That is the exact failure the tray Exit exists to
+        // prevent and the reason this application must not be killed from Task Manager.
+        //
+        // Nothing below depends on the fan loop still running, so hoisting it costs nothing and
+        // makes the handback immune to every step that follows.
+        try { _service.Stop(); } catch { }
+
         try { Microsoft.Win32.SystemEvents.PowerModeChanged -= OnPowerModeChanged; } catch { }
         try { _appWatchTimer?.Dispose(); } catch { }
+
+        // Three rows across shutdown rather than one at the end.
+        //
+        // A single "clean exit" row can only say that everything worked; its absence says
+        // something failed and nothing about where. These bracket the two stages, so the next
+        // occurrence narrows it to a third of the method instead of all of it. Shutdown happens
+        // a few times a day and each row is one flushed line, so the cost is nothing and the
+        // last moments of the process are precisely what this log exists to record.
+        try { _powerLog.Append(DateTime.UtcNow, "OmniHub", "Shutdown", "begin", "fans handed back"); } catch { }
 
         // Views first, and before the hardware context they depend on.
         //
@@ -1168,7 +1195,7 @@ public partial class MainWindow : Window
             try { view.Dispose(); } catch { }
         }
 
-        try { _service.Stop(); } catch { }
+        try { _powerLog.Append(DateTime.UtcNow, "OmniHub", "Shutdown", "views disposed", ""); } catch { }
 
         // The overlay closes BEFORE the context, not after.
         //

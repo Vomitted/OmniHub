@@ -57,7 +57,7 @@ public sealed class ChartSeries
 ///     15 September trace would put a straight line across a quarter of a one-day view, on data
 ///     that does not exist.
 /// </summary>
-public partial class TimeSeriesChart : UserControl
+public partial class TimeSeriesChart : UserControl, IDisposable
 {
     private sealed class SeriesState
     {
@@ -197,6 +197,20 @@ public partial class TimeSeriesChart : UserControl
 
     /// <summary>Requests a redraw on the next coalescing tick.</summary>
     public void Invalidate() => _dirty = true;
+
+    /// <summary>
+    /// Stops the redraw timer.
+    ///
+    /// Unloaded already does this when the control leaves the visual tree, but a view disposed
+    /// during application shutdown is not necessarily unloaded first -- and a timer still firing
+    /// into a dispatcher that is closing down is the kind of loose end that turns an orderly exit
+    /// into an untidy one.
+    /// </summary>
+    public void Dispose()
+    {
+        try { _redraw.Stop(); } catch { }
+        _dirty = false;
+    }
 
     // ------------------------------------------------------------------ rendering
 
