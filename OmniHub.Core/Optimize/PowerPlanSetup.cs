@@ -17,21 +17,64 @@ namespace OmniHub.Core.Optimize;
 public static class PowerPlanSetup
 {
     // Subgroups
-    private static Guid SubProcessor  = new("54533251-82be-4824-96c1-47b60b740d00");
     private static Guid SubVideo      = new("7516b95f-f776-4464-8c53-06167f40cc99");
     private static Guid SubDisk       = new("0012ee47-9041-4b5d-9b77-535fba8b1442");
     private static Guid SubPciExpress = new("501a4d13-42af-4429-9fd1-a8218c268e20");
 
-    // Settings
-    private static Guid ProcThrottleMin = new("893dee8e-2bef-41e0-89c6-b55d0929964c");
-    private static Guid ProcThrottleMax = new("bc5038f7-23e0-4960-96da-33abaf5935ec");
-    private static Guid PerfBoostMode   = new("be337238-0d82-4146-a960-4f3749d470c7");
+    // Settings.
+    //
+    // PROCTHROTTLEMIN, PROCTHROTTLEMAX and PERFBOOSTMODE are DELIBERATELY ABSENT. They used to
+    // be written here, and that defeated the entire design stated above: these plans are
+    // duplicates of Balanced, so writing processor values into them replaced the owner's own
+    // configuration with this file's opinion the moment the plan was activated. On the machine
+    // this was found on, Balanced held boost Disabled on both rails and a 99% ceiling on
+    // battery -- chosen deliberately because the laptop runs hot -- while the active OmniHub
+    // plan held boost Aggressive on mains and a 60% ceiling on battery.
+    //
+    // Leaving them unwritten is not a loss of capability. A duplicate inherits every value of
+    // the scheme it was copied from, so the plans now carry whatever the owner set on Balanced,
+    // which is the correct answer and the one this file's own doc comment argues for.
+    //
+    // See PowerPlanSetupTests: the absence is asserted, because a rule this easy to reintroduce
+    // does not stay fixed on good intentions.
     private static Guid VideoIdle       = new("3c0bc021-c8a8-4e07-a973-6b14cbcb2b7e");
     private static Guid DiskIdle        = new("6738e2c4-e8a5-4a42-b16a-e040e769756e");
     private static Guid PciExpressAspm  = new("ee12f906-d277-404b-b6da-e5fa1a576df5");
 
     /// <summary>Balanced, the stock scheme both OmniHub plans are duplicated from.</summary>
     private static Guid SchemeBalanced = new("381b4222-f694-41f0-9685-ff5bb260df2e");
+
+    /// <summary>
+    /// The three processor settings this application must never write, by any route.
+    ///
+    /// Kept as data rather than as a rule in a comment, because CreateFromRecipe writes whatever
+    /// the recipe hands it and the recipe is built from what Windows reports. Removing them from
+    /// the builder is the fix; this is the backstop that makes reintroducing them somewhere else
+    /// impossible rather than merely unlikely.
+    /// </summary>
+    internal static readonly Guid[] NeverWrite =
+    {
+        new("893dee8e-2bef-41e0-89c6-b55d0929964c"),  // PROCTHROTTLEMIN
+        new("bc5038f7-23e0-4960-96da-33abaf5935ec"),  // PROCTHROTTLEMAX
+        new("be337238-0d82-4146-a960-4f3749d470c7"),  // PERFBOOSTMODE
+    };
+
+    /// <summary>
+    /// Schemes Windows ships. Nothing here writes into one.
+    ///
+    /// CreateFromRecipe names its plan from a free-text box and then looks the name up, so
+    /// typing "Balanced" or "Gaming" used to resolve to that scheme's own GUID and write
+    /// straight into it. Reusing a scheme OmniHub made is the intended behaviour; adopting one
+    /// it did not is how a tool destroys a configuration it was never asked to touch.
+    /// </summary>
+    private static readonly Guid[] StockSchemes =
+    {
+        new("381b4222-f694-41f0-9685-ff5bb260df2e"),  // Balanced
+        new("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"),  // High performance
+        new("a1841308-3541-4fab-bc81-f71556f20b4a"),  // Power saver
+        new("e9a42b02-d5df-448d-aa00-03f14749eb61"),  // Ultimate Performance
+        new("3de59f83-06ae-4fc3-9084-51083167dc96"),  // Gaming
+    };
 
     public const string BatterySaverName = "OmniHub Battery Saver";
     public const string PerformanceName  = "OmniHub Performance";
@@ -69,34 +112,25 @@ public static class PowerPlanSetup
     private readonly record struct Setting(Guid Sub, Guid Id, uint Ac, uint Dc);
 
     /// <summary>
-    /// Values for the battery plan. Conservative but not crippling: the processor may still
-    /// reach 60%, which keeps the desktop responsive, while boost stays off and the peripherals
-    /// power down quickly.
+    /// Values for the battery plan. Peripherals power down quickly; the processor is not
+    /// touched at all, so it keeps whatever the owner configured on Balanced.
     /// </summary>
     private static Setting[] BatterySaverValues() => new[]
     {
-        new Setting(SubProcessor,  ProcThrottleMin, 5,   5),
-        new Setting(SubProcessor,  ProcThrottleMax, 100, 60),
-        new Setting(SubProcessor,  PerfBoostMode,   0,   0),   // no turbo on the battery plan, either rail
         new Setting(SubVideo,      VideoIdle,       120, 60),  // seconds
         new Setting(SubDisk,       DiskIdle,        600, 120), // seconds
         new Setting(SubPciExpress, PciExpressAspm,  2,   2),   // 2 = maximum power savings
     };
 
     /// <summary>
-    /// Values for the mains plan. The boost setting is passed in rather than hard-coded because
-    /// it is the one value here with a real thermal cost, and it is a decision for whoever owns
-    /// the laptop rather than for this file.
+    /// Values for the mains plan: the peripherals stay awake longer and ASPM is off.
     ///
-    /// Note the DC column: even on the performance plan, battery keeps boost off and a 60%
-    /// ceiling. If this plan is ever active while unplugged -- automation disabled, or Windows
-    /// switching on its own -- it degrades to something sane instead of draining flat out.
+    /// The processor is not touched here either. That was the one value with a real thermal
+    /// cost, and it is a decision for whoever owns the laptop rather than for this file -- so
+    /// rather than this file choosing it, the plan inherits the owner's choice from Balanced.
     /// </summary>
-    private static Setting[] PerformanceValues(uint boostAc) => new[]
+    private static Setting[] PerformanceValues() => new[]
     {
-        new Setting(SubProcessor,  ProcThrottleMin, 5,   5),
-        new Setting(SubProcessor,  ProcThrottleMax, 100, 60),
-        new Setting(SubProcessor,  PerfBoostMode,   boostAc, 0),
         new Setting(SubVideo,      VideoIdle,       900, 300),
         new Setting(SubDisk,       DiskIdle,        0,   600), // 0 = never spin down on mains
         new Setting(SubPciExpress, PciExpressAspm,  0,   2),   // 0 = ASPM off on mains
@@ -109,7 +143,7 @@ public static class PowerPlanSetup
     /// run at every launch without breeding copies in the power menu -- which is exactly what
     /// tools that call PowerDuplicateScheme unconditionally end up doing.
     /// </summary>
-    public static (Guid? BatterySaver, Guid? Performance, string Detail) EnsurePlans(uint acBoostMode)
+    public static (Guid? BatterySaver, Guid? Performance, string Detail) EnsurePlans()
     {
         try
         {
@@ -122,7 +156,7 @@ public static class PowerPlanSetup
                 return (saver, perf, "Windows would not create the power schemes. Administrator rights are required.");
 
             int written = Apply(saver.Value, BatterySaverValues())
-                        + Apply(perf.Value, PerformanceValues(acBoostMode));
+                        + Apply(perf.Value, PerformanceValues());
 
             return (saver, perf, $"Power plans ready ({written} settings written).");
         }
@@ -150,13 +184,26 @@ public static class PowerPlanSetup
 
         try
         {
-            Guid? id = Find(PowerPlan.List(), recipe.Name) ?? Duplicate(recipe.Name);
+            var schemes = PowerPlan.List();
+
+            // Refused rather than disambiguated. Silently creating a second "Balanced" would be
+            // its own kind of mess, and the user asked for a plan by a name that is already
+            // taken by one of Windows' own -- they need to be told, not worked around.
+            if (NameBelongsToStockScheme(schemes, recipe.Name))
+                return (null, $"\"{recipe.Name}\" is one of Windows' own power plans. Choose a different name.");
+
+            Guid? id = Find(schemes, recipe.Name) ?? Duplicate(recipe.Name);
             if (id is not { } scheme)
                 return (null, "Windows would not create the scheme. Administrator rights are required.");
 
-            int written = 0, attempted = 0;
+            int written = 0, attempted = 0, refused = 0;
             foreach (var (knob, ac, dc) in recipe.Resolve(knobs))
             {
+                // The backstop described on NeverWrite. The recipe should not be offering these
+                // at all; if one ever reappears there, it stops here instead of reaching the
+                // machine.
+                if (Array.IndexOf(NeverWrite, knob.Id) >= 0) { refused++; continue; }
+
                 var sub = knob.Sub;
                 var setting = knob.Id;
                 attempted += 2;
@@ -166,9 +213,10 @@ public static class PowerPlanSetup
 
             // Reported as a fraction rather than a bare success. A scheme can be created while
             // individual settings are refused by policy, and "created" alone would hide that.
-            return (scheme, written == attempted
+            string note = refused > 0 ? $" {refused} processor setting(s) were left to the plan it was copied from." : "";
+            return (scheme, (written == attempted
                 ? $"\"{recipe.Name}\" created with {written / 2} settings."
-                : $"\"{recipe.Name}\" created, but only {written} of {attempted} values were accepted.");
+                : $"\"{recipe.Name}\" created, but only {written} of {attempted} values were accepted.") + note);
         }
         catch (Exception ex)
         {
@@ -193,12 +241,35 @@ public static class PowerPlanSetup
         return $"No plan named \"{name}\".";
     }
 
+    /// <summary>
+    /// The id of a scheme with this name that OmniHub may write to, or null.
+    ///
+    /// Returns null both when no such scheme exists -- the caller then duplicates one -- and
+    /// when the name belongs to a scheme Windows ships, which the caller must treat as a
+    /// refusal rather than as permission to create a second one under the same name.
+    /// </summary>
     private static Guid? Find(IReadOnlyList<PowerScheme> schemes, string name)
     {
         foreach (var s in schemes)
             if (string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase))
-                return s.Id;
+                return IsStock(s.Id) ? null : s.Id;
         return null;
+    }
+
+    /// <summary>True when this scheme is one Windows ships and OmniHub must not write to.</summary>
+    internal static bool IsStock(Guid scheme)
+    {
+        foreach (var g in StockSchemes) if (g == scheme) return true;
+        return false;
+    }
+
+    /// <summary>True when any scheme Windows lists under this name is a stock one.</summary>
+    private static bool NameBelongsToStockScheme(IReadOnlyList<PowerScheme> schemes, string name)
+    {
+        foreach (var s in schemes)
+            if (string.Equals(s.Name, name, StringComparison.OrdinalIgnoreCase) && IsStock(s.Id))
+                return true;
+        return false;
     }
 
     private static Guid? Duplicate(string name)

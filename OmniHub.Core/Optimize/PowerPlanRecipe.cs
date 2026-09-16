@@ -100,18 +100,6 @@ public sealed record PowerPlanRecipe(string Name, int Bias)
 
             (uint ac, uint dc) = k.Key switch
             {
-                // Never raised. A high floor keeps the processor clocked up while idle, which
-                // costs heat and battery and buys only clock-ramp latency.
-                "procmin" => (5u, 5u),
-
-                // The headline knob: half the processor at the battery end, all of it at the
-                // performance end. The battery rail stays capped either way.
-                "procmax" => (Lerp(50, 100, b), Lerp(30, 60, b)),
-
-                // Enumerated, so the index comes from what the machine offers rather than an
-                // assumption. Battery never boosts.
-                "boost" => (BoostFor(k, b), 0u),
-
                 "video" => (Lerp(120, 1800, b), Lerp(60, 600, b)),
                 "disk"  => (Lerp(300, 0, b), Lerp(120, 600, b)),   // 0 = never spin down
                 "sleep" => (Lerp(900, 0, b), Lerp(300, 1800, b)),  // 0 = never sleep
@@ -136,30 +124,6 @@ public sealed record PowerPlanRecipe(string Name, int Bias)
         return k.Max >= k.Min ? Math.Clamp(value, k.Min, k.Max) : value;
     }
 
-    /// <summary>
-    /// Picks a boost setting by name, not by index.
-    ///
-    /// Off below a third, the mildest "enabled" variant in the middle, the most aggressive one
-    /// the machine offers at the top. Matching on names is what makes this survive a machine
-    /// that enumerates the list in a different order -- precisely the failure this project has
-    /// already had once.
-    /// </summary>
-    private static uint BoostFor(PowerKnob k, int bias)
-    {
-        if (!k.IsEnumerated) return bias >= 66 ? k.Max : 0;
-
-        if (bias < 34) return Named(k, "Disabled") ?? k.Options[0].Index;
-        if (bias < 75) return Named(k, "Efficient Enabled") ?? Named(k, "Enabled") ?? k.Options[0].Index;
-        return Named(k, "Aggressive") ?? Named(k, "Enabled") ?? k.Options[^1].Index;
-    }
-
-    private static uint? Named(PowerKnob k, string name)
-    {
-        foreach (var o in k.Options)
-            if (string.Equals(o.Name, name, StringComparison.OrdinalIgnoreCase)) return o.Index;
-        return null;
-    }
-
     private static uint AspmFor(PowerKnob k, int bias) =>
         bias >= 66 ? MinIndex(k) : bias >= 34 ? MidIndex(k) : MaxIndex(k);
 
@@ -178,15 +142,16 @@ public sealed record PowerPlanRecipe(string Name, int Bias)
 /// </summary>
 public static class PowerKnobReader
 {
-    private static Guid SubProcessor  = new("54533251-82be-4824-96c1-47b60b740d00");
     private static Guid SubVideo      = new("7516b95f-f776-4464-8c53-06167f40cc99");
     private static Guid SubDisk       = new("0012ee47-9041-4b5d-9b77-535fba8b1442");
     private static Guid SubSleep      = new("238c9fa8-0aad-41ed-83f4-97be242c8f20");
     private static Guid SubPciExpress = new("501a4d13-42af-4429-9fd1-a8218c268e20");
 
-    private static Guid ProcMin = new("893dee8e-2bef-41e0-89c6-b55d0929964c");
-    private static Guid ProcMax = new("bc5038f7-23e0-4960-96da-33abaf5935ec");
-    private static Guid Boost   = new("be337238-0d82-4146-a960-4f3749d470c7");
+    // The processor knobs -- minimum state, maximum state and boost mode -- are deliberately
+    // not here. The builder used to offer them, which meant a plan built from it wrote the
+    // owner's processor configuration out from under them. PowerPlanSetup.NeverWrite is the
+    // backstop; leaving them out of this table is the actual fix, because a knob that is never
+    // offered cannot be resolved, clamped or written.
     private static Guid Video   = new("3c0bc021-c8a8-4e07-a973-6b14cbcb2b7e");
     private static Guid Disk    = new("6738e2c4-e8a5-4a42-b16a-e040e769756e");
     private static Guid Standby = new("29f6c1db-86da-48c5-9fdb-f2b67b1f44da");
@@ -218,9 +183,6 @@ public static class PowerKnobReader
     {
         var wanted = new (Guid Sub, Guid Id, string Key, string Label, string Units)[]
         {
-            (SubProcessor,  ProcMin, "procmin", "Minimum processor state",  "%"),
-            (SubProcessor,  ProcMax, "procmax", "Maximum processor state",  "%"),
-            (SubProcessor,  Boost,   "boost",   "Processor boost mode",     ""),
             (SubVideo,      Video,   "video",   "Turn off display after",   "seconds"),
             (SubDisk,       Disk,    "disk",    "Turn off disk after",      "seconds"),
             (SubSleep,      Standby, "sleep",   "Sleep after",              "seconds"),

@@ -483,21 +483,6 @@ public partial class SettingsView : UserControl
 
     private OmniHub.Core.Optimize.PowerPlanAutomation? _powerPlan;
 
-    /// <summary>
-    /// Boost mode written to the mains plan: 2 = Aggressive.
-    ///
-    /// It was 3 here, from the assumption that the indices run Disabled, Enabled, Efficient
-    /// Enabled, Aggressive. They do not. Windows enumerates them on this machine as 0 Disabled,
-    /// 1 Enabled, 2 Aggressive, 3 Efficient Enabled, 4 Efficient Aggressive, 5 Aggressive At
-    /// Guaranteed, 6 Efficient Aggressive At Guaranteed -- so 3 would have written Efficient
-    /// Enabled under a comment claiming Aggressive.
-    ///
-    /// Named rather than inlined because it is the one value in the whole feature with a real
-    /// thermal cost, and it was chosen by the machine's owner rather than by this code. The
-    /// plan builder reads these indices from Windows rather than hard-coding them, which is
-    /// what this constant should eventually give way to.
-    /// </summary>
-    private const uint MainsBoostMode = 2;
 
     private void InitialisePowerPlanControls()
     {
@@ -537,7 +522,7 @@ public partial class SettingsView : UserControl
     /// </summary>
     private void StartPowerPlanAutomation(bool announce)
     {
-        var (saver, perf, detail) = OmniHub.Core.Optimize.PowerPlanSetup.EnsurePlans(MainsBoostMode);
+        var (saver, perf, detail) = OmniHub.Core.Optimize.PowerPlanSetup.EnsurePlans();
 
         if (saver is not { } dc || perf is not { } ac)
         {

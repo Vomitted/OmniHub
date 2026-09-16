@@ -14,7 +14,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- **OmniHub was overwriting the Windows processor settings you had chosen.** The two power
+  schemes it creates are duplicates of Balanced, which is the right design precisely because a
+  duplicate inherits whatever you configured. It then wrote `PROCTHROTTLEMIN`,
+  `PROCTHROTTLEMAX` and `PERFBOOSTMODE` into them and activated one, so the machine ran on
+  this application's opinion of those three values rather than yours. On the laptop where this
+  was found, Balanced held boost **Disabled** on both rails and a **99%** battery ceiling —
+  set deliberately, because the machine runs hot — while the active OmniHub plan held boost
+  **Aggressive** on mains and a **60%** battery ceiling.
+
+  Those three settings are no longer written by any route. The plans still manage display,
+  disk, sleep and PCI Express power, and they now inherit your processor configuration from
+  the plan they were copied from. The plan builder no longer offers the three knobs either,
+  and a test fails the build if any of them reappears in a write path.
+
+  **If you already have OmniHub power plans, they still hold the old values.** Delete them
+  (Settings → Power plan) and let them be recreated, or set them to match your own plan by
+  hand.
+
+- **The plan builder could write into a Windows power plan it did not create.** It resolved
+  the name you typed to an existing scheme, so entering "Balanced" or "Gaming" wrote settings
+  straight into that scheme. Windows' own plans are now refused by name.
 
 ---
 
