@@ -5,6 +5,7 @@ using UserControl = System.Windows.Controls.UserControl;
 using RadioButton = System.Windows.Controls.RadioButton;
 using OmniHub.Core.Fan;
 using OmniHub.Core.Hardware;
+using OmniHub.Core.Optimize;
 
 namespace OmniHub.App.Wpf.Views;
 
@@ -419,6 +420,102 @@ public partial class FansView : UserControl
         // it underneath a running curve would change what every displayed percentage means
         // halfway through a session. Saying "next launch" is the honest version.
         if (saved) _settings.Save();
+    }
+
+    /// <summary>
+    /// Makes the application passive and reports what is still in force.
+    ///
+    /// Off the UI thread because the first thing it does is stop the fan loop, which issues BIOS
+    /// calls that queue behind whatever the poll thread is already doing -- the same reason every
+    /// other hardware path in this view is pushed off the dispatcher.
+    ///
+    /// The mode buttons are left showing whatever the user last chose rather than being forced to
+    /// BIOS Default. The point of this control is to make OmniHub stop acting, not to rewrite the
+    /// user's preference: clicking Auto again puts them exactly where they were.
+    /// </summary>
+    private void StockBtn_Click(object sender, RoutedEventArgs e)
+    {
+        StockBtn.IsEnabled = false;
+        StockSummary.Text = "Handing everything back...";
+        StockRows.Children.Clear();
+
+        Task.Run(() => ReturnToStock.Run(
+                    _service,
+                    _ctx.VendorSupported ? _ctx.Gpu : null,
+                    tuningWasApplied: _settings.TuningMode != TuningMode.Manual || _settings.StartupProfileName is not null,
+                    restorePlan: _settings.AcPlanId,
+                    journal: OmniHub.Core.Diagnostics.RestoreJournal.Shared))
+            .ContinueWith(t => Dispatcher.Invoke(() =>
+            {
+                StockBtn.IsEnabled = true;
+
+                if (t.IsFaulted || t.Result is not { } steps)
+                {
+                    StockSummary.Text = $"Could not complete ({t.Exception?.GetBaseException().Message}).";
+                    return;
+                }
+
+                StockSummary.Text = ReturnToStock.Summarise(steps);
+
+                foreach (var step in steps) StockRows.Children.Add(BuildStockRow(step));
+
+                // The mode buttons no longer reflect a running curve.
+                SetActiveModeButton(FanControlMode.BiosDefault);
+                UpdateStatusTile(FanControlMode.BiosDefault);
+            }));
+    }
+
+    /// <summary>
+    /// One row per step: a state dot, the name, and what happened.
+    ///
+    /// The dot carries the colour, not the words. A sentence saying a limit is still in force is
+    /// a statement of fact, and tinting it red would make it read as an alarm about something
+    /// that is working exactly as documented.
+    /// </summary>
+    private UIElement BuildStockRow(ReturnToStock.Step step)
+    {
+        var row = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(190) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var dot = new System.Windows.Shapes.Ellipse
+        {
+            Width = 6,
+            Height = 6,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+            Fill = (Brush)FindResource(step.State switch
+            {
+                ReturnToStock.StockState.Restored => "GoodBrush",
+                ReturnToStock.StockState.NotChanged => "TextFaintBrush",
+                ReturnToStock.StockState.NeedsReboot => "WarnBrush",
+                _ => "DangerBrush",
+            }),
+        };
+        Grid.SetColumn(dot, 0);
+
+        var name = new TextBlock
+        {
+            Text = step.Name,
+            Style = (Style)FindResource("TileFoot"),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        Grid.SetColumn(name, 1);
+
+        var detail = new TextBlock
+        {
+            Text = step.Detail,
+            Style = (Style)FindResource("MutedText"),
+            FontSize = 11,
+            TextWrapping = TextWrapping.Wrap,
+        };
+        Grid.SetColumn(detail, 2);
+
+        row.Children.Add(dot);
+        row.Children.Add(name);
+        row.Children.Add(detail);
+        return row;
     }
 
     private void SafeCall(Action a) { try { a(); } catch { } }

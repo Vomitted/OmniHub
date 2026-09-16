@@ -190,6 +190,24 @@
                     </StackPanel>
                 </Grid>
             </Border>
+
+            <TextBlock Text="RETURN TO STOCK" Style="{StaticResource SubHeadingText}" Margin="0,18,0,8"/>
+            <Border Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,12"
+                                   Text="Hands the fans back to the BIOS, releases the timer and composition priority, clears the GPU unlock latch and returns the Windows power plan, then reports what could not be undone without a restart. Use it when you want this application ruled out of a problem: one click and a reading, instead of stopping services and rebooting."/>
+                        <WrapPanel>
+                            <Button x:Name="StockBtn" Content="Return to stock" Width="160" Height="36"
+                                    Style="{StaticResource FlatButtonStyle}" Click="StockBtn_Click"/>
+                        </WrapPanel>
+                        <TextBlock x:Name="StockSummary" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap"
+                                   MaxWidth="700" Margin="0,12,0,0"/>
+                        <StackPanel x:Name="StockRows" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
