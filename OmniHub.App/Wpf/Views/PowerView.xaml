@@ -17,6 +17,80 @@
                            Text="Battery health and the firmware idle setting. CPU power limits live on Tuning; the Windows power plan lives on System."/>
             </StackPanel>
 
+            <TextBlock Text="WHERE THE POWER IS GOING" Style="{StaticResource SubHeadingText}"/>
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,7,0">
+                    <Grid>
+                        <Border Style="{StaticResource CardSheenStyle}"/>
+                        <StackPanel>
+                            <TextBlock Text="WHOLE MACHINE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricMemBrush}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock x:Name="DrawTotalValue" Style="{StaticResource TileValue}" Text="--"/>
+                                <TextBlock Text="W" Style="{StaticResource TileUnit}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="DrawTotalFoot" Style="{StaticResource TileFoot}" Text="AT THE BATTERY"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0">
+                    <Grid>
+                        <Border Style="{StaticResource CardSheenStyle}"/>
+                        <StackPanel>
+                            <TextBlock Text="PROCESSOR" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricCpuBrush}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock x:Name="DrawPackageValue" Style="{StaticResource TileValue}" Text="--"/>
+                                <TextBlock Text="W" Style="{StaticResource TileUnit}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="DrawPackageFoot" Style="{StaticResource TileFoot}" Text="PACKAGE, FROM THE SMU"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0">
+                    <Grid>
+                        <Border Style="{StaticResource CardSheenStyle}"/>
+                        <StackPanel>
+                            <TextBlock Text="DISCRETE GPU" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricGpuBrush}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock x:Name="DrawGpuValue" Style="{StaticResource TileValue}" Text="--"/>
+                                <TextBlock x:Name="DrawGpuUnit" Text="W" Style="{StaticResource TileUnit}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="DrawGpuFoot" Style="{StaticResource TileFoot}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="3" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0,0,0">
+                    <Grid>
+                        <Border Style="{StaticResource CardSheenStyle}"/>
+                        <StackPanel>
+                            <TextBlock Text="EVERYTHING ELSE" Style="{StaticResource TileLabel}" Foreground="{StaticResource AccentBrush}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock x:Name="DrawRestValue" Style="{StaticResource TileValue}" Text="--"/>
+                                <TextBlock x:Name="DrawRestUnit" Text="W" Style="{StaticResource TileUnit}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="DrawRestFoot" Style="{StaticResource TileFoot}" Text="A SUBTRACTION"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <TextBlock x:Name="DrawNote" Style="{StaticResource MutedText}" FontSize="11.5"
+                               TextWrapping="Wrap" MaxWidth="760"/>
+                </Grid>
+            </Border>
+
             <TextBlock Text="BATTERY HEALTH" Style="{StaticResource SubHeadingText}"/>
             <Grid Margin="0,0,0,18">
                 <Grid.ColumnDefinitions>
