@@ -195,4 +195,41 @@ public class StabilityCorrelatorTests
     public void NoShutdownsIsSaidPlainly() =>
         Assert.Contains("No unclean shutdowns",
             StabilityCorrelator.Summarise(Array.Empty<StabilityIncident>()));
+
+    /// <summary>
+    /// Read-only, against this machine's actual System log, in the same spirit as
+    /// HardwareReadTests.
+    ///
+    /// The correlator is pure and tested above; this checks the half that talks to Windows --
+    /// that EventLogReader opens, that the named fields parse, and that a real log produces
+    /// sensible records rather than an exception. It asserts shape, not content: a healthy
+    /// machine with no incidents must pass too.
+    /// </summary>
+    [Fact]
+    public void TheRealEventLogOnThisMachineReads()
+    {
+        var events = StabilityHistory.Read(DateTime.UtcNow.AddDays(-14), out string? error);
+
+        // A managed machine can refuse the System log by policy. That is reported, not thrown.
+        if (error is { Length: > 0 }) return;
+
+        Assert.All(events, e => Assert.Equal(DateTimeKind.Utc, e.AtUtc.Kind));
+
+        for (int i = 1; i < events.Count; i++)
+            Assert.True(events[i].AtUtc >= events[i - 1].AtUtc, "events come back oldest first");
+
+        // SleepInProgress only ever appears on an unclean shutdown record.
+        Assert.All(events.Where(e => e.SleepInProgress is not null),
+                   e => Assert.Equal(StabilityEventKind.UncleanShutdown, e.Kind));
+
+        // Kernel-Power 41 and EventLog 6008 describe one stop from two providers, seconds apart
+        // at the same boot. Counting both would double every incident on the timeline.
+        var unclean = events.Where(e => e.Kind == StabilityEventKind.UncleanShutdown)
+                            .Select(e => e.AtUtc)
+                            .ToList();
+
+        for (int i = 1; i < unclean.Count; i++)
+            Assert.True((unclean[i] - unclean[i - 1]) > TimeSpan.FromMinutes(2),
+                        "two unclean-shutdown records within two minutes means de-duplication failed");
+    }
 }

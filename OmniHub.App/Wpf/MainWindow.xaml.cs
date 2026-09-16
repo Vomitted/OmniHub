@@ -96,7 +96,8 @@ public partial class MainWindow : Window
         // would put a measurement on one screen and its evidence on another.
         _viewFactories["diagnostics"] = () => new GroupView(
             ("Measure", () => new DiagnosticsView(_ctx)),
-            ("History", () => new HistoryView()));
+            ("History", () => new HistoryView()),
+            ("Stability", () => new StabilityView()));
         _viewFactories["settings"] = () => new SettingsView(_settings);
 
         // Grouped by subject rather than by screen. CPU tuning and GPU power are two halves of
