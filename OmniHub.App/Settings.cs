@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Text.Json;
 using OmniHub.Core.Fan;
 using OmniHub.Core.Optimize;
@@ -246,6 +246,22 @@ public sealed class AppSettings
         return new AppSettings();
     }
 
+    /// <summary>
+    /// Writes the settings, atomically.
+    ///
+    /// This used to be a bare File.WriteAllText, which truncates the file and then writes into
+    /// it. Forty-two call sites across seven views mean it runs constantly, and this machine
+    /// records unexpected shutdowns often enough that landing inside that window is not
+    /// hypothetical. The result of losing that race is a truncated file, a JsonException on the
+    /// next launch, and Load() quietly returning defaults -- so the fan curve, the tuning
+    /// profiles, the game rules, the overlay layout, the theme and the power-plan bindings all
+    /// disappear at once, with no error and nothing to say what happened. Two hand-made .bak
+    /// files sitting beside settings.json say this has already been worked around by hand.
+    ///
+    /// AtomicFile carries the mechanism and the reasoning; what matters here is that the loss
+    /// is total and silent. Load() catches the parse failure and returns a fresh AppSettings,
+    /// so the symptom is not an error but a machine that has forgotten everything about itself.
+    /// </summary>
     public void Save()
     {
         try
@@ -253,7 +269,8 @@ public sealed class AppSettings
             var dir = Path.GetDirectoryName(FilePath)!;
             Directory.CreateDirectory(dir);
             var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(FilePath, json);
+
+            OmniHub.Core.AtomicFile.WriteAllText(FilePath, json);
         }
         catch
         {

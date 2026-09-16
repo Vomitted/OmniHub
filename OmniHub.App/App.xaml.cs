@@ -151,7 +151,17 @@ public partial class App : Application
             return;
         }
 
-        _singleInstanceMutex = new Mutex(true, "Local\\OmniHub_SingleInstance_Mutex", out bool createdNew);
+        // Global\, not Local\.
+        //
+        // Local\ scopes the mutex to the logon session, so a second signed-in user or a
+        // fast-user-switch could run a second elevated instance -- and then two processes drive
+        // the same embedded controller and the same SMU mailbox. Every lock in this codebase is
+        // in-process: BiosInterop's send lock, PawnIO's execute lock, the GPU read cache. None
+        // of them means anything across two processes, and the firmware does not arbitrate.
+        //
+        // Global\ needs no extra privilege to create from a session, and this process is
+        // elevated in any case.
+        _singleInstanceMutex = new Mutex(true, "Global\\OmniHub_SingleInstance_Mutex", out bool createdNew);
         if (!createdNew)
         {
             MessageBox.Show(
