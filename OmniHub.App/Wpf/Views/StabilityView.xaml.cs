@@ -50,6 +50,11 @@ public partial class StabilityView : UserControl
 
         DateTime from = DateTime.UtcNow - Window;
 
+        // First, because it is the fast half and it is about right now rather than about last
+        // week. The event-log read below can take seconds on a large System log, and leaving the
+        // live answer behind it would mean waiting on history to find out what is awake.
+        await RefreshAwakeAsync().ConfigureAwait(true);
+
         try
         {
             // The event log read is synchronous and can take a moment on a machine with a large
@@ -92,6 +97,69 @@ public partial class StabilityView : UserControl
         {
             RefreshBtn.IsEnabled = true;
         }
+    }
+
+    /// <summary>
+    /// What is holding a power request at this moment.
+    ///
+    /// It sits on this screen rather than on Diagnostics because it belongs to the same question
+    /// as everything else here: the machine not going to sleep, and the machine not coming back.
+    /// Answering it by hand took a dozen commands the last time it mattered, and the answer turned
+    /// out to be a USB headset.
+    /// </summary>
+    private async Task RefreshAwakeAsync()
+    {
+        AwakeSummary.Text = "Asking Windows...";
+        AwakeRequests.Children.Clear();
+
+        // Off the UI thread: this starts a child process, and a wedged powercfg must not be able
+        // to freeze the window of an application that is on this screen to investigate freezes.
+        var read = await Task.Run(() =>
+        {
+            var list = PowerRequests.Read(out string? error);
+            return (List: list, Error: error);
+        }).ConfigureAwait(true);
+
+        if (read.Error is { Length: > 0 })
+        {
+            AwakeSummary.Text = $"The power requests could not be read: {read.Error}";
+            return;
+        }
+
+        AwakeSummary.Text = PowerRequests.Summarise(read.List);
+
+        // System requests first -- they are the ones that stop the machine sleeping, which is the
+        // question anybody opens this card with. OrderBy is stable, so the rest keep powercfg's
+        // own order underneath.
+        foreach (var request in read.List.OrderByDescending(r => r.Kind == PowerRequestKind.System))
+            AwakeRequests.Children.Add(RequestRow(request));
+    }
+
+    private UIElement RequestRow(PowerRequest request)
+    {
+        var stack = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+
+        var line = new TextBlock
+        {
+            Text = $"{request.Category}   {request.Origin}   {request.FriendlyName}",
+            Style = (Style)FindResource("BodyText"),
+            FontSize = 12,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 760,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+        };
+
+        // The shortened name is what fits; the full one is what tells two copies of the same
+        // executable apart, so it is a hover away rather than gone.
+        if (request.FriendlyName != request.Name)
+            line.ToolTip = request.Name;
+
+        stack.Children.Add(line);
+
+        if (request.Reason is { Length: > 0 })
+            stack.Children.Add(Note("    " + request.Reason));
+
+        return stack;
     }
 
     private UIElement BuildCard(StabilityIncident incident)
