@@ -180,7 +180,7 @@ public partial class DashboardView : UserControl
         {
             Interval = TimeSpan.FromSeconds(5),
         };
-        _drawTimer.Tick += (_, _) => RefreshPowerDraw();
+        _drawTimer.Tick += (_, _) => { RefreshPowerDraw(); RefreshLimits(); };
 
         // Runs only while this tab is on screen.
         //
@@ -192,11 +192,41 @@ public partial class DashboardView : UserControl
         // is reading it.
         IsVisibleChanged += (_, e) =>
         {
-            if ((bool)e.NewValue) { _drawTimer.Start(); RefreshPowerDraw(); }
+            if ((bool)e.NewValue) { _drawTimer.Start(); RefreshPowerDraw(); RefreshLimits(); }
             else _drawTimer.Stop();
         };
 
-        if (IsVisible) { _drawTimer.Start(); RefreshPowerDraw(); }
+        if (IsVisible) { _drawTimer.Start(); RefreshPowerDraw(); RefreshLimits(); }
+    }
+
+    private int _limitsInFlight;
+
+    /// <summary>
+    /// Refreshes the binding-limit strip.
+    ///
+    /// Shares the five-second timer with the battery draw rather than adding a second one,
+    /// because the PM table behind it is cached for five seconds in Core anyway -- the refresh
+    /// holds the global Access_PCI mutex and shows up as DPC latency and audio dropouts, which
+    /// is exactly why that cache exists. Reading faster than the cache would buy nothing and
+    /// risk the thing the cache was added to prevent.
+    ///
+    /// Off the UI thread and single-flighted, for the same reason the draw read is.
+    /// </summary>
+    private void RefreshLimits()
+    {
+        if (Interlocked.Exchange(ref _limitsInFlight, 1) == 1) return;
+
+        Task.Run(() =>
+        {
+            try { return _ctx.Smu?.ReadPowerSnapshot(); }
+            catch { return null; }
+        }).ContinueWith(t =>
+        {
+            Interlocked.Exchange(ref _limitsInFlight, 0);
+            Dispatcher.BeginInvoke(() => Limits.Show(
+                t.IsCompletedSuccessfully ? t.Result : null,
+                _ctx.SmuUnavailableReason));
+        });
     }
 
     private void RefreshPowerDraw()

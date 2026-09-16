@@ -308,6 +308,15 @@
                 </Border>
             </Grid>
 
+            <!-- What is holding the machine back. Above the trace deliberately: the verdict is
+                 the thing somebody came to find out, and the chart is the evidence for it. -->
+            <Border Style="{StaticResource CardBorderStyle}" Padding="14,12" Margin="0,0,0,18">
+                <StackPanel>
+                    <TextBlock Text="What is limiting this machine" Style="{StaticResource MetricTitle}" Margin="0,0,0,10"/>
+                    <controls:LimitStrip x:Name="Limits"/>
+                </StackPanel>
+            </Border>
+
             <!-- Telemetry -->
             <Border Style="{StaticResource CardBorderStyle}" Padding="14,12">
                 <StackPanel>
