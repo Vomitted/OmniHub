@@ -1,6 +1,6 @@
 # OmniHub — Technical Document v1
 
-**The system as it is built, at commit `9e67b7b`.**
+**The system as it is built, at commit `b0c9513`.**
 
 This describes what exists, not what is planned. Where something is unverified, this says so;
 where a number was measured, this says on what. It is the input to the graph mapping, and the
@@ -54,7 +54,7 @@ is unavailable and why.
 | --- | --- | --- |
 | `OmniHub.Core` | `net8.0-windows`, x64 | Hardware access, fan control, tuning, networking, diagnostics. One package reference: `System.Management`. |
 | `OmniHub.App` | `net8.0-windows`, WinExe | WPF shell. `UseWPF` **and** `UseWindowsForms` (the tray icon). Zero package references. `requireAdministrator`. |
-| `OmniHub.Tests` | `net8.0-windows` | xunit, 278 tests. |
+| `OmniHub.Tests` | `net8.0-windows` | xunit, 303 tests. |
 
 Two constraints follow from this layout and shape a great deal of the code:
 
@@ -143,8 +143,12 @@ a genuine 85.0 °C die reading is not mistaken for a blind sensor.
 - **Every fifth tick** additionally reads fan level, max-fan state and throttling. The fan
   readback through `hpqBIOSInt128` was measured at **306 ms of a 324 ms tick — 94%** — and
   nothing steers on it.
-- Tick body ≈ **300 ms**. Nominal 2 s lands at a measured **2.31 s**, taken from the thermal
-  log's own timestamps.
+- Tick body ≈ **300 ms**. Measured over **200,169 rows** of this machine's own thermal trace
+  (19 files, 2–16 September), the interval within a run is **2.00 s median, 2.23 s mean**, with
+  p90 and p99 both at **3.00 s**. The loop is not systematically late: it hits 2 s on the
+  ordinary tick, and the every-fifth-tick slow path costs about a second more, which is what
+  pulls the mean above the median. An earlier figure of 2.31 s came from a much smaller sample
+  and was a mean quoted without that distinction.
 - Timing is averaged over 30 ticks (~70 s) into `polltiming-*.csv`.
 
 ### `Reading`
@@ -253,7 +257,7 @@ race left an empty file, a caught parse failure, and a silent reset to defaults.
 
 | File | Header | Cadence | Flush | Retention |
 | --- | --- | --- | --- | --- |
-| `thermal-YYYY-MM-DD.csv` | `timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor` | ~2.31 s | 10 s | 14 days |
+| `thermal-YYYY-MM-DD.csv` | `timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor` | 2.00 s median | 10 s | 14 days |
 | `network-YYYY-MM-DD.csv` | `timestamp,target,rtt_ms,lost,avg_ms,jitter_ms,loss_pct` | 5 s default | 10 s | 14 days |
 | `power-YYYY-MM-DD.csv` | `timestamp,source,event,detail,action` | on transition | **every row** | 14 days |
 | `polltiming-YYYY-MM-DD.csv` | `timestamp,ticks,avg_total_ms,avg_temp_ms,avg_fan_ms,avg_slow_ms,avg_dispatch_ms` | 30 ticks | per row | 14 days |
@@ -350,7 +354,7 @@ the token and `_loop.IsCompleted` — a faulted first tick otherwise leaves a lo
 
 | Loop | Interval |
 | --- | --- |
-| Hardware poll | 2 s (2.31 s measured) |
+| Hardware poll | 2 s (2.00 s median measured) |
 | Fan curve | 2 s |
 | Adaptive tuning | 3 s |
 | Process watch | 4 s |
@@ -421,7 +425,8 @@ Every number below was measured on the machine in section 1.
 | Quantity | Value |
 | --- | --- |
 | Poll tick body | ~300 ms |
-| Poll interval, nominal / measured | 2 s / **2.31 s** |
+| Poll interval, nominal / median / mean | 2 s / **2.00 s** / **2.23 s** (n = 199,968 intervals) |
+| Poll interval p90 / p99 | **3.00 s** / **3.00 s** — the every-fifth-tick slow path |
 | `GetFanLevel` via `hpqBIOSInt128` | **306 ms**, 94% of a 324 ms tick |
 | `nvidia-smi` process spawn | **56 ms** |
 | WMI query rate, dashboard open | **1.29 /s** |
