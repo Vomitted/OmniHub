@@ -10,5 +10,8 @@ obj/
 # Packaged release output (uploaded to GitHub Releases, not committed).
 dist/
 
-# Packaged release output (uploaded to GitHub Releases, not committed).
-dist/
+# Generated code graph. 11 MB, rebuilt from the tree by `graphify update .` in seconds and
+# with no API cost, so committing it would mean carrying a large artefact that is stale the
+# moment anyone edits a file. The technical documents under technical/ are the part written
+# by hand and are committed.
+graphify-out/
