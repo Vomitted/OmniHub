@@ -54,17 +54,28 @@ public sealed class AutoEco : IDisposable
     /// <summary>Raised when eco engages (true) or releases (false).</summary>
     public event Action<bool, string>? OnEcoChanged;
 
+    /// <summary>
+    /// <paramref name="journal"/> is what makes the refresh-rate restore survive a crash. The
+    /// captured rate otherwise lives only in a field, so a hang while eco is engaged strands the
+    /// panel at its eco rate permanently -- the next launch has no idea a previous run lowered
+    /// it. Optional, because the controller is still correct without one; it just cannot clean
+    /// up after a death.
+    /// </summary>
     public AutoEco(
         Func<AutoEcoSettings> settings,
         Func<string, TuningResult> applyProfile,
         Action restoreProfile,
-        TimeSpan? interval = null)
+        TimeSpan? interval = null,
+        Diagnostics.RestoreJournal? journal = null)
     {
         _settings = settings;
         _applyProfile = applyProfile;
         _restoreProfile = restoreProfile;
         _interval = interval ?? TimeSpan.FromSeconds(10);
+        _journal = journal;
     }
+
+    private readonly Diagnostics.RestoreJournal? _journal;
 
     private Task? _loop;
 
@@ -139,6 +150,11 @@ public sealed class AutoEco : IDisposable
         // than a hardcoded guess at what the panel was running at.
         _refreshBeforeEco = DisplayControl.CurrentRefreshHz();
 
+        // Written down BEFORE the display is touched, not after. The window worth protecting is
+        // the one between deciding to lower the rate and having lowered it, and a note written
+        // afterwards does not cover it.
+        if (_refreshBeforeEco is int before) _journal?.Record(Diagnostics.RestoreJournal.DisplayRefreshHz, before.ToString());
+
         var parts = new List<string>();
 
         if (s.EcoRefreshHz > 0 && _refreshBeforeEco != s.EcoRefreshHz)
@@ -164,6 +180,10 @@ public sealed class AutoEco : IDisposable
         // a 60 Hz panel behind because a later step threw would be the most visible failure.
         if (_refreshBeforeEco is int hz) DisplayControl.SetRefreshHz(hz);
         _refreshBeforeEco = null;
+
+        // Cleared only after the restore has actually been issued, so a crash between the two
+        // still leaves the debt recorded.
+        _journal?.Clear(Diagnostics.RestoreJournal.DisplayRefreshHz);
 
         try { _restoreProfile(); } catch { /* the caller decides what "normal" means */ }
 

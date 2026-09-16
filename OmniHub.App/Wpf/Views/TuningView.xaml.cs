@@ -727,7 +727,8 @@ public partial class TuningView : UserControl, IDisposable
                 _settings.AutoEcoOnBattery, _settings.AutoEcoOnIdle,
                 _settings.AutoEcoIdleMinutes, _settings.AutoEcoRefreshHz, _settings.AutoEcoProfileName),
             ApplyProfileByName,
-            RestoreFromEco);
+            RestoreFromEco,
+            journal: OmniHub.Core.Diagnostics.RestoreJournal.Shared);
 
         _autoEco.OnEcoChanged += (_, status) => Dispatcher.Invoke(() => AutoEcoStatus.Text = status);
         UpdateAutoEcoWatcher();

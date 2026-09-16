@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     private OmniHub.Core.Network.NetworkMonitor? _netMonitor;
     private OmniHub.Core.Network.NetworkLog? _netLog;
     private readonly OmniHub.Core.Diagnostics.PowerTransitionLog _powerLog = new();
+
     private OverlayWindow? _overlay;
 
     public MainWindow()
@@ -756,6 +757,22 @@ public partial class MainWindow : Window
         {
             _powerLog.Append(DateTime.UtcNow, "OmniHub", "Startup", "",
                 $"up {TimeSpan.FromMilliseconds(Environment.TickCount64).TotalMinutes:0.0} min");
+        }
+        catch { }
+
+        // Pay back anything a previous run changed and did not restore.
+        //
+        // Today that is the display refresh rate. Auto Eco lowers it on battery and puts it back
+        // on release, but the captured value lives in a field -- so a hang while eco was engaged
+        // left the panel at 60 Hz with nothing anywhere that knew to raise it again. The symptom
+        // is a laggy pointer and a 60 Hz desktop, and nothing about it points at a fan utility.
+        //
+        // Logged to the power trace rather than shown: it happens before the window is up, and a
+        // dialog at startup explaining a repair nobody asked for is worse than a row in a file.
+        try
+        {
+            foreach (var r in OmniHub.Core.Diagnostics.RestoreReconciler.Run(OmniHub.Core.Diagnostics.RestoreJournal.Shared))
+                _powerLog.Append(DateTime.UtcNow, "OmniHub", "Restore", r.Key, r.Detail);
         }
         catch { }
 
