@@ -14,6 +14,7 @@ public sealed record AmdTuningProfile(
     int? StapmWatts = null,
     int? FastWatts = null,
     int? SlowWatts = null,
+    int? ApuSlowWatts = null,
     int? StapmTimeSeconds = null,
     int? SlowTimeSeconds = null,
     int? TctlTempC = null,
@@ -341,7 +342,7 @@ public sealed class AmdTuning
         Step("Sustained power", p.StapmWatts, SetStapmWatts);
         Step("Slow power", p.SlowWatts, SetSlowWatts);
         Step("Boost power", p.FastWatts, SetFastWatts);
-        Step("APU slow power", p.SlowWatts, SetApuSlowWatts);
+        Step("APU slow power", p.ApuSlowWatts, SetApuSlowWatts);
         Step("STAPM window", p.StapmTimeSeconds, SetStapmTimeSeconds);
         Step("Slow window", p.SlowTimeSeconds, SetSlowTimeSeconds);
         Step("VRM current", p.VrmCurrentAmps, SetVrmCurrentAmps);
@@ -401,19 +402,19 @@ public sealed class AmdTuning
     public static IReadOnlyList<AmdTuningProfile> Profiles { get; } = new[]
     {
         new AmdTuningProfile("Eco", "Lowest heat and noise. Caps sustained draw well under stock.",
-            StapmWatts: 12, FastWatts: 20, SlowWatts: 15, TctlTempC: 70, StapmTimeSeconds: 60),
+            StapmWatts: 12, FastWatts: 20, SlowWatts: 15, ApuSlowWatts: 15, TctlTempC: 70, StapmTimeSeconds: 60),
 
         new AmdTuningProfile("Quiet", "Noticeably cooler and quieter, still responsive.",
-            StapmWatts: 20, FastWatts: 30, SlowWatts: 25, TctlTempC: 78, StapmTimeSeconds: 45),
+            StapmWatts: 20, FastWatts: 30, SlowWatts: 25, ApuSlowWatts: 25, TctlTempC: 78, StapmTimeSeconds: 45),
 
         new AmdTuningProfile("Balanced", "Stock-like sustained power with a cooler thermal target.",
-            StapmWatts: 35, FastWatts: 45, SlowWatts: 40, TctlTempC: 85, StapmTimeSeconds: 30),
+            StapmWatts: 35, FastWatts: 45, SlowWatts: 40, ApuSlowWatts: 40, TctlTempC: 85, StapmTimeSeconds: 30),
 
         new AmdTuningProfile("Performance", "Full configurable TDP and a higher thermal ceiling.",
-            StapmWatts: 45, FastWatts: 60, SlowWatts: 54, TctlTempC: 95, StapmTimeSeconds: 20),
+            StapmWatts: 45, FastWatts: 60, SlowWatts: 54, ApuSlowWatts: 54, TctlTempC: 95, StapmTimeSeconds: 20),
 
         new AmdTuningProfile("Max", "Everything the platform will accept. Loud and hot by design.",
-            StapmWatts: 54, FastWatts: 65, SlowWatts: 60, TctlTempC: 100, StapmTimeSeconds: 10),
+            StapmWatts: 54, FastWatts: 65, SlowWatts: 60, ApuSlowWatts: 60, TctlTempC: 100, StapmTimeSeconds: 10),
     };
 
     // ---------------------------------------------------------------- plumbing

@@ -73,9 +73,23 @@ public sealed class NetworkMonitor : IDisposable
     /// <summary>Raised with each individual probe, for callers that log every row rather than the summary.</summary>
     public event Action<DateTime, double?>? OnProbe;
 
+    /// <summary>
+    /// The interval the loop is actually sampling at.
+    ///
+    /// Exposed because callers were otherwise reduced to assuming it. The status line on the
+    /// Network tab described its window as WindowSize * 5 / 60 minutes with the 5 written in,
+    /// and the resume button restarted the loop at a hardcoded five seconds -- both correct
+    /// only while the setting sat at its default, and neither noticed when it did not.
+    /// </summary>
+    public TimeSpan Interval { get; private set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>How long the rolling window spans at the current interval.</summary>
+    public TimeSpan Window => Interval * WindowSize;
+
     public void Start(TimeSpan interval)
     {
         if (IsRunning) return;
+        Interval = interval;
         _cts = new CancellationTokenSource();
 
         // Task.Run rather than a bare call: the first statement of the loop is a network probe,

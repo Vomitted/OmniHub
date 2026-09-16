@@ -114,7 +114,11 @@ public partial class NetworkView : UserControl, IDisposable
 
         var s = _monitor.Current;
         MonitorStatus.Text = _monitor.IsRunning
-            ? $"WATCHING {_monitor.Target.ToUpperInvariant()} CONTINUOUSLY / {s.Received} OF {s.Sent} SAMPLES IN THE LAST {NetworkMonitor.WindowSize * 5 / 60} MINUTES"
+            // The span comes from the interval actually in use, not from the default. This
+            // read "5" for years -- the default probe interval -- while the real one is a
+            // setting clamped to 2..60, so changing it made the label state a duration the
+            // window had never covered.
+            ? $"WATCHING {_monitor.Target.ToUpperInvariant()} CONTINUOUSLY / {s.Received} OF {s.Sent} SAMPLES IN THE LAST {_monitor.Window.TotalMinutes:0} MINUTES"
             : "MONITORING PAUSED";
         WatchBtn.Content = _monitor.IsRunning ? "Pause monitoring" : "Resume monitoring";
         WatchBtn.IsEnabled = true;
@@ -140,7 +144,7 @@ public partial class NetworkView : UserControl, IDisposable
         if (_monitor is null) return;
 
         if (_monitor.IsRunning) _monitor.Stop();
-        else _monitor.Start(TimeSpan.FromSeconds(5));
+        else _monitor.Start(_monitor.Interval);
 
         UpdateMonitorStatus();
     }

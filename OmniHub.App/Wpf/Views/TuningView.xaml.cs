@@ -387,6 +387,9 @@ public partial class TuningView : UserControl, IDisposable
             "Short-burst ceiling, for the first seconds of a load.");
         AddRow(PowerRows, "slow", "Slow limit (PPT slow)", AmdTuning.MinWatts, AmdTuning.MaxWatts, 54, "W",
             "The medium window between burst and sustained.");
+        AddRow(PowerRows, "apuSlow", "APU slow limit", AmdTuning.MinWatts, AmdTuning.MaxWatts, 54, "W",
+            "The APU's own slow-window limit. Separate from the package slow limit above, though "
+            + "this application sent them the same value until it was noticed.");
         AddRow(PowerRows, "stapmTime", "STAPM window", AmdTuning.MinSeconds, 120, 30, "s",
             "How long the sustained average is taken over. Longer means burstier behaviour.");
         AddRow(PowerRows, "slowTime", "Slow window", AmdTuning.MinSeconds, 120, 10, "s",
@@ -1353,6 +1356,7 @@ public partial class TuningView : UserControl, IDisposable
         StapmWatts: Value("stapm"),
         FastWatts: Value("fast"),
         SlowWatts: Value("slow"),
+        ApuSlowWatts: Value("apuSlow"),
         StapmTimeSeconds: Value("stapmTime"),
         SlowTimeSeconds: Value("slowTime"),
         TctlTempC: Value("tctl"),
@@ -1369,6 +1373,7 @@ public partial class TuningView : UserControl, IDisposable
         Set("stapm", p.StapmWatts);
         Set("fast", p.FastWatts);
         Set("slow", p.SlowWatts);
+        Set("apuSlow", p.ApuSlowWatts);
         Set("stapmTime", p.StapmTimeSeconds);
         Set("slowTime", p.SlowTimeSeconds);
         Set("tctl", p.TctlTempC);

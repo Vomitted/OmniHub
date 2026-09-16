@@ -93,4 +93,32 @@ public class NetworkMonitorTests
     {
         Assert.True(new NetworkMonitor().Current.IsEmpty);
     }
+
+    /// <summary>
+    /// The window the UI describes has to be the window that was actually sampled.
+    ///
+    /// The Network tab printed "IN THE LAST {WindowSize * 5 / 60} MINUTES" with the five
+    /// written in -- the default probe interval -- while the real one is a setting clamped to
+    /// 2..60 seconds. At the default the label was right by coincidence; at any other setting
+    /// it stated a duration the window had never covered. The resume button had the same bug
+    /// in a worse form: it restarted the loop at five seconds whatever the user had chosen.
+    /// </summary>
+    [Fact]
+    public void TheWindowSpanFollowsTheIntervalActuallyInUse()
+    {
+        var monitor = new NetworkMonitor();
+
+        // Before it ever runs it reports the default rather than zero, so a label rendered
+        // ahead of the first probe still says something true.
+        Assert.Equal(TimeSpan.FromSeconds(5), monitor.Interval);
+        Assert.Equal(TimeSpan.FromSeconds(5) * NetworkMonitor.WindowSize, monitor.Window);
+
+        monitor.Start(TimeSpan.FromSeconds(30));
+        try
+        {
+            Assert.Equal(TimeSpan.FromSeconds(30), monitor.Interval);
+            Assert.Equal(30.0 * NetworkMonitor.WindowSize / 60.0, monitor.Window.TotalMinutes, 3);
+        }
+        finally { monitor.Stop(); }
+    }
 }
