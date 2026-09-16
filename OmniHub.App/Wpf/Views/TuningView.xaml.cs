@@ -644,16 +644,39 @@ public partial class TuningView : UserControl, IDisposable
         _ecoRefresh = new ComboBox { Style = (Style)FindResource("OmniComboBoxStyle"), MinWidth = 120, VerticalAlignment = VerticalAlignment.Center };
         _ecoRefresh.Items.Add(LeaveAlone);
         foreach (int hz in DisplayControl.AvailableRefreshHz()) _ecoRefresh.Items.Add($"{hz} Hz");
+
+        // The saved rate goes in the list even when the display is not currently offering it.
+        //
+        // It used to fall back to "leave alone" whenever Items did not contain it, and the
+        // handler below then wrote 0 over the setting -- so a rate the user had chosen could be
+        // destroyed by a moment when the mode list looked different, with nothing on screen to
+        // say it had happened. This machine's AutoEcoRefreshHz was set to 144 and came back 60
+        // after a day's uptime; the trigger is still unidentified, but every route to it runs
+        // through a selection the stored value could not represent.
+        //
+        // Keeping it representable removes the whole class: there is always an item equal to
+        // what is stored, so reconciling the control with the setting cannot change the setting.
+        if (_settings.AutoEcoRefreshHz > 0 && !_ecoRefresh.Items.Contains($"{_settings.AutoEcoRefreshHz} Hz"))
+            _ecoRefresh.Items.Add($"{_settings.AutoEcoRefreshHz} Hz");
+
         _ecoRefresh.SelectedItem = _settings.AutoEcoRefreshHz > 0
-                                   && _ecoRefresh.Items.Contains($"{_settings.AutoEcoRefreshHz} Hz")
             ? $"{_settings.AutoEcoRefreshHz} Hz"
             : LeaveAlone;
+
         _ecoRefresh.SelectionChanged += (_, _) =>
         {
             if (_suppressStartupEvents) return;
-            _settings.AutoEcoRefreshHz = _ecoRefresh!.SelectedItem is string s && s != LeaveAlone
+
+            int chosen = _ecoRefresh!.SelectedItem is string s && s != LeaveAlone
                 ? int.Parse(s.Replace(" Hz", ""))
                 : 0;
+
+            // A selection that already matches the setting is the control catching up with
+            // stored state, not somebody choosing something. Writing on those is how a value
+            // gets replaced by a redraw.
+            if (chosen == _settings.AutoEcoRefreshHz) return;
+
+            _settings.AutoEcoRefreshHz = chosen;
             _settings.Save();
         };
         hzRow.Children.Add(_ecoRefresh);
