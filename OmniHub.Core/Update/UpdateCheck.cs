@@ -13,7 +13,13 @@ public sealed record ReleaseInfo(
     DateTimeOffset PublishedAt,
     bool IsPrerelease,
     string? DownloadUrl,
-    long DownloadSize);
+    long DownloadSize,
+    string? Sha256 = null);
+
+/// <summary>Where a download ended up, or why it was refused.</summary>
+/// <param name="Path">The verified file, or null when it was not produced.</param>
+/// <param name="Error">A sentence fit to show, or null on success.</param>
+public readonly record struct DownloadResult(string? Path, string? Error);
 
 /// <summary>
 /// Checks GitHub for a newer OmniHub build, and doubles as the changelog source.
@@ -98,6 +104,7 @@ public static class UpdateCheck
                     // installer.
                     string? url = null;
                     long size = 0;
+                    string? sha256 = null;
                     int best = 0;
                     if (el.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
                     {
@@ -115,6 +122,15 @@ public static class UpdateCheck
                             best = rank;
                             url = Str(a, "browser_download_url");
                             size = a.TryGetProperty("size", out var s) && s.TryGetInt64(out long n) ? n : 0;
+
+                            // GitHub publishes this as "sha256:<hex>" on newer releases and
+                            // omits it on older ones, so it is an improvement when present
+                            // rather than a requirement. The size check below is what covers
+                            // the assets that predate it.
+                            string digest = Str(a, "digest");
+                            sha256 = digest.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase)
+                                ? digest["sha256:".Length..].Trim().ToLowerInvariant()
+                                : null;
                         }
                     }
                     if (url is null) continue;
@@ -132,7 +148,7 @@ public static class UpdateCheck
                         Str(el, "body").Replace("\r\n", "\n").Trim(),
                         published,
                         el.TryGetProperty("prerelease", out var pre) && pre.ValueKind == JsonValueKind.True,
-                        url, size));
+                        url, size, sha256));
                 }
                 catch { /* skip this release, keep the rest */ }
             }
@@ -219,10 +235,10 @@ public static class UpdateCheck
     /// ponytail: no self-replace, no delta patching. Revisit only if updating by hand is
     /// actually the friction people report.
     /// </summary>
-    public static async Task<string?> DownloadAsync(
+    public static async Task<DownloadResult> DownloadAsync(
         ReleaseInfo release, IProgress<double>? progress = null, CancellationToken ct = default)
     {
-        if (release.DownloadUrl is null) return null;
+        if (release.DownloadUrl is null) return new DownloadResult(null, "That release has nothing to download.");
 
         string dir = Path.Combine(Path.GetTempPath(), "OmniHub-update");
         // Named after whatever was actually published, not after a guess. This built
@@ -241,7 +257,8 @@ public static class UpdateCheck
 
             using var res = await Http.GetAsync(
                 release.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-            if (!res.IsSuccessStatusCode) return null;
+            if (!res.IsSuccessStatusCode)
+                return new DownloadResult(null, $"GitHub refused the download ({(int)res.StatusCode}).");
 
             long total = res.Content.Headers.ContentLength ?? release.DownloadSize;
             using var src = await res.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
@@ -262,13 +279,67 @@ public static class UpdateCheck
                 }
             }
 
+            // Verified BEFORE it is moved into place, so a file that fails a check never
+            // exists under a name anything would run.
+            //
+            // This application launches the result with /SILENT while running elevated, and
+            // until now nothing checked it at all -- not a hash, not a signature, not even a
+            // length. The project's own download page publishes a SHA-256 precisely so a person
+            // can verify the installer by hand; its updater skipped the step it asks of them.
+            if (Verify(partial, release) is { } problem)
+            {
+                try { File.Delete(partial); } catch { }
+                return new DownloadResult(null, problem);
+            }
+
             if (File.Exists(file)) File.Delete(file);
             File.Move(partial, file);
-            return file;
+            return new DownloadResult(file, null);
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            return new DownloadResult(null, $"The download did not finish ({ex.Message}).");
         }
+    }
+
+    /// <summary>
+    /// Checks a downloaded file against what the release said it would be. Returns null when it
+    /// is sound, or a sentence naming the problem.
+    ///
+    /// Two checks, and the weaker one matters more in practice. The SHA-256 is only present on
+    /// releases GitHub has published a digest for, so the length comparison is what covers
+    /// everything else -- and a truncated download is by far the likeliest way to end up with
+    /// an installer that is not what was published.
+    /// </summary>
+    internal static string? Verify(string path, ReleaseInfo release)
+    {
+        long actual;
+        try { actual = new FileInfo(path).Length; }
+        catch (Exception ex) { return $"The downloaded file could not be read ({ex.Message})."; }
+
+        if (release.DownloadSize > 0 && actual != release.DownloadSize)
+            return $"The download is {actual:N0} bytes but the release says {release.DownloadSize:N0}. "
+                 + "It was not saved. Download it by hand from the releases page.";
+
+        if (release.Sha256 is { Length: > 0 } expected)
+        {
+            string actualHash;
+            try { actualHash = Sha256Of(path); }
+            catch (Exception ex) { return $"The downloaded file could not be checked ({ex.Message})."; }
+
+            if (!string.Equals(actualHash, expected, StringComparison.OrdinalIgnoreCase))
+                return "The download does not match the checksum GitHub published for it. "
+                     + "It was not saved. Download it by hand from the releases page.";
+        }
+
+        return null;
+    }
+
+    /// <summary>Lowercase hex SHA-256 of a file, streamed rather than read into memory.</summary>
+    internal static string Sha256Of(string path)
+    {
+        using var stream = File.OpenRead(path);
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        return Convert.ToHexString(sha.ComputeHash(stream)).ToLowerInvariant();
     }
 }

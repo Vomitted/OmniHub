@@ -1,3 +1,4 @@
+using System.IO;
 using OmniHub.Core.Update;
 
 namespace OmniHub.Tests;
@@ -292,5 +293,120 @@ public class UpdateCheckTests
 
         Assert.NotNull(offer);
         Assert.Equal("v1.3.2", offer!.Tag);
+    }
+
+    // ---------------------------------------------------------- download verification
+
+    private static ReleaseInfo Release(long size, string? sha256) =>
+        new(new Version(1, 4, 0), "v1.4.0", "1.4.0", "", DateTimeOffset.UtcNow, false,
+            "https://example.invalid/OmniHub-1.4.0-setup.exe", size, sha256);
+
+    private static string WriteTemp(string contents)
+    {
+        string dir = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "omnihub-dl-" + Guid.NewGuid().ToString("N"))).FullName;
+        string path = Path.Combine(dir, "OmniHub-1.4.0-setup.exe");
+        File.WriteAllText(path, contents);
+        return path;
+    }
+
+    private static void Cleanup(string path) { try { Directory.Delete(Path.GetDirectoryName(path)!, true); } catch { } }
+
+    /// <summary>
+    /// A truncated download is the likeliest way to end up with an installer that is not what
+    /// was published, and it is caught by the length alone -- which matters because older
+    /// releases carry no digest at all.
+    /// </summary>
+    [Fact]
+    public void ATruncatedDownloadIsRefused()
+    {
+        string path = WriteTemp("half a file");
+        try
+        {
+            string? problem = UpdateCheck.Verify(path, Release(size: 9_999_999, sha256: null));
+
+            Assert.NotNull(problem);
+            Assert.Contains("9,999,999", problem);
+        }
+        finally { Cleanup(path); }
+    }
+
+    /// <summary>
+    /// The check the project already asks of its users by hand. The download page publishes a
+    /// SHA-256 so a person can verify the installer themselves; the updater launches it with
+    /// /SILENT while running elevated, and used to skip the step entirely.
+    /// </summary>
+    [Fact]
+    public void AFileThatDoesNotMatchThePublishedChecksumIsRefused()
+    {
+        string path = WriteTemp("the real installer");
+        try
+        {
+            long size = new FileInfo(path).Length;
+            string wrong = new string('a', 64);
+
+            string? problem = UpdateCheck.Verify(path, Release(size, wrong));
+
+            Assert.NotNull(problem);
+            Assert.Contains("checksum", problem);
+        }
+        finally { Cleanup(path); }
+    }
+
+    [Fact]
+    public void AFileThatMatchesIsAccepted()
+    {
+        string path = WriteTemp("the real installer");
+        try
+        {
+            long size = new FileInfo(path).Length;
+            string correct = UpdateCheck.Sha256Of(path);
+
+            Assert.Null(UpdateCheck.Verify(path, Release(size, correct)));
+        }
+        finally { Cleanup(path); }
+    }
+
+    /// <summary>
+    /// A release with no published digest still downloads. GitHub omits it on older releases,
+    /// so requiring one would refuse every version this application has ever shipped.
+    /// </summary>
+    [Fact]
+    public void AReleaseWithNoDigestIsStillAcceptedOnItsLength()
+    {
+        string path = WriteTemp("an older release");
+        try
+        {
+            Assert.Null(UpdateCheck.Verify(path, Release(new FileInfo(path).Length, sha256: null)));
+        }
+        finally { Cleanup(path); }
+    }
+
+    /// <summary>The digest is read from GitHub's "sha256:<hex>" form and normalised to bare hex.</summary>
+    [Fact]
+    public void ThePublishedDigestIsParsedFromTheAsset()
+    {
+        string json = """
+        [{"tag_name":"v1.4.0","name":"1.4.0","body":"","published_at":"2026-09-16T00:00:00Z","prerelease":false,
+          "assets":[{"name":"OmniHub-1.4.0-setup.exe","browser_download_url":"https://example.invalid/s.exe",
+                     "size":1234,"digest":"sha256:ABCDEF0123456789"}]}]
+        """;
+
+        var releases = UpdateCheck.ParseReleases(json);
+
+        Assert.Single(releases);
+        Assert.Equal("abcdef0123456789", releases[0].Sha256);
+        Assert.Equal(1234, releases[0].DownloadSize);
+    }
+
+    /// <summary>An asset with no digest field leaves it null rather than an empty string.</summary>
+    [Fact]
+    public void AnAssetWithoutADigestLeavesItNull()
+    {
+        string json = """
+        [{"tag_name":"v1.3.3","name":"1.3.3","body":"","published_at":"2026-09-10T00:00:00Z","prerelease":false,
+          "assets":[{"name":"OmniHub-1.3.3-setup.exe","browser_download_url":"https://example.invalid/s.exe","size":10}]}]
+        """;
+
+        Assert.Null(UpdateCheck.ParseReleases(json)[0].Sha256);
     }
 }

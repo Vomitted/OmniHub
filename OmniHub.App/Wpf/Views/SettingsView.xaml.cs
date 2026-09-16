@@ -801,14 +801,18 @@ public partial class SettingsView : UserControl
         DownloadProgress.Value = 0;
 
         var progress = new Progress<double>(p => DownloadProgress.Value = p);
-        string? path = await OmniHub.Core.Update.UpdateCheck.DownloadAsync(up, progress).ConfigureAwait(true);
+        var (path, error) = await OmniHub.Core.Update.UpdateCheck.DownloadAsync(up, progress).ConfigureAwait(true);
 
         DownloadProgress.Visibility = Visibility.Collapsed;
         DownloadBtn.IsEnabled = true;
 
         if (path is null)
         {
-            UpdateStatus.Text = "The download did not complete. The release page has the file if you would rather fetch it yourself.";
+            // The reason is shown rather than swallowed. "It did not complete" covers a dropped
+            // connection and a file that failed its checksum equally, and those deserve very
+            // different reactions from whoever is reading.
+            UpdateStatus.Text = error
+                ?? "The download did not complete. The release page has the file if you would rather fetch it yourself.";
             return;
         }
 
