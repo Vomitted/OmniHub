@@ -60,6 +60,69 @@ public static class FanProfiles
         [JsonPropertyName("note")] public string? Note { get; set; }
     }
 
+    /// <summary>Where this board's profile lives, whether or not it exists yet.</summary>
+    public static string? PathFor(ModelInfo model, string? directory = null)
+    {
+        string baseboard = model.BaseboardProduct?.Trim() ?? "";
+        if (baseboard.Length == 0) return null;
+        if (baseboard.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) return null;
+
+        return Path.Combine(directory ?? DirectoryPath, baseboard + ".json");
+    }
+
+    /// <summary>
+    /// Writes a measured band for this board, and returns where it went.
+    ///
+    /// Until now nothing wrote one of these. The loader has existed since per-model overrides
+    /// were introduced, ModelProfile's own comment points at it, and the README tells people
+    /// their measurements go here -- but the Manual Calibration tool could measure a chassis and
+    /// then had nowhere to put the answer. So the feature ended at the interesting part: you
+    /// could find out your fan band and then had to edit a constant and rebuild to use it.
+    ///
+    /// Refuses to write an unusable band for the same reason Load refuses to return one. A
+    /// ceiling at or below the floor collapses the whole percentage scale onto one speed, which
+    /// presents as fan control having silently stopped working -- and a file is a much worse
+    /// place to discover that than a dialog.
+    ///
+    /// Written atomically: this file is read at startup, and a half-written one would be
+    /// indistinguishable from a malformed one, which Load treats as "no profile" and falls back
+    /// from without saying why.
+    /// </summary>
+    public static (bool Saved, string Detail) Save(
+        ModelInfo model, FanCalibration calibration, string? note = null, string? directory = null)
+    {
+        if (!calibration.IsUsable)
+            return (false, $"A ceiling of {calibration.MaxRawLevelFan1}/{calibration.MaxRawLevelFan2} "
+                         + $"is not above the floor of {calibration.MinRawLevel}, so every percentage "
+                         + "would command the same speed. Not saved.");
+
+        if (PathFor(model, directory) is not { } path)
+            return (false, "This machine does not report a baseboard product, so there is no name to file the profile under.");
+
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+            var file = new ProfileFile
+            {
+                Baseboard = model.BaseboardProduct?.Trim(),
+                MinRawLevel = calibration.MinRawLevel,
+                MaxRawLevelFan1 = calibration.MaxRawLevelFan1,
+                MaxRawLevelFan2 = calibration.MaxRawLevelFan2,
+                Note = string.IsNullOrWhiteSpace(note)
+                    ? $"Measured on this machine {DateTime.UtcNow:yyyy-MM-dd}."
+                    : note.Trim(),
+            };
+
+            AtomicFile.WriteAllText(path, JsonSerializer.Serialize(file, new JsonSerializerOptions { WriteIndented = true }));
+            return (true, $"Saved to {path}. It is applied at the next launch.");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Could not write the profile: {ex.Message}");
+        }
+    }
+
     /// <summary>
     /// The calibration for this board, or null when there is no usable profile for it.
     ///

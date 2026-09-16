@@ -46,6 +46,8 @@ public partial class FansView : UserControl
             + $"100% is {FanService.MaxRpm} RPM on both fans. Raw is the byte sent to the controller, which is RPM/100 "
             + "and is what the manual calibration below steps through.";
 
+        InitialiseBandEditor();
+
         // Paired on Loaded/Unloaded, not subscribed once in the constructor -- see the same
         // change in DashboardView. Navigating to another tab detaches this control and raises
         // Unloaded, so a constructor-time subscription was cancelled the first time the user
@@ -368,6 +370,55 @@ public partial class FansView : UserControl
             SafeCall(() => _ctx.Fan.RestoreAutomaticControl());
             ApplyMode(_settings.FanControlMode);
         });
+    }
+
+    /// <summary>
+    /// Fills the band boxes from whatever calibration is actually in force, and says where a
+    /// saved profile would go.
+    ///
+    /// Seeded from the live values rather than from FanCalibration.Default, so somebody who
+    /// already has a profile sees their own numbers and can adjust one of them instead of
+    /// retyping a band they measured months ago.
+    /// </summary>
+    private void InitialiseBandEditor()
+    {
+        var band = OmniHub.Core.Fan.FanService.Calibration;
+        BandMinBox.Text = band.MinRawLevel.ToString();
+        BandMax1Box.Text = band.MaxRawLevelFan1.ToString();
+        BandMax2Box.Text = band.MaxRawLevelFan2.ToString();
+
+        string? path = FanProfiles.PathFor(_ctx.Model);
+
+        ProfileIntro.Text = path is null
+            ? "This machine does not report a baseboard product, so there is no name to file a profile under. "
+            + "The band above is still what the curve is using."
+            : "Raw levels, not percentages. The curve maps 0-100% onto this band, so these three numbers decide "
+            + "what every point on your curve actually commands. Saving writes a profile for this board that is "
+            + "loaded at every launch, which is what the -Probe workflow and the per-model profile mechanism have "
+            + "always pointed at -- until now nothing could write one.";
+
+        SaveBandBtn.IsEnabled = path is not null;
+        ProfileStatus.Text = path is null ? "" : $"Profile path: {path}";
+    }
+
+    private void SaveBandBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (!byte.TryParse(BandMinBox.Text?.Trim(), out byte min)
+            || !byte.TryParse(BandMax1Box.Text?.Trim(), out byte max1)
+            || !byte.TryParse(BandMax2Box.Text?.Trim(), out byte max2))
+        {
+            ProfileStatus.Text = "All three values need to be whole numbers between 0 and 255.";
+            return;
+        }
+
+        var (saved, detail) = FanProfiles.Save(_ctx.Model, new FanCalibration(min, max1, max2));
+        ProfileStatus.Text = detail;
+
+        // Deliberately NOT applied to the running FanService. The band is read once at startup
+        // and handed to a static that the curve, the UI and the RPM readouts all share; swapping
+        // it underneath a running curve would change what every displayed percentage means
+        // halfway through a session. Saying "next launch" is the honest version.
+        if (saved) _settings.Save();
     }
 
     private void SafeCall(Action a) { try { a(); } catch { } }

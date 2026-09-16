@@ -99,4 +99,93 @@ public class FanCalibrationTests : IDisposable
         Assert.Equal(56, FanCalibration.Default.MaxRawLevelFan1);
         Assert.Equal(56, FanCalibration.Default.MaxRawLevelFan2);
     }
+
+    // ---------------------------------------------------------------- saving
+
+    /// <summary>
+    /// The loader has existed since per-model overrides were introduced, ModelProfile's comment
+    /// points at it, and the README tells people their measurements go there -- but nothing ever
+    /// wrote one. So Manual Calibration could measure a chassis's real fan band and then had
+    /// nowhere to put the answer, which ended the feature at the interesting part.
+    /// </summary>
+    [Fact]
+    public void ASavedBandIsLoadedBackForTheSameBoard()
+    {
+        string dir = NewDir();
+        try
+        {
+            var model = new ModelInfo("HP", "Victus by HP Laptop 15-fb2xxx", "8C2F");
+
+            var (saved, detail) = FanProfiles.Save(model, new FanCalibration(12, 58, 57), directory: dir);
+            Assert.True(saved, detail);
+
+            var loaded = FanProfiles.Load(model, dir);
+
+            Assert.NotNull(loaded);
+            Assert.Equal(new FanCalibration(12, 58, 57), loaded);
+        }
+        finally { Cleanup(dir); }
+    }
+
+    /// <summary>
+    /// A ceiling at or below the floor collapses the percentage scale onto one speed, so every
+    /// point on the curve commands the same thing. Load already refuses to return such a band;
+    /// refusing to WRITE it means the user finds out in a dialog rather than by noticing, days
+    /// later, that fan control appears to have stopped working.
+    /// </summary>
+    [Theory]
+    [InlineData(40, 40, 56)]
+    [InlineData(40, 30, 56)]
+    [InlineData(40, 56, 40)]
+    public void AnUnusableBandIsRefusedRatherThanWritten(byte min, byte max1, byte max2)
+    {
+        string dir = NewDir();
+        try
+        {
+            var model = new ModelInfo("HP", "Victus", "8C2F");
+
+            var (saved, detail) = FanProfiles.Save(model, new FanCalibration(min, max1, max2), directory: dir);
+
+            Assert.False(saved);
+            Assert.Contains("same speed", detail);
+            Assert.Empty(Directory.GetFiles(dir));
+        }
+        finally { Cleanup(dir); }
+    }
+
+    /// <summary>A board with no name has nowhere to be filed, and says so rather than guessing one.</summary>
+    [Fact]
+    public void ABoardWithNoNameCannotBeSaved()
+    {
+        string dir = NewDir();
+        try
+        {
+            var (saved, _) = FanProfiles.Save(new ModelInfo("HP", "Victus", ""), FanCalibration.Default, directory: dir);
+            Assert.False(saved);
+            Assert.Null(FanProfiles.PathFor(new ModelInfo("HP", "Victus", "")));
+        }
+        finally { Cleanup(dir); }
+    }
+
+    /// <summary>Saving twice updates the profile rather than leaving the first values in place.</summary>
+    [Fact]
+    public void SavingAgainReplacesTheEarlierBand()
+    {
+        string dir = NewDir();
+        try
+        {
+            var model = new ModelInfo("HP", "Victus", "8C2F");
+
+            FanProfiles.Save(model, new FanCalibration(10, 56, 56), directory: dir);
+            FanProfiles.Save(model, new FanCalibration(11, 54, 54), directory: dir);
+
+            Assert.Equal(new FanCalibration(11, 54, 54), FanProfiles.Load(model, dir));
+        }
+        finally { Cleanup(dir); }
+    }
+
+    private static string NewDir() =>
+        Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "omnihub-profiles-" + Guid.NewGuid().ToString("N"))).FullName;
+
+    private static void Cleanup(string dir) { try { Directory.Delete(dir, true); } catch { } }
 }
