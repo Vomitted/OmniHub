@@ -99,6 +99,8 @@ public sealed class PowerTransitionLog : IDisposable
 
         CurrentPath = path;
         _openedForDate = utcNow.Date;
+
+        LogRetention.Prune(_directory, "power-*.csv", keepPath: path);
     }
 
     public void Dispose()

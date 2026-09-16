@@ -1,5 +1,4 @@
 using System.IO;
-using System.IO;
 using System.Threading;
 using System.Windows;
 using Application = System.Windows.Application;
@@ -62,9 +61,21 @@ public partial class App : Application
             var dir = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniHub", "logs");
             System.IO.Directory.CreateDirectory(dir);
+            string path = System.IO.Path.Combine(dir, "crash.log");
+
+            // One file, appended to by three handlers, one of which is the unobserved-task one
+            // -- so a background failure that repeats writes without limit and nothing ever
+            // pruned it. Trimmed to the TAIL rather than truncated: the recent failure is the
+            // one worth having, and the first entries of an endlessly repeating one say nothing
+            // the last entries do not.
+            OmniHub.Core.Diagnostics.LogRetention.Trim(path, maxBytes: 2 * 1024 * 1024, keepBytes: 512 * 1024);
+
+            // UTC, matching every other log this application writes. Local time here meant a
+            // crash could not be lined up against the thermal or power trace without the reader
+            // knowing which zone the machine was in at the time.
             System.IO.File.AppendAllText(
-                System.IO.Path.Combine(dir, "crash.log"),
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  [{source}]  {ex}{Environment.NewLine}{Environment.NewLine}");
+                path,
+                $"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss'Z'}  [{source}]  {ex}{Environment.NewLine}{Environment.NewLine}");
         }
         catch
         {

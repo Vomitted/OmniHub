@@ -474,7 +474,16 @@ public sealed class HardwareContext : IDisposable
         {
             string dir = OmniHub.Core.Fan.ThermalLog.LogDirectory;
             Directory.CreateDirectory(dir);
-            string path = Path.Combine(dir, $"polltiming-{DateTime.Now:yyyy-MM-dd}.csv");
+            // UTC, like every row inside it and like every other log this application writes.
+            // This was DateTime.Now, so around midnight local the day in the NAME disagreed
+            // with the day in the timestamps, and a reader joining this trace to the thermal
+            // one by filename would line up the wrong day.
+            string path = Path.Combine(dir, $"polltiming-{DateTime.UtcNow:yyyy-MM-dd}.csv");
+
+            // Swept on the day's first write only. This runs every thirty ticks, and
+            // sweeping a directory once a minute to delete nothing is noise, not diagnostics.
+            if (!File.Exists(path))
+                Diagnostics.LogRetention.Prune(dir, "polltiming-*.csv", keepPath: path);
 
             if (!File.Exists(path))
                 File.AppendAllText(path, "timestamp,ticks,avg_total_ms,avg_temp_ms,avg_fan_ms,avg_slow_ms,avg_dispatch_ms\n");

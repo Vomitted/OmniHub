@@ -111,6 +111,10 @@ public sealed class NetworkLog : IDisposable
 
         CurrentPath = path;
         _openedForDate = utcNow.Date;
+
+        // Same retention as the thermal trace, and for the same reason: one file a day, kept
+        // forever, is unbounded growth in a folder the user is invited to open.
+        Diagnostics.LogRetention.Prune(LogDirectory, "network-*.csv", keepPath: path);
     }
 
     public void Dispose()
