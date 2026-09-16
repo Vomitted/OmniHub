@@ -1,0 +1,35 @@
+<UserControl x:Class="OmniHub.App.Wpf.Views.HistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource BackgroundBrush}">
+
+    <Grid Margin="26,20,26,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+            <TextBlock Text="History" Style="{StaticResource HeadingText}" FontSize="24"/>
+            <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,4,0,0"
+                       Text="This machine&apos;s own thermal trace, read back. Fourteen days of it have been written at roughly two-second resolution since logging was switched on; until now nothing could read it."/>
+        </StackPanel>
+
+        <WrapPanel Grid.Row="1" Margin="0,0,0,12">
+            <StackPanel x:Name="WindowPills" Orientation="Horizontal" Margin="0,0,16,0"/>
+            <TextBlock x:Name="CoverageText" Style="{StaticResource TileFoot}" VerticalAlignment="Center"/>
+        </WrapPanel>
+
+        <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}">
+            <Grid>
+                <Border Style="{StaticResource CardSheenStyle}"/>
+                <ContentControl x:Name="ChartHost"/>
+            </Grid>
+        </Border>
+
+        <TextBlock x:Name="Status" Grid.Row="3" Style="{StaticResource MutedText}" FontSize="11"
+                   Margin="0,10,0,0" TextWrapping="Wrap"/>
+    </Grid>
+</UserControl>

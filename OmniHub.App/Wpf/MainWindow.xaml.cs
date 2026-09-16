@@ -90,7 +90,13 @@ public partial class MainWindow : Window
         // fires an HTTPS request to the GitHub releases API. Neither belongs on the path to
         // showing a window.
         _viewFactories["power"] = () => new PowerView(_ctx);
-        _viewFactories["diagnostics"] = () => new DiagnosticsView(_ctx);
+        // Diagnostics becomes a group so History can sit beside it. Same pattern as Performance
+        // and System, and the same reason: the load test, the capability readback and the trace
+        // that records what they did are one subject, and splitting them across the sidebar
+        // would put a measurement on one screen and its evidence on another.
+        _viewFactories["diagnostics"] = () => new GroupView(
+            ("Measure", () => new DiagnosticsView(_ctx)),
+            ("History", () => new HistoryView()));
         _viewFactories["settings"] = () => new SettingsView(_settings);
 
         // Grouped by subject rather than by screen. CPU tuning and GPU power are two halves of
