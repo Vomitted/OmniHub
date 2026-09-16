@@ -12,6 +12,8 @@ namespace OmniHub.App.Wpf.Views;
 
 public partial class DashboardView : UserControl
 {
+    private readonly int _trendTemp, _trendFan, _trendCommanded;
+
     private readonly HardwareContext _ctx;
     private readonly FanService _service;
     private readonly AppSettings _settings;
@@ -30,8 +32,47 @@ public partial class DashboardView : UserControl
         // query, and the call site is inside a dispatcher callback, so leaving it cold
         // would put that one query on the UI thread the first time the GPU reads as asleep.
         Task.Run(() => OmniHub.Core.Hardware.GpuPowerState.ReadDiscrete());
-        TrendChart.LineBrush = (Brush)FindResource("DangerBrush");
-        TrendChart.MinValue = 20; TrendChart.MaxValue = 100;
+        // Three series where there was one. The old control could hold a single Queue of doubles,
+        // so the card showed die temperature alone -- which answers "is it hot" and cannot answer
+        // "and did the fan do anything about it", the question anyone actually has while looking
+        // at a temperature trace.
+        //
+        // Fan duty and commanded percentage share a fixed 0-100 range, so they stay comparable
+        // with each other; temperature autoscales and owns the labelled axis.
+        _trendTemp = TrendChart.AddSeries(new Controls.ChartSeries
+        {
+            Name = "die temp",
+            Stroke = (Brush)FindResource("DangerBrush"),
+            Unit = " C",
+            Format = "0.#",
+            Fill = true,
+            IsPrimary = true,
+        });
+
+        _trendFan = TrendChart.AddSeries(new Controls.ChartSeries
+        {
+            Name = "fan duty",
+            Stroke = (Brush)FindResource("AccentBrush"),
+            Unit = "%",
+            Format = "0",
+            Min = 0,
+            Max = 100,
+        });
+
+        _trendCommanded = TrendChart.AddSeries(new Controls.ChartSeries
+        {
+            Name = "commanded",
+            Stroke = (Brush)FindResource("MetricMemBrush"),
+            Unit = "%",
+            Format = "0",
+            Min = 0,
+            Max = 100,
+        });
+
+        // Five minutes rather than the old sixty samples. The previous window was not a duration
+        // at all -- it was a sample count, so it silently meant two minutes at the current poll
+        // rate and something else entirely if the rate ever changed.
+        TrendChart.SetLiveWindow(TimeSpan.FromMinutes(5));
 
         // Best-effort guess at which preset is "active" -- settings only stores the
         // fan mode, not which GPU level was paired with it, so Auto defaults to
@@ -768,7 +809,17 @@ public partial class DashboardView : UserControl
                     : "NO GPU REPORTED";
             }
 
-            TrendChart.Push(tempC);
+            // Appended with the reading's own instant rather than "now", so the chart's x axis is
+            // the time the sensor was read at, not the time the UI got round to drawing it.
+            var at = DateTime.UtcNow;
+
+            TrendChart.Append(_trendTemp, at, tempC);
+            TrendChart.Append(_trendFan, at, FanService.RawToPercent(r.FanLevel1));
+
+            // -1 is the log's sentinel for "the service has not commanded", and it means the
+            // same here: nothing to plot rather than a zero-percent command that never happened.
+            if (_service.HasCommanded)
+                TrendChart.Append(_trendCommanded, at, _service.LastCommandedLevelPercent);
         });
 
         RefreshPerf();
