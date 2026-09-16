@@ -42,6 +42,12 @@
     <Using Include="System.Windows.Media.FontFamily" Alias="FontFamily" />
     <Using Include="System.Windows.Point" Alias="Point" />
     <Using Include="System.Windows.Size" Alias="Size" />
+
+    <!-- Orientation is the eighth of these, found by the first control to lay out a horizontal
+         StackPanel in code rather than in markup. Same fix as the seven above, for the same
+         reason: aliasing it here means the next file gets the WPF meaning by default instead of
+         failing to compile against the WinForms one. -->
+    <Using Include="System.Windows.Controls.Orientation" Alias="Orientation" />
   </ItemGroup>
 
   <ItemGroup>

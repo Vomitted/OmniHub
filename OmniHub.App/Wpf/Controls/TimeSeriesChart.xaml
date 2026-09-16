@@ -1,0 +1,45 @@
+<UserControl x:Class="OmniHub.App.Wpf.Controls.TimeSeriesChart"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ClipToBounds="True" Background="Transparent">
+
+    <!-- Four rows: legend, plot, time axis, hover readout.
+
+         The readout has its own row rather than floating over the plot as a tooltip. A tooltip
+         covers the data it describes, which on a dense trace means hiding the very thing the
+         pointer is resting on, and it cannot show six series at once without becoming a panel
+         in all but name. -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <WrapPanel x:Name="Legend" Grid.Row="0" Margin="0,0,0,6"/>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <!-- One labelled value axis. Six would be unreadable; every other series is
+                     named in the legend and read off the crosshair. -->
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Canvas x:Name="ValueAxis" Grid.Column="0" Width="42"/>
+
+            <Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    CornerRadius="{DynamicResource RadiusSm}" ClipToBounds="True">
+                <Canvas x:Name="Plot" Background="Transparent"
+                        MouseMove="Plot_MouseMove" MouseLeave="Plot_MouseLeave"/>
+            </Border>
+        </Grid>
+
+        <Canvas x:Name="TimeAxisCanvas" Grid.Row="2" Height="18" Margin="42,2,0,0"/>
+
+        <TextBlock x:Name="Readout" Grid.Row="3" Margin="42,2,0,0"
+                   FontFamily="{DynamicResource MonoFont}" FontSize="10.5"
+                   Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis"/>
+    </Grid>
+</UserControl>

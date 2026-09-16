@@ -8,7 +8,6 @@ using UserControl = System.Windows.Controls.UserControl;
 using Button = System.Windows.Controls.Button;
 using TextBlock = System.Windows.Controls.TextBlock;
 using TextBox = System.Windows.Controls.TextBox;
-using Orientation = System.Windows.Controls.Orientation;
 using Clipboard = System.Windows.Clipboard;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
 

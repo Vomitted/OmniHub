@@ -4,7 +4,6 @@ using System.Windows.Media;
 using OmniHub.App.Wpf;
 using UserControl = System.Windows.Controls.UserControl;
 using RadioButton = System.Windows.Controls.RadioButton;
-using Orientation = System.Windows.Controls.Orientation;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
 using VerticalAlignment = System.Windows.VerticalAlignment;
 

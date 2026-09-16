@@ -12,7 +12,6 @@ using CheckBox = System.Windows.Controls.CheckBox;
 using Panel = System.Windows.Controls.Panel;
 using ComboBox = System.Windows.Controls.ComboBox;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
-using Orientation = System.Windows.Controls.Orientation;
 using TextBox = System.Windows.Controls.TextBox;
 using RadioButton = System.Windows.Controls.RadioButton;
 
