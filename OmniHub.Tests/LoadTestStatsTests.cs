@@ -110,27 +110,47 @@ public class LoadTestStatsTests
         Assert.Equal(0, s.ThrottledFraction);
     }
 
+    /// <summary>
+    /// The one failure this must not have: cancelling a run and leaving every core pinned.
+    ///
+    /// Waits for a sample rather than sleeping for a fixed 200 ms before cancelling. The fixed
+    /// delay assumed the sampler would be scheduled inside it, which is a statement about the
+    /// machine rather than about the code -- and on a busy one it is false, so this test failed
+    /// twice under CPU contention while the behaviour it names was perfectly correct. A test
+    /// that fails when the machine is loaded, in a suite whose subject is a machine under load,
+    /// is worse than no test: it teaches people to re-run rather than to read.
+    /// </summary>
     [Fact]
     public async Task RunAlwaysStopsItsLoadEvenWhenCancelled()
     {
-        // The one failure this must not have: cancelling a run and leaving every core pinned.
         using var cts = new CancellationTokenSource();
+        var sampled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         int taken = 0;
 
         var run = LoadTest.RunAsync(
             TimeSpan.FromMinutes(5),
-            _ => { taken++; return At(0); },
+            _ =>
+            {
+                // The sampler runs on its own thread; the counter is read from this one.
+                Interlocked.Increment(ref taken);
+                sampled.TrySetResult();
+                return At(0);
+            },
             threads: 1,
             sampleInterval: TimeSpan.FromMilliseconds(20),
             token: cts.Token);
 
-        await Task.Delay(200);
+        // Generous, because the point is to be certain a sample happened, not to measure when.
+        // Anything short of a genuinely stuck sampler completes this in milliseconds.
+        var first = await Task.WhenAny(sampled.Task, Task.Delay(TimeSpan.FromSeconds(30)));
+        Assert.Same(sampled.Task, first);
+
         cts.Cancel();
 
         // Completes rather than hanging, which is only true if the burner honours the token.
-        var samples = await run;
+        var samples = await run.WaitAsync(TimeSpan.FromSeconds(30));
 
-        Assert.True(taken > 0, "the run should have sampled before cancellation");
+        Assert.True(Volatile.Read(ref taken) > 0, "the run should have sampled before cancellation");
         Assert.NotNull(samples);
     }
 }
