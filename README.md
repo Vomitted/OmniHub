@@ -194,31 +194,51 @@ needed to confirm the command layout matches before relying on the curve.
 
 ## Tabs
 
-- **Dashboard** -- live temperature/fan/throttling readout, GPU mode, and
-  three quick presets (Silent / Balanced / Performance) that combine a GPU
-  power preset with a fan mode.
-- **Fans** -- the core fix. Switch between Auto (Curve), BIOS Default, and
-  Max Fan; edit the safety floor and the curve's lookup points directly, with
-  a live chart showing the curve and the current reading. Also has a
-  **Manual Calibration** tool that steps the fan through raw speed levels one
-  at a time so you can listen for where it stops getting louder -- this
-  hardware family's 20-55 usable raw range (see below) is a well-sourced but
-  *borrowed* community bound, not something measured on any specific unit.
-- **GPU** -- power preset (Eco/Balanced/Performance) and graphics mode
-  (Hybrid/Discrete/Optimus -- mode changes need a reboot and carry real risk
-  on machines without a wired dGPU display path, which the UI warns about).
-- **Power** -- CPU sustained (PL1) and boost (PL4) wattage limits, and idle
-  power-saving toggle.
-- **App GPU Routing** -- forces specific apps to the discrete or integrated
-  GPU via the same `HKCU\...\DirectX\UserGpuPreferences` registry mechanism
-  Windows Settings > Display > Graphics uses. Apps can be picked by browsing
-  to the `.exe`, or via **Detect Running App**, which lists currently running
-  processes with a visible window -- it doesn't guess which apps are "games"
-  or GPU-heavy, you still choose the preference explicitly.
-- **Settings** -- toggle launching OmniHub automatically at sign-in (via a
-  Task Scheduler entry set to run elevated, not a registry Run key -- a Run
-  key doesn't reliably auto-elevate an admin-required app), and choose
-  whether the window's X button minimizes to tray or fully exits.
+Seven in the sidebar. Four of them group related screens, so a measurement and
+the evidence behind it stay together rather than ending up two clicks apart.
+
+- **Dashboard** -- live temperature, fan duty and commanded level on one
+  multi-series chart; what is currently holding the processor back, and which
+  limit has been binding over the last hour; GPU mode; power draw; and three
+  quick presets (Silent / Balanced / Performance).
+- **Fans** -- the core fix. Switch between Auto (Curve), BIOS Default and Max
+  Fan; edit the safety floor and the curve's lookup points, with a live chart.
+  Says what the curve's last tick actually did, including what the predictive
+  lead changed. Also has a **Manual Calibration** tool that steps the fan
+  through raw levels so you can hear where it stops getting louder, a band
+  editor that saves the result as a per-model profile, and a **Return to
+  stock** control that undoes every write OmniHub has made.
+- **Performance** -- **CPU**: the SMU tuning knobs (sustained, boost and APU
+  power, core and SoC current, Curve Optimizer, thermal limit), the adaptive
+  controller, and per-game rules. **GPU**: power preset and graphics mode
+  (mode changes need a reboot and carry real risk on machines without a wired
+  dGPU display path, which the UI warns about).
+- **Battery** -- charge, health and cycle count; the firmware idle toggle; and
+  where the power is going, which subtracts the processor package and the
+  discrete GPU from what the battery reports and labels the remainder as the
+  subtraction it is.
+- **System** -- **Windows**: timer resolution, MMCSS, power plans and the rest
+  of the OS-side controls. **Network**: adapter settings and latency
+  measurements. **App GPU routing**: forces specific apps to the discrete or
+  integrated GPU via the same `HKCU\...\DirectX\UserGpuPreferences` mechanism
+  Windows Settings > Display > Graphics uses. Apps can be picked by browsing to
+  the `.exe` or from the running-app list; it does not guess which apps are
+  "games", you choose the preference explicitly.
+- **Diagnostics** -- **Measure**: the load test, everything the firmware
+  reports about this board, per-core clocks, memory and storage, the probe
+  report and a support bundle. **History**: the thermal trace read back, with
+  gaps drawn as gaps. **Stability**: every unclean shutdown reconstructed, and
+  what is currently holding the machine awake.
+- **Settings** -- launch at sign-in (via a Task Scheduler entry set to run
+  elevated, not a registry Run key -- a Run key does not reliably auto-elevate
+  an admin-required app), close-to-tray behaviour, logging, the predictive
+  lead, and the theme.
+
+## Overlay
+
+**Ctrl+Alt+O** toggles a small always-on-top readout that stays visible over a
+game. Which metrics it shows is configurable; it is the only part of OmniHub
+visible while something is running full-screen.
 
 ## Tray icon
 
@@ -249,18 +269,26 @@ you have to remember.
 
 ## Known limitations
 
-- `OmniHub.Core/Hardware/PawnIoAccess.cs` is an intentional stub. Real
-  CPU-package temperature via MSR read (a cross-check against the BIOS's
-  single coarse sensor) needs the PawnIO SDK wired in against your actual
-  installed version -- see the comments in that file.
+- Die temperature needs the PawnIO driver installed. `PawnIoAccess.cs` is a
+  complete implementation whose P/Invoke signatures are transcribed from
+  `C:\Program Files\PawnIO\PawnIOLib.h`, not inferred -- but without the
+  driver present there is no Tctl reading, and the app falls back to the ACPI
+  thermal zone, which is coarse (4-6 C steps) and blind above about 85 C. The
+  log records which sensor produced every row, so a session that ran without
+  Tctl is identifiable afterwards rather than having to be inferred from
+  whether the temperatures had decimal places.
 - Fan "level" sent to the BIOS is **not** a 0-255 PWM duty cycle -- it's a
   fan-speed target in units of ~100 RPM, confirmed against OmenMon and
   decompiled Omen Gaming Hub source (see `OmniHub.Core/Fan/FanService.cs`).
-  The real usable range across this HP EC family is only about raw 20-55
-  (~2000-5500 RPM); this app's UI percentages (0-100%) are mapped onto that
-  range, not onto the raw byte's full 0-255 span. This hardware interface
-  does not expose real tachometer RPM; nothing in this app invents an RPM
-  number that wasn't actually read.
+  The usable range measured on this board is raw 10-56 (~1000-5600 RPM), and
+  that is what the built-in default now uses; the app's UI percentages (0-100%)
+  map onto that band rather than onto the raw byte's full 0-255 span. The
+  earlier figure of 20-55 was a borrowed community bound, and its floor cost a
+  full 1000 RPM of available quiet. Other boards are expected to differ, which
+  is what the Fans tab's calibration tool and per-model profiles are for.
+  GetFanLevel is a real tachometer read rather than an echo of what was
+  commanded -- but where the board returns fewer bytes than asked for, the
+  missing levels are reported as unavailable rather than as a fan at zero.
 - Per-model curve tuning is manual (via the Fans tab, its Manual Calibration
   tool, or `-Probe` output) -- there's no bundled database of per-model
   presets.

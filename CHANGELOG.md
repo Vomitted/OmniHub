@@ -14,8 +14,54 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Added
+
+- **Which limit has been binding, over time.** The Dashboard could say what was holding the
+  processor back at this instant. It now says what has been holding it back across the last
+  hour, as a band on a real time axis with the shares beneath it. A gap where nothing was
+  sampled is drawn as a gap rather than joined across, and the shares are of the time actually
+  measured rather than of the window asked for.
+- **What is holding this machine awake**, on the Stability screen, from Windows' own power
+  request list. The reading that last took a dozen commands by hand and turned out to be a USB
+  headset.
+- **Where the battery's power is going.** Total at the battery, less the processor package, less
+  the discrete GPU, leaves everything else. Labelled as the subtraction it is, and it refuses to
+  answer on mains, where there is no total to divide up.
+- **Per-logical-processor clocks**, with the ceiling currently in force — a constraint the
+  platform states outright, where previously one averaged figure stood in for twelve.
+- **What the fan curve's last tick did**, including the difference the predictive lead made. That
+  setting's entire observable effect used to be the fan noise.
+- **Memory and storage identity** on Diagnostics: channel count and whether the modules run at
+  their rated speed, both of which answer "why is this slower than the same laptop" more often
+  than any tuning knob does.
+- **A support bundle**: one button collecting the logs, the firmware report, the machine summary
+  and the settings into one archive, with a manifest that says what it holds about you rather
+  than only about the hardware.
+
+### Changed
+
+- **GPU telemetry no longer launches a process.** nvidia-smi was measured at 58-61 ms per
+  refresh; NVML is the same counters from the library nvidia-smi is a front end for. nvidia-smi
+  remains as a fallback, and NVML is released whenever the machine goes to battery, because an
+  initialised NVML can keep a switchable GPU from powering down.
+- **The CPU load reading no longer costs 283 ms.** It came from a WMI performance class whose
+  rate had been recorded and whose cost had not; it now comes from the kernel counters Task
+  Manager reads. The clock beside it came from a field this project's own source warned "is not
+  guaranteed to track the CPU's real-time dynamic (Turbo Boost) frequency", and now comes from
+  the per-processor clocks, which do.
+
 ### Fixed
 
+- **A stopped fan was being manufactured out of padding.** The vendor WMI call pads its reply to
+  the buffer size requested, so a board answering with fewer bytes left zeroes behind, and every
+  layer above read them as data. The thermal log recorded 1,380 rows in one day where a fan read
+  zero while the die was above 60 C — the exact fault this application exists to detect, from
+  bytes no sensor produced. The reply's real length is now carried up, the fan levels are
+  nullable, and an unreported level writes an empty field rather than a zero. A genuine zero
+  still writes as zero.
+- **Seven other firmware readings had the same defect**, among them the one that renders as
+  "your power supply is below what this laptop requires" and the throttling state that raises a
+  tray notification. Three of them carried a length check that could never fire.
 - **OmniHub was overwriting the Windows processor settings you had chosen.** The two power
   schemes it creates are duplicates of Balanced, which is the right design precisely because a
   duplicate inherits whatever you configured. It then wrote `PROCTHROTTLEMIN`,
@@ -78,7 +124,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   when load swings, because an estimate that looks stable while the truth is moving is worse
   than one that visibly moves.
 - **Four more themes**, for eight: Nord, Terminal, Sandstone and Mono alongside Midnight,
-  OLED Black, Graphite and Ember. The default moves to Midnight.
+  OLED Black, Graphite and Ember. *(Correction, recorded later: this entry originally said
+  the default moved to Midnight. It did not. `AppSettings.ThemeName` has defaulted to
+  OLED Black since 1.0 and has never been changed, so a fresh install has always opened
+  on OLED Black.)*
 
 ### Fixed
 
