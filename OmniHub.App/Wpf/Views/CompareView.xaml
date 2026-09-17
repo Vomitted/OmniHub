@@ -1,0 +1,52 @@
+<UserControl x:Class="OmniHub.App.Wpf.Views.CompareView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource BackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,20,26,24">
+        <StackPanel>
+            <StackPanel Margin="0,0,0,16">
+                <TextBlock Text="Compare" Style="{StaticResource HeadingText}" FontSize="24"/>
+                <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,4,0,0" MaxWidth="760" TextWrapping="Wrap"
+                           Text="Two stretches of this machine&apos;s own trace, measured and compared. It runs over history already on disk, so it can answer about changes made before anyone thought to start recording — and it says &quot;indistinguishable&quot; whenever that is the truth, which on a machine compared against itself is most of the time."/>
+            </StackPanel>
+
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock Text="HOW MUCH OF EACH" Style="{StaticResource DataLabelText}" Margin="0,0,0,8"/>
+                        <WrapPanel x:Name="WindowPills" Margin="0,0,0,14"/>
+
+                        <TextBlock Text="COMPARE AGAINST" Style="{StaticResource DataLabelText}" Margin="0,0,0,8"/>
+                        <WrapPanel x:Name="BaselinePills"/>
+
+                        <TextBlock x:Name="Status" Style="{StaticResource MutedText}" FontSize="11.5"
+                                   Margin="0,14,0,0" TextWrapping="Wrap" MaxWidth="760"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="VERDICT" Style="{StaticResource SubHeadingText}"/>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock x:Name="Verdict" Style="{StaticResource BodyText}" FontSize="13"
+                                   TextWrapping="Wrap" MaxWidth="760" Text="Choose a window to begin."/>
+                        <TextBlock x:Name="IntervalNote" Style="{StaticResource MutedText}" FontSize="11.5"
+                                   Margin="0,10,0,0" TextWrapping="Wrap" MaxWidth="760"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="WHAT WAS MEASURED" Style="{StaticResource SubHeadingText}"/>
+            <Border Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel x:Name="MetricRows"/>
+                </Grid>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

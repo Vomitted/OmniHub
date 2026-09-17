@@ -94,9 +94,12 @@ public partial class MainWindow : Window
         // and System, and the same reason: the load test, the capability readback and the trace
         // that records what they did are one subject, and splitting them across the sidebar
         // would put a measurement on one screen and its evidence on another.
+        // Compare sits beside History because they read the same trace and answer adjacent
+        // questions: History is what happened, Compare is whether it differs from last time.
         _viewFactories["diagnostics"] = () => new GroupView(
             ("Measure", () => new DiagnosticsView(_ctx)),
             ("History", () => new HistoryView()),
+            ("Compare", () => new CompareView()),
             ("Stability", () => new StabilityView()));
         _viewFactories["settings"] = () => new SettingsView(_settings);
 
