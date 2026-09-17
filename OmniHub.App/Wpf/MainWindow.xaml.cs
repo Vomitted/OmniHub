@@ -637,7 +637,18 @@ public partial class MainWindow : Window
 
         log.Append(DateTime.UtcNow,
             double.IsNaN(r.PreciseTemperatureC) ? r.TemperatureC : r.PreciseTemperatureC,
-            forecast, r.FanLevel1, r.FanLevel2,
+            // Fan levels only on the ticks that actually read them.
+            //
+            // The readback costs 306 ms, so it runs once every five ticks and the four between
+            // carry the previous value. Writing that carried value into a row stamped with this
+            // tick's time records a measurement that was not taken then -- and it is not a
+            // harmless duplication: analysing the trace showed 180 of 182 runs of identical fan
+            // readings were exact multiples of five, so every count of "rows where a fan read
+            // zero" was five times the number of readings that said so. An empty field is the
+            // same thing this log already writes for a sensor that did not answer.
+            forecast,
+            r.FanLevelsFresh ? r.FanLevel1 : null,
+            r.FanLevelsFresh ? r.FanLevel2 : null,
                    _service.IsRunning && _service.HasCommanded ? _service.LastCommandedLevelPercent : -1,
                    r.Throttling == ThrottlingState.On,
                    _settings.FanControlMode.ToString(),

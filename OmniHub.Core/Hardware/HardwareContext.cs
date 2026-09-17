@@ -27,6 +27,22 @@ public sealed record Reading(
 
     /// <summary>Fan 2's raw level, or null when the board did not report one. See FanLevel1.</summary>
     byte? FanLevel2,
+
+    /// <summary>
+    /// Whether the fan levels in this reading were taken on this tick or carried over.
+    ///
+    /// The readback costs 306 ms of a 324 ms tick, so it runs once every five -- about every
+    /// eleven seconds -- and the four ticks in between carry the last value. That is right for a
+    /// display, which wants continuity, and wrong for a log, which must not record a value as
+    /// though it were measured at the row's own timestamp.
+    ///
+    /// It went unnoticed until the trace was analysed: 180 of 182 runs of identical fan readings
+    /// were exact multiples of five, which is the cache and not the hardware. Any count of "rows
+    /// where a fan read zero" was therefore five times the number of readings that actually said
+    /// so, and a search for stretches where the reading held still while the command moved finds
+    /// the caching in every session.
+    /// </summary>
+    bool FanLevelsFresh,
     bool MaxFanActive,
     ThrottlingState Throttling,
     double PreciseTemperatureC = double.NaN,
@@ -364,6 +380,10 @@ public sealed class HardwareContext : IDisposable
 
                 long fanMs = 0;
 
+                // Only true on the tick that paid for the read. Everything else carries the
+                // previous value, which is fine to show and not fine to record.
+                bool fanLevelsFresh = false;
+
                 // Max-fan and throttling are read every fifth tick, not every tick.
                 //
                 // Each is a separate hpqBIntM round trip, and neither earns that rate. Max fan
@@ -392,7 +412,8 @@ public sealed class HardwareContext : IDisposable
                     // read per five ticks that is still about every eleven seconds -- current by
                     // any standard the display needs, for a quarter of the poll's cost.
                     long beforeFan = tick.ElapsedMilliseconds;
-                    try { _lastLevels = Fan.ReadLevels(); } catch { /* keep the last good read */ }
+                    try { _lastLevels = Fan.ReadLevels(); fanLevelsFresh = true; }
+                    catch { /* keep the last good read, and leave it marked as carried over */ }
                     fanMs = tick.ElapsedMilliseconds - beforeFan;
 
                     try
@@ -414,6 +435,7 @@ public sealed class HardwareContext : IDisposable
                 var payload = new Reading(temp,
                     levels.Fan1,
                     levels.Fan2,
+                    fanLevelsFresh,
                     maxFan, throttle,
                     reading.Celsius, reading.Source);
 
