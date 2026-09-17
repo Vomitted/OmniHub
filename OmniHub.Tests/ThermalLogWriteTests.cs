@@ -42,7 +42,8 @@ public class ThermalLogWriteTests
             {
                 log.Append(At, 70.5, -1, fan1Raw: null, fan2Raw: null, 45, false, "Auto", "SmuDieTctl");
                 log.Append(At.AddSeconds(2), 70.5, -1, fan1Raw: 27, fan2Raw: 0, 45, false, "Auto", "SmuDieTctl",
-                           gpuTempC: 61, gpuWatts: 0);
+                           gpuTempC: 61, gpuWatts: 0,
+                           packageWatts: 44.2, limit: "Temperature", limitPercent: 99.4);
             }
 
             string[] lines = File.ReadAllLines(Directory.GetFiles(dir, "thermal-*.csv").Single());
@@ -51,8 +52,8 @@ public class ThermalLogWriteTests
             // The GPU columns follow the same rule: a card that did not answer writes empty, and
             // a card genuinely drawing no measurable power writes a zero. Collapsing the two would
             // put an idle card and an absent one in the same bucket.
-            Assert.Equal("2026-09-17T12:00:00Z,70.5,-1,,,45,False,Auto,SmuDieTctl,,", lines[1]);
-            Assert.Equal("2026-09-17T12:00:02Z,70.5,-1,27,0,45,False,Auto,SmuDieTctl,61,0", lines[2]);
+            Assert.Equal("2026-09-17T12:00:00Z,70.5,-1,,,45,False,Auto,SmuDieTctl,,,,,", lines[1]);
+            Assert.Equal("2026-09-17T12:00:02Z,70.5,-1,27,0,45,False,Auto,SmuDieTctl,61,0,44.2,Temperature,99.4", lines[2]);
         }
         finally { Cleanup(dir); }
     }

@@ -30,7 +30,7 @@ public sealed class ThermalLog : IDisposable
     // not rewritten: EnsureWriterFor rolls to a -2 file when the header of the day's file differs,
     // which is the mechanism that already produced thermal-2026-09-04-2.csv, and every reader in
     // this project parses by column name rather than by position.
-    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,gpu_c,gpu_w";
+    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,gpu_c,gpu_w,pkg_w,limit,limit_pct";
 
     private readonly object _lock = new();
     private StreamWriter? _writer;
@@ -74,9 +74,13 @@ public sealed class ThermalLog : IDisposable
     /// </summary>
     /// <param name="gpuTempC">The discrete GPU's temperature, or null when it did not answer.</param>
     /// <param name="gpuWatts">The discrete GPU's power draw, or null when it did not answer.</param>
+    /// <param name="packageWatts">Sustained package power, or null when the SMU did not answer.</param>
+    /// <param name="limit">Which constraint was binding, or null when it could not be read.</param>
+    /// <param name="limitPercent">How close that constraint was to its own ceiling, 0-100.</param>
     public void Append(DateTime utcNow, double tempC, double forecastC, byte? fan1Raw, byte? fan2Raw,
                        int commandedPercent, bool throttling, string mode, string sensor,
-                       double? gpuTempC = null, double? gpuWatts = null)
+                       double? gpuTempC = null, double? gpuWatts = null,
+                       double? packageWatts = null, string? limit = null, double? limitPercent = null)
     {
         if (_failed) return;
 
@@ -103,7 +107,10 @@ public sealed class ThermalLog : IDisposable
                   // Empty, never zero. A GPU that is asleep or absent did not report 0 degrees,
                   // and a column of zeroes would read as a cold card rather than as no card.
                   .Append(gpuTempC?.ToString("0.#", CultureInfo.InvariantCulture) ?? "").Append(',')
-                  .Append(gpuWatts?.ToString("0.#", CultureInfo.InvariantCulture) ?? "");
+                  .Append(gpuWatts?.ToString("0.#", CultureInfo.InvariantCulture) ?? "").Append(',')
+                  .Append(packageWatts?.ToString("0.#", CultureInfo.InvariantCulture) ?? "").Append(',')
+                  .Append(Sanitize(limit ?? "")).Append(',')
+                  .Append(limitPercent?.ToString("0.#", CultureInfo.InvariantCulture) ?? "");
 
                 _writer.WriteLine(sb.ToString());
 

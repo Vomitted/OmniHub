@@ -34,6 +34,10 @@ public class TelemetryHistoryTests
     private const string ElevenColumn =
         "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,gpu_c,gpu_w";
 
+    // The layout from the change that began recording what the processor was up against.
+    private const string FourteenColumn =
+        "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,gpu_c,gpu_w,pkg_w,limit,limit_pct";
+
     private static readonly DateTime Sep1 = new(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime Sep4 = new(2026, 9, 4, 0, 0, 0, DateTimeKind.Utc);
 
@@ -364,6 +368,40 @@ public class TelemetryHistoryTests
 
             Assert.Equal(0, samples[1].GpuTempC);
             Assert.Equal(0, samples[1].GpuWatts);
+        }
+        finally { Cleanup(dir); }
+    }
+
+    /// <summary>
+    /// The binding limit reads back as the name the SMU gave it, and an unread one stays null.
+    ///
+    /// The name matters as much as the number: "Temperature at 99 per cent" and "Sustained power
+    /// at 99 per cent" call for opposite responses, and a row that lost the name would be a
+    /// percentage of something unidentified.
+    /// </summary>
+    [Fact]
+    public async Task TheBindingLimitReadsBackWithItsName()
+    {
+        string dir = NewDir();
+        try
+        {
+            Write(dir, "thermal-2026-09-01.csv",
+                FourteenColumn
+                + "\n2026-09-01T10:00:00Z,85.4,-1,36,36,90,False,Auto,SmuDieTctl,45,1.8,44.2,Temperature,99.4"
+                + "\n2026-09-01T10:00:02Z,61.2,-1,12,12,28,False,Auto,SmuDieTctl,,,,,\n");
+
+            var samples = await new TelemetryHistory(dir).ReadThermalAsync(Sep1.AddDays(-1), Sep4);
+
+            Assert.Equal(2, samples.Count);
+
+            Assert.Equal(44.2, samples[0].PackageWatts);
+            Assert.Equal("Temperature", samples[0].Limit);
+            Assert.Equal(99.4, samples[0].LimitPercent);
+
+            // An empty limit is no reading, not a limit named "".
+            Assert.Null(samples[1].PackageWatts);
+            Assert.Null(samples[1].Limit);
+            Assert.Null(samples[1].LimitPercent);
         }
         finally { Cleanup(dir); }
     }

@@ -50,7 +50,11 @@ public sealed class TelemetryHistory
                 // Absent from every file written before these columns existed, which the by-name
                 // lookup answers with null rather than with a zero.
                 row.Number("gpu_c"),
-                row.Number("gpu_w"));
+                row.Number("gpu_w"),
+
+                row.Number("pkg_w"),
+                row.Text("limit"),
+                row.Number("limit_pct"));
         });
 
     public Task<IReadOnlyList<NetworkSample>> ReadNetworkAsync(

@@ -21,7 +21,12 @@ public readonly record struct ThermalSample(
 
     /// <summary>The discrete GPU, null on every row written before these columns existed.</summary>
     double? GpuTempC = null,
-    double? GpuWatts = null);
+    double? GpuWatts = null,
+
+    /// <summary>Sustained package power, and which constraint was binding at the time.</summary>
+    double? PackageWatts = null,
+    string? Limit = null,
+    double? LimitPercent = null);
 
 /// <summary><see cref="RttMs"/> is null for a lost probe, which <see cref="Lost"/> states separately.</summary>
 public readonly record struct NetworkSample(

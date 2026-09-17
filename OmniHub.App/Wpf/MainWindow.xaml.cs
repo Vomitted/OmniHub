@@ -657,6 +657,17 @@ public partial class MainWindow : Window
         // runs out of thermal budget first.
         var gpu = GpuTelemetry.Read();
 
+        // What the processor was up against, from the same five constraints the limit strip and
+        // the tray flyout already show. Nothing has ever recorded this, so "why was it slow" has
+        // only ever been answerable about the present moment.
+        //
+        // The snapshot is cached for five seconds inside the SMU layer and shared with every other
+        // consumer, so on a tick where the tuning tab or the overlay has already read it this
+        // costs nothing. With neither of those open it is one PM-table transaction per five
+        // seconds, which is the price of having an answer at all.
+        var power = _ctx.Smu?.ReadPowerSnapshot();
+        var binding = power?.TightestLimit();
+
         log.Append(DateTime.UtcNow,
             double.IsNaN(r.PreciseTemperatureC) ? r.TemperatureC : r.PreciseTemperatureC,
             // Fan levels only on the ticks that actually read them.
@@ -680,7 +691,11 @@ public partial class MainWindow : Window
                    // than a query -- and it returns null on battery, where the policy is not to
                    // wake the card for a readout. Null writes an empty field.
                    gpu?.TempC,
-                   gpu?.PowerWatts);
+                   gpu?.PowerWatts,
+
+                   power?.StapmWatts,
+                   binding?.Name,
+                   binding?.Percent);
     }
 
     /// <summary>True when the machine is on battery right now.</summary>

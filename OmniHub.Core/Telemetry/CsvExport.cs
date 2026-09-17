@@ -22,7 +22,7 @@ public static class CsvExport
 {
     /// <summary>The thermal log's own header, so an export is readable by everything that reads the log.</summary>
     public const string ThermalHeader =
-        "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,gpu_c,gpu_w";
+        "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,gpu_c,gpu_w,pkg_w,limit,limit_pct";
 
     /// <summary>
     /// Thermal samples, in the log's own shape.
@@ -48,7 +48,10 @@ public static class CsvExport
                 .Append(Escape(s.Mode)).Append(',')
                 .Append(Escape(s.Sensor)).Append(',')
                 .Append(Number(s.GpuTempC, "0.#")).Append(',')
-                .Append(Number(s.GpuWatts, "0.#")).Append('\n');
+                .Append(Number(s.GpuWatts, "0.#")).Append(',')
+                .Append(Number(s.PackageWatts, "0.#")).Append(',')
+                .Append(Escape(s.Limit)).Append(',')
+                .Append(Number(s.LimitPercent, "0.#")).Append('\n');
         }
 
         return text.ToString();
