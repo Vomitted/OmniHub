@@ -119,6 +119,15 @@ public sealed class AppSettings
     public OverlayCorner OverlayCorner { get; set; } = OverlayCorner.TopRight;
 
     /// <summary>
+    /// How much room the interface gives each thing on it.
+    ///
+    /// A multiplier over the palette rather than a fourth theme: the eight palettes already
+    /// disagree about padding and figure size on purpose, and density moves that difference
+    /// rather than flattening it. Normal is the palette untouched.
+    /// </summary>
+    public OmniHub.Core.Optimize.UiDensity Density { get; set; } = OmniHub.Core.Optimize.UiDensity.Normal;
+
+    /// <summary>
     /// Overlay opacity, 0.2 to 1.0. Clamped on use rather than trusted: this is a
     /// hand-editable file, and an opacity of 0 is an overlay you cannot find to fix.
     /// </summary>

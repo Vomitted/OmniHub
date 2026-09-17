@@ -1,4 +1,5 @@
 using System.Windows;
+using OmniHub.Core.Optimize;
 using Application = System.Windows.Application;
 using Window = System.Windows.Window;
 
@@ -78,7 +79,66 @@ public static class ThemeManager
         if (existing is not null) merged.Remove(existing);
 
         Current = theme;
+
+        // Re-derived from the new palette, not carried over. Density is a multiplier on the
+        // palette's own figures, so the numbers it produces are only valid for the palette they
+        // were computed from -- carrying Sandstone's scaled padding onto Terminal would be a
+        // fourth density nobody picked.
+        ApplyDensity(CurrentDensity);
+
         ThemeChanged?.Invoke(theme);
+    }
+
+    /// <summary>The density in force. Normal until something says otherwise.</summary>
+    public static UiDensity CurrentDensity { get; private set; } = UiDensity.Normal;
+
+    private static ResourceDictionary? _densityOverride;
+
+    /// <summary>
+    /// Scales the palette's spacing and figure size.
+    ///
+    /// Applied as a dictionary merged after everything else rather than by editing the palette,
+    /// so the palette stays the palette: switching theme re-reads its own numbers and applies the
+    /// multiplier again, and switching density back to Normal removes the override entirely
+    /// rather than trying to undo an arithmetic operation.
+    /// </summary>
+    public static void ApplyDensity(UiDensity density)
+    {
+        CurrentDensity = density;
+
+        var merged = Application.Current?.Resources.MergedDictionaries;
+        if (merged is null) return;
+
+        if (_densityOverride is not null) merged.Remove(_densityOverride);
+        _densityOverride = null;
+
+        if (density == UiDensity.Normal) return;   // the palette, untouched
+
+        // The palette's own figures, read from the palette rather than from the live resources --
+        // which may still hold a previous override and would compound.
+        var palette = merged.FirstOrDefault(d => d.Contains("CardTopHighlightColor"));
+        if (palette is null) return;
+
+        var scaled = new ResourceDictionary();
+
+        if (palette["CardPadding"] is Thickness padding)
+        {
+            scaled["CardPadding"] = new Thickness(
+                Density.Padding(padding.Left, density), Density.Padding(padding.Top, density),
+                Density.Padding(padding.Right, density), Density.Padding(padding.Bottom, density));
+        }
+
+        if (palette["TrackHeight"] is double track)
+            scaled["TrackHeight"] = Density.TrackHeight(track, density);
+
+        if (palette["MetricValueSize"] is double figure)
+            scaled["MetricValueSize"] = Density.FontSize(figure, density);
+
+        if (scaled.Count == 0) return;
+
+        // Last wins for a duplicate key, which is the whole mechanism.
+        merged.Add(scaled);
+        _densityOverride = scaled;
     }
 
     /// <summary>Repaints a window's OS-drawn frame to match the active palette.</summary>

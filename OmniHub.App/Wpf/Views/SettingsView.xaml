@@ -38,6 +38,14 @@
                                 <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
+
+                        <!-- Density multiplies the palette rather than replacing it, which is why
+                             it lives in the theme card: the two compose, and picking both is
+                             picking both. -->
+                        <TextBlock Text="Density" Style="{StaticResource BodyText}" Margin="0,18,0,3"/>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" MaxWidth="560" TextWrapping="Wrap"
+                                   Text="Scales the padding, the bar heights and the figure sizes this theme asks for. Normal is the theme untouched."/>
+                        <WrapPanel x:Name="DensityPills" Margin="0,8,0,0"/>
                     </StackPanel>
                 </Grid>
             </Border>

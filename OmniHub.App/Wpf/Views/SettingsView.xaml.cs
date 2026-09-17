@@ -37,6 +37,7 @@ public partial class SettingsView : UserControl
         NetTargetBox.Text = _settings.NetworkMonitorTarget;
         _thermalLoggingAtLoad = _settings.ThermalLogging;
         InitialiseOverlayControls();
+        BuildDensityPills();
         _suppressEvents = false;
 
         // After the suppression flag clears: these start work whose completion touches
@@ -187,6 +188,46 @@ public partial class SettingsView : UserControl
     /// Called from the constructor inside the _suppressEvents window, so populating the
     /// combo does not immediately fire its own SelectionChanged and re-save.
     /// </summary>
+    /// <summary>
+    /// Three pills for the three densities.
+    ///
+    /// Built here rather than in markup for the same reason the workspace switcher is: the options
+    /// come from an enum, and writing them out again is a second list that can disagree with the
+    /// first.
+    /// </summary>
+    private void BuildDensityPills()
+    {
+        DensityPills.Children.Clear();
+
+        foreach (var density in Enum.GetValues<OmniHub.Core.Optimize.UiDensity>())
+        {
+            var captured = density;
+
+            var pill = new System.Windows.Controls.RadioButton
+            {
+                Content = density.ToString().ToUpperInvariant(),
+                GroupName = "Density",
+                Style = (Style)FindResource("PillRadioStyle"),
+                Height = 28,
+                MinWidth = 92,
+                Margin = new Thickness(0, 0, 3, 0),
+                IsChecked = density == _settings.Density,
+            };
+
+            pill.Checked += (_, _) =>
+            {
+                _settings.Density = captured;
+                _settings.Save();
+
+                // Immediately, like the theme beside it. A density you have to restart to see is
+                // not a choice, it is a setting.
+                ThemeManager.ApplyDensity(captured);
+            };
+
+            DensityPills.Children.Add(pill);
+        }
+    }
+
     private void InitialiseOverlayControls()
     {
         OverlayToggle.IsChecked = _settings.OverlayEnabled;

@@ -93,4 +93,31 @@ public class CornerRadiusTokenTests
             Assert.True(text.Contains("x:Key=\"RadiusMd\""), $"{Path.GetFileName(path)} has no RadiusMd");
         }
     }
+
+    /// <summary>
+    /// Every palette defines the three figures density scales.
+    ///
+    /// Density works by reading these out of the palette, multiplying them and merging the result
+    /// back over the top. A key that is missing, or named differently in one palette, means the
+    /// lookup returns nothing and that dimension simply does not scale -- silently, on one theme,
+    /// which is the hardest kind of thing to notice.
+    ///
+    /// This is a text check rather than a behavioural one because the code that does the merging
+    /// lives in the application project, which this suite deliberately cannot reference. It
+    /// catches the failure that is actually likely: a name that does not match.
+    /// </summary>
+    [Fact]
+    public void EveryPaletteDefinesTheFiguresDensityScales()
+    {
+        string palettes = Path.Combine(WpfTestHost.WpfDir, "Palettes");
+
+        foreach (string path in Directory.EnumerateFiles(palettes, "*.xaml"))
+        {
+            string text = File.ReadAllText(path);
+
+            foreach (string key in new[] { "CardPadding", "TrackHeight", "MetricValueSize" })
+                Assert.True(text.Contains($"x:Key=\"{key}\""),
+                            $"{Path.GetFileName(path)} has no {key}, so density cannot scale it");
+        }
+    }
 }

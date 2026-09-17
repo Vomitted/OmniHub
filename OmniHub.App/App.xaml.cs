@@ -212,7 +212,9 @@ public partial class App : Application
         {
             // Applied before the window is constructed so it opens already in the saved
             // theme, rather than painting the default palette and re-tinting a frame after.
-            ThemeManager.Apply(AppSettings.Load().ThemeName);
+            var startup = AppSettings.Load();
+            ThemeManager.ApplyDensity(startup.Density);
+            ThemeManager.Apply(startup.ThemeName);
 
             var window = new MainWindow();
             window.Show();
