@@ -129,6 +129,45 @@ public sealed class BiosInterop : IDisposable
     }
 
     /// <summary>
+    /// Sends a command and refuses to hand back padding as though it were an answer.
+    ///
+    /// Every reader in this project indexes into the returned buffer -- <c>data[0]</c> for a fan
+    /// count, <c>data[1]</c> for a throttling state -- and the buffer is always the full
+    /// requested size whether or not the board filled it. So a board that answers with nothing
+    /// yields a fan count of zero, a charger reported as its enum's first member, and a
+    /// throttling state that was never read. Several callers carry a <c>Length &gt; 0</c> check
+    /// that looks like a guard against exactly this and cannot ever fire, because the length is
+    /// always what was asked for.
+    ///
+    /// Throwing is the right failure here rather than returning a flag: every one of those
+    /// callers already catches and reports "unavailable", which is the truth. One guard at the
+    /// layer that knows the reply's real length beats the same check written eight times, badly.
+    /// </summary>
+    /// <param name="needed">How many bytes of the reply this reading actually indexes into.</param>
+    public byte[] SendAtLeast(BiosCmdGroup group, byte commandId, byte[]? inData, int outSize, int needed)
+    {
+        var data = Send(group, commandId, inData, outSize, out int reported);
+        RequireReported(reported, needed, commandId);
+        return data;
+    }
+
+    /// <summary>
+    /// Throws when the board supplied fewer bytes than the caller is about to read.
+    ///
+    /// Separated out because it is the only part of this that can be tested without a machine,
+    /// and because the realistic mistake in it is an off-by-one: a reader that wants
+    /// <c>data[1]</c> needs two bytes, not one.
+    /// </summary>
+    internal static void RequireReported(int reported, int needed, byte commandId)
+    {
+        if (reported >= needed) return;
+
+        throw new InvalidOperationException(
+            $"The BIOS answered command 0x{commandId:X2} with {reported} byte(s); this reading needs "
+            + $"{needed}. The rest of the buffer is padding added by this layer, not data.");
+    }
+
+    /// <summary>
     /// Sends a command with NO input payload: Size is set to 0 and hpqBData is left unset.
     ///
     /// Deliberately a separate entry point rather than a new meaning for Send's null, because

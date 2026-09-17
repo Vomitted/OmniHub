@@ -6,8 +6,10 @@ public sealed class FanController
 
     public FanController(BiosInterop bios) => _bios = bios;
 
+    // SendAtLeast, because a board that answers with nothing would otherwise report a fan count
+    // of zero -- a confident claim about the hardware, assembled out of this layer's own padding.
     public byte GetFanCount() =>
-        _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanCount, null, 4)[0];
+        _bios.SendAtLeast(BiosCmdGroup.Default, FanCmd.GetFanCount, null, 4, needed: 1)[0];
 
     /// <summary>Per-fan type, one nibble/byte per fan slot.</summary>
     public byte[] GetFanType() =>

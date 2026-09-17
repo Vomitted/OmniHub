@@ -55,7 +55,7 @@ public sealed class GpuController
         GpuMode mode;
         try
         {
-            var data = _bios.Send(BiosCmdGroup.Legacy, SysCmd.GetGpuMode, null, 4);
+            var data = _bios.SendAtLeast(BiosCmdGroup.Legacy, SysCmd.GetGpuMode, null, 4, needed: 1);
             mode = (GpuMode)data[0];
         }
         catch { return GpuMode.Hybrid; }   // not cached: a failed read should be retried, not remembered
@@ -88,7 +88,8 @@ public sealed class GpuController
                 return cached;
         }
 
-        var data = _bios.Send(BiosCmdGroup.Default, SysCmd.GetGpuPower, new byte[4], 4);
+        // All four bytes are read by FromBytes, so all four have to be the board's.
+        var data = _bios.SendAtLeast(BiosCmdGroup.Default, SysCmd.GetGpuPower, new byte[4], 4, needed: 4);
         var power = GpuPowerData.FromBytes(data);
 
         lock (_cacheLock)
@@ -434,8 +435,11 @@ public sealed class SystemController
     {
         try
         {
-            var data = _bios.Send(BiosCmdGroup.Legacy, SysCmd.GetAdapter, new byte[4], 4);
-            return data is { Length: > 0 } ? (HpAdapterStatus)data[0] : null;
+            // The Length check that used to sit here could never fire: Send always returns the
+            // full requested size. A short reply now throws and is reported as no reading, which
+            // matters because this one renders as "your charger is underpowered".
+            var data = _bios.SendAtLeast(BiosCmdGroup.Legacy, SysCmd.GetAdapter, new byte[4], 4, needed: 1);
+            return (HpAdapterStatus)data[0];
         }
         catch { return null; }
     }
@@ -445,8 +449,8 @@ public sealed class SystemController
     {
         try
         {
-            var data = _bios.Send(BiosCmdGroup.Default, SysCmd.GetKeyboardType, new byte[4], 4);
-            return data is { Length: > 0 } ? (HpKeyboardType)data[0] : null;
+            var data = _bios.SendAtLeast(BiosCmdGroup.Default, SysCmd.GetKeyboardType, new byte[4], 4, needed: 1);
+            return (HpKeyboardType)data[0];
         }
         catch { return null; }
     }
@@ -462,15 +466,15 @@ public sealed class SystemController
     {
         try
         {
-            var data = _bios.Send(BiosCmdGroup.Keyboard, SysCmd.HasBacklight, new byte[4], 4);
-            return data is { Length: > 0 } ? data[0] != 0x03 : null;
+            var data = _bios.SendAtLeast(BiosCmdGroup.Keyboard, SysCmd.HasBacklight, new byte[4], 4, needed: 1);
+            return data[0] != 0x03;
         }
         catch { return null; }
     }
 
     public bool GetMaxFanActive()
     {
-        var data = _bios.Send(BiosCmdGroup.Default, SysCmd.GetMaxFan, new byte[4], 4);
+        var data = _bios.SendAtLeast(BiosCmdGroup.Default, SysCmd.GetMaxFan, new byte[4], 4, needed: 1);
         return (data[0] & 0x01) != 0;
     }
 
@@ -490,7 +494,9 @@ public sealed class SystemController
     {
         try
         {
-            var data = _bios.Send(BiosCmdGroup.Default, SysCmd.GetCapability, new byte[] { 0, 4, 0, 0 }, 128);
+            // Two, not one: this reads data[1]. The off-by-one is the whole reason the length
+            // requirement is stated by each caller rather than assumed to be one byte.
+            var data = _bios.SendAtLeast(BiosCmdGroup.Default, SysCmd.GetCapability, new byte[] { 0, 4, 0, 0 }, 128, needed: 2);
             return (ThrottlingState)data[1];
         }
         catch { return ThrottlingState.Unknown; }
