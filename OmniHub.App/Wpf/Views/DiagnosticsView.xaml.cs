@@ -456,6 +456,107 @@ public partial class DiagnosticsView : UserControl
     }
 
     /// <summary>
+    /// The capture waiting to be compared against, or null when there is none.
+    ///
+    /// One slot rather than a list. The question this answers is always "what did that change do",
+    /// which needs exactly two captures -- and a growing collection of dumps with no way to
+    /// remember what each one was would be a filing problem rather than a discovery.
+    /// </summary>
+    private PmTableDump? _heldCapture;
+
+    /// <summary>
+    /// Captures the table, or compares against the held capture if there is one.
+    ///
+    /// The label is the time it was taken. Asking for a description first would be better and is
+    /// a text box away; the timestamps are enough to tell two captures apart, and this keeps the
+    /// operation to one click, which is what makes "change something, press it again" a usable
+    /// loop rather than a procedure.
+    /// </summary>
+    private void CaptureTableBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_ctx.Smu is not { } smu)
+        {
+            TableStatus.Text = _ctx.SmuUnavailableReason
+                ?? "The SMU is not available on this machine, so there is no table to read.";
+            return;
+        }
+
+        CaptureTableBtn.IsEnabled = false;
+        TableStatus.Text = "Reading the table...";
+        TableChanges.Children.Clear();
+
+        string label = DateTime.Now.ToString("HH:mm:ss");
+
+        // Off the UI thread: this takes the SMU mailbox, which holds a global PCI mutex.
+        Task.Run(() => PmTableExplorer.Capture(smu, label)).ContinueWith(t =>
+        {
+            CaptureTableBtn.IsEnabled = true;
+
+            if (!t.IsCompletedSuccessfully || t.Result is not { } dump)
+            {
+                TableStatus.Text = "The SMU would not answer, so nothing was captured.";
+                return;
+            }
+
+            if (_heldCapture is not { } held)
+            {
+                _heldCapture = dump;
+                ClearTableBtn.IsEnabled = true;
+
+                TableStatus.Text =
+                    $"Captured {dump.Values.Count} words at {dump.Label}, layout 0x{dump.Version:X}. "
+                    + "Change one thing about the machine, then press Capture again to see what moved.";
+                return;
+            }
+
+            var changes = PmTableExplorer.Diff(held, dump);
+            TableStatus.Text = PmTableExplorer.Describe(held, dump, changes);
+
+            // The newest capture becomes the baseline, so a sequence of changes can be walked
+            // one at a time rather than every comparison being against the first one.
+            _heldCapture = dump;
+
+            foreach (var change in changes.Take(24))
+                TableChanges.Children.Add(ChangeRow(change));
+
+            if (changes.Count > 24)
+                TableChanges.Children.Add(Note($"  and {changes.Count - 24} more."));
+        }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    private void ClearTableBtn_Click(object sender, RoutedEventArgs e)
+    {
+        _heldCapture = null;
+        ClearTableBtn.IsEnabled = false;
+        TableChanges.Children.Clear();
+        TableStatus.Text = "Capture forgotten. The next capture starts a new comparison.";
+    }
+
+    /// <summary>One moved word: its position, what it was, what it became.</summary>
+    private UIElement ChangeRow(PmTableChange change)
+    {
+        string name = change.Known is { } known ? $"  ({known})" : "  unidentified";
+
+        return Note($"  [{change.Index,3}] {change.From,12:0.###}  ->{change.To,12:0.###}"
+                    + $"   {change.Delta,+10:+0.###;-0.###}{name}");
+    }
+
+    private TextBlock Note(string text)
+    {
+        var block = new TextBlock
+        {
+            Text = text,
+            FontSize = 11,
+            TextWrapping = TextWrapping.NoWrap,
+            Margin = new Thickness(0, 0, 0, 2),
+        };
+
+        block.SetResourceReference(StyleProperty, "TileFoot");
+        block.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
+        return block;
+    }
+
+    /// <summary>
     /// Writes everything needed to diagnose this machine to one archive.
     ///
     /// The user picks where. Somewhere convenient is offered as a default rather than chosen for

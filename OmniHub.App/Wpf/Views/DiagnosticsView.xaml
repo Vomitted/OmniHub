@@ -67,6 +67,30 @@
                 </Grid>
             </Border>
 
+            <TextBlock Text="PM TABLE EXPLORER" Style="{StaticResource SubHeadingText}" Margin="0,18,0,8"/>
+            <Border Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                                   MaxWidth="700" TextWrapping="Wrap"
+                                   Text="This application reads 22 fields from a table with hundreds of words in it, and leaves the rest unmapped rather than guessing what they are. This is how the 22 were found: capture the table, change one thing about the machine, capture it again, and see which words moved."/>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                                   MaxWidth="700" TextWrapping="Wrap"
+                                   Text="Nothing here is given a name it has not earned. A word is reported as a number at a position, and only the handful already confirmed against readings from elsewhere are labelled."/>
+                        <WrapPanel>
+                            <Button x:Name="CaptureTableBtn" Content="Capture" Width="130" Height="36"
+                                    Margin="0,0,8,0" Style="{StaticResource PrimaryButtonStyle}" Click="CaptureTableBtn_Click"/>
+                            <Button x:Name="ClearTableBtn" Content="Forget capture" Width="150" Height="36"
+                                    IsEnabled="False" Style="{StaticResource FlatButtonStyle}" Click="ClearTableBtn_Click"/>
+                        </WrapPanel>
+                        <TextBlock x:Name="TableStatus" Style="{StaticResource MutedText}" FontSize="11"
+                                   Margin="0,10,0,0" TextWrapping="Wrap" MaxWidth="760"/>
+                        <StackPanel x:Name="TableChanges" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <TextBlock Text="SUPPORT BUNDLE" Style="{StaticResource SubHeadingText}" Margin="0,18,0,8"/>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
