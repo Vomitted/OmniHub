@@ -1,6 +1,0 @@
-{
-    "releaseNotes": "OmniControl Suite v9.0.0 - Ground-Up Rebuild:\n- Completely rebuilt application architecture with clean, robust Program.cs entry point.\n- Eliminated all recursive Win32 handle allocations and hidden state initializers.\n- Full 6-tab Google Stitch OLED Neon Precision user interface.\n- Live ACPI battery discharge in Watts, HP BIOS 60/80/100% battery limiter, OptiRouter AI, 0.5ms MMIO timer, and Temp Tamer.",
-    "publishDate": "2026-08-24",
-    "version": "9.0.0",
-    "downloadUrl": "https://github.com/Vomitted/OmniControl/releases/download/v9.0.0/OmniControlSuite.exe"
-}

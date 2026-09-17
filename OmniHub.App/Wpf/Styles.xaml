@@ -911,19 +911,6 @@
          one showing a limit already reached wants amber-to-red. Defaulting it would mean
          every caller overrides it, which is the mistake CardBorderStyle Padding made.
          ==================================================================== -->
-    <Style x:Key="TrackStyle" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource TrackBrush}"/>
-        <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}"/>
-        <Setter Property="Height" Value="{DynamicResource TrackHeight}"/>
-        <Setter Property="HorizontalAlignment" Value="Stretch"/>
-        <Setter Property="ClipToBounds" Value="True"/>
-    </Style>
-
-    <Style x:Key="TrackFillStyle" TargetType="Border">
-        <Setter Property="CornerRadius" Value="{DynamicResource RadiusPill}"/>
-        <Setter Property="HorizontalAlignment" Value="Left"/>
-    </Style>
-
     <!-- The small value badge that sits at the top-right of a card: clock speed, memory
          type, active profile. Distinct from StatusChipStyle, which carries a state dot. -->
     <Style x:Key="CardTagStyle" TargetType="Border">

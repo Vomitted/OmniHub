@@ -110,7 +110,6 @@
          Prose stays on the system UI face. -->
     <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="UiFontSemibold">Segoe UI Variable Display Semibold, Segoe UI Semibold, Segoe UI</FontFamily>
-    <FontFamily x:Key="UiFontLight">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
 
     <!-- One radius scale.
@@ -128,6 +127,5 @@
          default sat at 18, overridden everywhere and therefore never once used. A default no
          caller accepts is not a default, it is a second value to keep in sync. -->
     <Thickness x:Key="CardPaddingTight">16,13</Thickness>
-    <Thickness x:Key="CardGap">0,0,0,18</Thickness>
 
 </ResourceDictionary>
