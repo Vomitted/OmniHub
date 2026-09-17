@@ -59,12 +59,24 @@ public partial class MainWindow : Window
         // reading per tick and the screen shows exactly what the fan is responding to.
         // CurrentTemperatureC throws if polling has produced nothing yet or the last reading
         // has gone stale, and FanService already skips a tick whose read failed.
-        _service = new FanService(_ctx.Fan, () => _ctx.CurrentTemperature(), _settings.BuildCurve())
+        _service = new FanService(
+            _ctx.Fan,
+            () => _ctx.CurrentTemperature(),
+            _settings.BuildCurve(OnBattery))
         {
             // The discrete GPU shares these fans. Reading it is cached inside GpuTelemetry, so
             // the curve's own tick does not pay for a process spawn every time.
             ReadSecondaryTempC = () => GpuTelemetry.Read()?.TempC,
         };
+
+        // The curve follows the charger, when the user has asked it to.
+        //
+        // Subscribed here rather than in a view because this is where the fan service lives, and
+        // a curve that only tracked the rail while somebody had the Fans tab open would be worse
+        // than not tracking it at all. The shared watcher's Start is idempotent, so asking for it
+        // costs nothing if the Tuning tab has already started it for its own profile switching.
+        _ctx.PowerSource.OnChanged += source => Dispatcher.BeginInvoke(() => ApplyCurveForPowerSource(source));
+        if (_settings.SeparateBatteryCurve) _ctx.PowerSource.Start();
 
         ModelLabel.Text = $"{_ctx.Model.Manufacturer} {_ctx.Model.Product}".Trim();
 
@@ -653,6 +665,54 @@ public partial class MainWindow : Window
                    r.Throttling == ThrottlingState.On,
                    _settings.FanControlMode.ToString(),
                    r.TemperatureSource.ToString());
+    }
+
+    /// <summary>True when the machine is on battery right now.</summary>
+    private static bool OnBattery =>
+        OmniHub.Core.Optimize.PowerSourceWatcher.Read() == OmniHub.Core.Optimize.PowerSource.Battery;
+
+    /// <summary>
+    /// Points the live curve at the rail's own numbers.
+    ///
+    /// The curve object is mutated rather than replaced, so nothing about FanService changes and
+    /// the running loop keeps the instance it was given. A curve is its points and its floor;
+    /// setting both is the whole swap.
+    ///
+    /// Unknown counts as mains, for the reason PowerSourceWatcher already documents: Windows
+    /// reports an unknown line status during resume and on some docks, and quietening a
+    /// plugged-in machine's fans on that basis is the worse of the two errors.
+    /// </summary>
+    public void ApplyCurveForPowerSource(OmniHub.Core.Optimize.PowerSource source)
+    {
+        if (!_settings.SeparateBatteryCurve) return;
+
+        bool battery = source == OmniHub.Core.Optimize.PowerSource.Battery;
+        var wanted = _settings.BuildCurve(battery);
+
+        _service.Curve.SetPoints(wanted.Points);
+        _service.Curve.FloorTempC = wanted.FloorTempC;
+        _service.Curve.FloorLevelPercent = wanted.FloorLevelPercent;
+
+        _thermalLog?.Append(
+            DateTime.UtcNow, 0, -1, null, null, -1, false,
+            battery ? "curve:battery" : "curve:mains", "power source change");
+    }
+
+    /// <summary>
+    /// Re-reads the curve settings and starts or stops the rail watcher to match.
+    ///
+    /// Called by the Fans tab after the curve or the separate-curve setting changes, so a screen
+    /// that owns the editing does not also have to own the switching.
+    /// </summary>
+    public void RefreshCurveFromSettings()
+    {
+        if (_settings.SeparateBatteryCurve) _ctx.PowerSource.Start();
+
+        var wanted = _settings.BuildCurve(OnBattery);
+
+        _service.Curve.SetPoints(wanted.Points);
+        _service.Curve.FloorTempC = wanted.FloorTempC;
+        _service.Curve.FloorLevelPercent = wanted.FloorLevelPercent;
     }
 
     private void ScanForNewApps()

@@ -138,6 +138,28 @@
             <TextBlock Text="CURVE POINTS" Style="{StaticResource SubHeadingText}"/>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <StackPanel>
+                    <!-- Two rails are two different problems: on mains the trade is noise against
+                         headroom, on battery every fan watt is a watt not going into runtime. One
+                         curve has to compromise between them, and the compromise is worse than
+                         either answer. Off by default, so one curve stays one curve. -->
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                            <TextBlock Text="A separate curve on battery" Style="{StaticResource BodyText}"/>
+                            <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" MaxWidth="560" TextWrapping="Wrap"
+                                       Text="When this is off there is one curve and it applies on both. When it is on, the curve below switches with the charger."/>
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" x:Name="SeparateCurveToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                  VerticalAlignment="Center" Checked="SeparateCurveToggle_Changed" Unchecked="SeparateCurveToggle_Changed"/>
+                    </Grid>
+
+                    <WrapPanel x:Name="EditingRailPills" Margin="0,0,0,8"/>
+                    <TextBlock x:Name="RailNote" Style="{StaticResource MutedText}" FontSize="11"
+                               Margin="0,0,0,10" TextWrapping="Wrap" MaxWidth="700"/>
+
                     <DataGrid x:Name="CurveGrid" Style="{StaticResource OmniDataGridStyle}" Height="212" Margin="0,0,0,12"
                               CanUserAddRows="True" CanUserDeleteRows="True" CanUserResizeRows="False">
                         <DataGrid.Columns>

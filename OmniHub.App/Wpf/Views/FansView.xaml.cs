@@ -49,6 +49,12 @@ public partial class FansView : UserControl
 
         InitialiseBandEditor();
 
+        // The rail selector, and the curve for whichever rail is being edited.
+        _suppressModeEvent = true;
+        SeparateCurveToggle.IsChecked = settings.SeparateBatteryCurve;
+        _suppressModeEvent = false;
+        BuildRailPills();
+
         // Paired on Loaded/Unloaded, not subscribed once in the constructor -- see the same
         // change in DashboardView. Navigating to another tab detaches this control and raises
         // Unloaded, so a constructor-time subscription was cancelled the first time the user
@@ -167,6 +173,93 @@ public partial class FansView : UserControl
             mode == FanControlMode.BiosDefault ? "WarnBrush" : "TextFaintBrush");
     }
 
+    /// <summary>
+    /// Which rail's curve the editor below is writing to.
+    ///
+    /// Explicit rather than "whichever rail you are on", so the battery curve can be tuned while
+    /// plugged in -- which is when anybody actually sits down to tune it.
+    /// </summary>
+    private bool _editingBattery;
+
+    /// <summary>
+    /// Builds the rail selector and says which curve is in force.
+    ///
+    /// The pills are disabled while the feature is off, because with one curve there is nothing
+    /// to choose between and a live selector would imply otherwise.
+    /// </summary>
+    private void BuildRailPills()
+    {
+        EditingRailPills.Children.Clear();
+
+        foreach (var (label, battery) in new[] { ("MAINS", false), ("BATTERY", true) })
+        {
+            bool captured = battery;
+
+            var pill = new RadioButton
+            {
+                Content = label,
+                GroupName = "CurveRail",
+                Style = (Style)FindResource("PillRadioStyle"),
+                Height = 28,
+                MinWidth = 82,
+                Margin = new Thickness(0, 0, 3, 0),
+                IsChecked = battery == _editingBattery,
+                IsEnabled = _settings.SeparateBatteryCurve,
+            };
+
+            pill.Checked += (_, _) => { _editingBattery = captured; LoadCurveForEditedRail(); };
+            EditingRailPills.Children.Add(pill);
+        }
+
+        RefreshRailNote();
+    }
+
+    private void RefreshRailNote()
+    {
+        bool onBattery = PowerSourceWatcher.Read() == PowerSource.Battery;
+
+        RailNote.Text = _settings.SeparateBatteryCurve
+            ? $"Editing the {(_editingBattery ? "battery" : "mains")} curve. "
+              + $"This machine is on {(onBattery ? "battery" : "mains")} right now, so the "
+              + $"{(onBattery ? "battery" : "mains")} curve is the one in force."
+            : "One curve, applied on both rails.";
+    }
+
+    /// <summary>Loads whichever rail's stored curve into the editor.</summary>
+    private void LoadCurveForEditedRail()
+    {
+        var points = _editingBattery ? _settings.BatteryCurvePoints : _settings.CurvePoints;
+
+        _rows.Clear();
+        foreach (var p in points)
+            _rows.Add(new CurvePointRow { TempC = p.TempC, LevelPercent = p.LevelPercent });
+
+        FloorTempBox.Text = (_editingBattery ? _settings.BatteryFloorTempC : _settings.FloorTempC)
+            .ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+        FloorLevelBox.Text = (_editingBattery ? _settings.BatteryFloorLevelPercent : _settings.FloorLevelPercent)
+            .ToString();
+
+        RefreshRailNote();
+        RefreshChartFromSettings();
+    }
+
+    private void SeparateCurveToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressModeEvent) return;
+
+        _settings.SeparateBatteryCurve = SeparateCurveToggle.IsChecked == true;
+        _settings.Save();
+
+        // Turning it off returns the editor to the one curve there now is.
+        if (!_settings.SeparateBatteryCurve) _editingBattery = false;
+
+        BuildRailPills();
+        LoadCurveForEditedRail();
+
+        // MainWindow owns the switching, and re-reads what is in force for the current rail.
+        (System.Windows.Application.Current.MainWindow as MainWindow)?.RefreshCurveFromSettings();
+    }
+
     private void ApplyFloorBtn_Click(object sender, RoutedEventArgs e)
     {
         if (!double.TryParse(FloorTempBox.Text, out var floorTemp) || !byte.TryParse(FloorLevelBox.Text, out var floorLevel))
@@ -174,11 +267,23 @@ public partial class FansView : UserControl
             System.Windows.MessageBox.Show("Enter valid numbers for the floor.", "Invalid input", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        _settings.FloorTempC = floorTemp;
-        _settings.FloorLevelPercent = floorLevel;
+
+        if (_editingBattery)
+        {
+            _settings.BatteryFloorTempC = floorTemp;
+            _settings.BatteryFloorLevelPercent = floorLevel;
+        }
+        else
+        {
+            _settings.FloorTempC = floorTemp;
+            _settings.FloorLevelPercent = floorLevel;
+        }
+
         _settings.Save();
-        _service.Curve.FloorTempC = floorTemp;
-        _service.Curve.FloorLevelPercent = floorLevel;
+
+        // Only what is in force reaches the running curve. Writing the battery floor into a
+        // running mains curve would apply a setting the user has not asked for yet.
+        (System.Windows.Application.Current.MainWindow as MainWindow)?.RefreshCurveFromSettings();
         RefreshChartFromSettings();
     }
 
@@ -194,9 +299,13 @@ public partial class FansView : UserControl
                 System.Windows.MessageBox.Show("Need at least 2 curve points.", "Curve not applied", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            _settings.CurvePoints = points;
+            if (_editingBattery) _settings.BatteryCurvePoints = points;
+            else _settings.CurvePoints = points;
+
             _settings.Save();
-            _service.Curve.SetPoints(points);
+
+            // Only the rail in force reaches the running curve; MainWindow decides which that is.
+            (System.Windows.Application.Current.MainWindow as MainWindow)?.RefreshCurveFromSettings();
             RefreshChartFromSettings();
         }
         catch (Exception ex)
@@ -210,23 +319,35 @@ public partial class FansView : UserControl
         var defaults = FanCurve.CreateDefault().Points;
         _rows.Clear();
         foreach (var p in defaults) _rows.Add(new CurvePointRow { TempC = p.TempC, LevelPercent = p.LevelPercent });
-        _settings.CurvePoints = defaults.ToList();
-        _settings.FloorTempC = 55.0;
-        _settings.FloorLevelPercent = 15;
+        if (_editingBattery)
+        {
+            _settings.BatteryCurvePoints = defaults.ToList();
+            _settings.BatteryFloorTempC = 55.0;
+            _settings.BatteryFloorLevelPercent = 15;
+        }
+        else
+        {
+            _settings.CurvePoints = defaults.ToList();
+            _settings.FloorTempC = 55.0;
+            _settings.FloorLevelPercent = 15;
+        }
+
         FloorTempBox.Text = "55";
         FloorLevelBox.Text = "15";
         _settings.Save();
-        _service.Curve.SetPoints(defaults);
-        _service.Curve.FloorTempC = 55.0;
-        _service.Curve.FloorLevelPercent = 15;
+
+        (System.Windows.Application.Current.MainWindow as MainWindow)?.RefreshCurveFromSettings();
         RefreshChartFromSettings();
     }
 
+    // Draws the rail being edited, not the rail in force. Editing the battery curve while plugged
+    // in is the normal case, and a chart that kept showing the mains curve would be showing the
+    // wrong thing at exactly the moment the numbers below it changed.
     private void RefreshChartFromSettings()
     {
-        Chart.Points = _settings.CurvePoints;
-        Chart.FloorTempC = _settings.FloorTempC;
-        Chart.FloorLevelPercent = _settings.FloorLevelPercent;
+        Chart.Points = _editingBattery ? _settings.BatteryCurvePoints : _settings.CurvePoints;
+        Chart.FloorTempC = _editingBattery ? _settings.BatteryFloorTempC : _settings.FloorTempC;
+        Chart.FloorLevelPercent = _editingBattery ? _settings.BatteryFloorLevelPercent : _settings.FloorLevelPercent;
         Chart.RefreshData();
     }
 

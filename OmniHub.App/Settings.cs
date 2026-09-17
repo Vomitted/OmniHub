@@ -278,13 +278,42 @@ public sealed class AppSettings
         }
     }
 
-    public FanCurve BuildCurve()
+    /// <summary>
+    /// Whether the battery curve below is used at all.
+    ///
+    /// Off by default, and that is the whole non-regression story: with it off there is one curve
+    /// and the application behaves exactly as it did. Nothing about a machine changes because a
+    /// second set of numbers exists in a settings file.
+    /// </summary>
+    public bool SeparateBatteryCurve { get; set; }
+
+    /// <summary>
+    /// The curve used on battery, when the setting above is on.
+    ///
+    /// A copy of the default rather than of the mains curve, because the mains curve is whatever
+    /// the user has since made it, and seeding from it would silently freeze a snapshot of it at
+    /// the moment this feature was first switched on.
+    /// </summary>
+    public List<CurvePoint> BatteryCurvePoints { get; set; } = FanCurve.CreateDefault().Points.ToList();
+
+    public double BatteryFloorTempC { get; set; } = 55.0;
+
+    public byte BatteryFloorLevelPercent { get; set; } = 15;
+
+    /// <summary>
+    /// The curve for a rail.
+    ///
+    /// The two rails are genuinely different problems. On mains the question is how much noise is
+    /// worth how much headroom; on battery it is that every fan watt is a watt not going into
+    /// runtime, and the machine is usually doing less work anyway. One curve has to compromise
+    /// between those, and the compromise is worse than either answer.
+    /// </summary>
+    public FanCurve BuildCurve(bool onBattery = false)
     {
-        var curve = new FanCurve(CurvePoints.Count >= 2 ? CurvePoints : FanCurve.CreateDefault().Points)
-        {
-            FloorTempC = FloorTempC,
-            FloorLevelPercent = FloorLevelPercent,
-        };
-        return curve;
+        return CurveRails.Build(
+            onBattery,
+            SeparateBatteryCurve,
+            new CurveRail(CurvePoints, FloorTempC, FloorLevelPercent),
+            new CurveRail(BatteryCurvePoints, BatteryFloorTempC, BatteryFloorLevelPercent));
     }
 }
