@@ -70,28 +70,43 @@ public class NvmlTests
     [Fact]
     public void NvmlAgreesWithNvidiaSmi()
     {
-        var reading = Nvml.TryRead();
-        if (reading is null) return;
+        var before = Nvml.TryRead();
+        if (before is null) return;
 
         string? line = RunNvidiaSmi();
         if (line is null) return;
+
+        // Read again AFTER, and require nvidia-smi to fall between the two.
+        //
+        // The earlier version read NVML once and allowed five degrees of drift on the assumption
+        // that a temperature does not move much while a process starts. That is true on an idle
+        // machine and false on a busy one, which is precisely when this suite runs -- it failed
+        // once during a build and passed immediately afterwards. Bracketing accounts for the
+        // movement instead of assuming it away, and it is a tighter check rather than a looser
+        // one: a wrong sensor index still lands outside a bracket that spans a few degrees.
+        var after = Nvml.TryRead();
 
         var fields = line.Split(',').Select(f => f.Trim()).ToArray();
         if (fields.Length < 5) return;
 
         // Same board.
-        Assert.Equal(fields[0], reading.Name);
+        Assert.Equal(fields[0], before.Name);
 
-        // Temperature moves between the two reads, but not by much in the time one process takes
-        // to start. Five degrees is generous and still an order of magnitude tighter than the
-        // error a wrong sensor index would produce.
-        if (reading.TempC is { } temp && double.TryParse(fields[1], out double smiTemp))
-            Assert.True(Math.Abs(temp - smiTemp) <= 5,
-                        $"NVML read {temp} C, nvidia-smi read {smiTemp} C");
+        if (double.TryParse(fields[1], out double smiTemp)
+            && before.TempC is { } first && (after?.TempC ?? first) is { } second)
+        {
+            const double Slack = 2;   // rounding, and the sample nvidia-smi took mid-flight
+
+            double low = Math.Min(first, second) - Slack;
+            double high = Math.Max(first, second) + Slack;
+
+            Assert.True(smiTemp >= low && smiTemp <= high,
+                        $"nvidia-smi read {smiTemp} C, outside the {low}-{high} C NVML bracketed");
+        }
 
         // The unit check. Power swings far more than temperature between two samples, so this is
         // deliberately loose -- it is aimed at a factor of a thousand, not at a few watts.
-        if (reading.PowerWatts is { } watts && double.TryParse(fields[2], out double smiWatts))
+        if (before.PowerWatts is { } watts && double.TryParse(fields[2], out double smiWatts))
             Assert.True(Math.Abs(watts - smiWatts) <= 40,
                         $"NVML read {watts} W, nvidia-smi read {smiWatts} W -- a unit error?");
     }
