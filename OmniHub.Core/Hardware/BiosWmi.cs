@@ -87,6 +87,28 @@ public enum FanMode : byte
 /// and the BIOS return code is checked so a rejected command reports as rejected
 /// instead of appearing to succeed.
 ///
+/// IT IS ALSO NOT RESOLVABLE FROM THE THERMAL LOG, WHICH LOOKS LIKE IT SHOULD BE.
+///
+/// The fourteen days on disk hold 1,536 rows in Max mode and 52 in BIOS Default, in every one
+/// of which commanded_pct is -1 -- the application was writing no fan levels at all, so any
+/// movement had to come from a mode command. In Max the fans reached raw 54 against a measured
+/// ceiling of 56; in BIOS Default they took seventeen distinct values between 21 and 51 while
+/// the die moved between 51 and 85 C, which is exactly the shape of a curve responding to
+/// temperature. That reads as proof, and it is not.
+///
+/// Max mode does not call SetFanMode. It calls SystemController.SetMaxFan, which is command
+/// 0x27 and a different question entirely, so those 1,536 rows say only that 0x27 is honoured.
+/// BIOS Default calls SetMaxFan(false) AND SetFanMode(Default), and clearing the max-fan flag
+/// may well be sufficient on its own for the EC to resume its own curve -- so those 52 rows
+/// cannot separate the two either. In Auto the mode is asserted and then levels are written
+/// over the top, which hides the answer a third way.
+///
+/// So the command is never issued anywhere that produces an isolated observable, which is the
+/// real reason this has stayed open rather than anyone forgetting to look. Settling it needs
+/// SetFanMode issued alone, with no level writes and the max-fan flag clear, and the fans given
+/// several seconds to respond -- a deliberate experiment with the curve paused, not something to
+/// infer from history.
+///
 /// OmniControl also carries a field note worth testing directly, at VendorFanManager.cs:458:
 /// "Avoid HP Quiet (255, 2, 1, 0) as it stops fans until 70C causing heat soak."
 /// </summary>

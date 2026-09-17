@@ -27,7 +27,12 @@
 
             <TextBlock Text="FAN MODE" Style="{StaticResource SubHeadingText}"/>
             <TextBlock x:Name="ModeText" Style="{StaticResource BodyText}" FontFamily="{StaticResource UiFontSemibold}" Margin="0,0,0,4"/>
-            <TextBlock x:Name="LevelText" Style="{StaticResource MutedText}" Margin="0,0,0,16"/>
+            <TextBlock x:Name="LevelText" Style="{StaticResource MutedText}" Margin="0,0,0,6"/>
+
+            <!-- What is actually holding the machine back. Computed for the Dashboard strip
+                 anyway, and this is the thing people open the flyout to find out. -->
+            <TextBlock x:Name="LimitText" Style="{StaticResource MutedText}" Margin="0,0,0,16"
+                       TextWrapping="Wrap" MaxWidth="240"/>
 
             <Button Content="Open OmniHub" Height="36" Style="{StaticResource PrimaryButtonStyle}" Click="OpenClick"/>
         </StackPanel>

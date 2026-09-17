@@ -2,6 +2,7 @@ using System.Windows;
 using Window = System.Windows.Window;
 using OmniHub.Core.Fan;
 using OmniHub.Core.Hardware;
+using OmniHub.Core.Telemetry;
 
 namespace OmniHub.App.Wpf;
 
@@ -70,6 +71,38 @@ public partial class TrayFlyout : Window
         LevelText.Text = _service.IsRunning
             ? $"Commanded {_service.LastCommandedLevelPercent}%"
             : "Not actively controlling";
+
+        RefreshLimitText();
+    }
+
+    /// <summary>
+    /// What is holding the processor back, in the one place people look without opening anything.
+    ///
+    /// The arithmetic already exists and already runs for the Dashboard's strip; this is the same
+    /// snapshot, read through the SMU's five-second cache, so showing it here adds no hardware
+    /// access at all. It is also the question somebody opens this flyout to answer -- "why is it
+    /// like this right now" -- which the temperature and the fan level between them cannot.
+    /// </summary>
+    private void RefreshLimitText()
+    {
+        PowerSnapshot? snapshot;
+        try { snapshot = _ctx.Smu?.ReadPowerSnapshot(); }
+        catch { snapshot = null; }
+
+        if (snapshot is not { } power)
+        {
+            LimitText.Text = "";
+            return;
+        }
+
+        var (name, percent) = power.TightestLimit();
+
+        // The same threshold the Dashboard strip and the history band use. Below it nothing is
+        // genuinely binding, and naming whatever happens to be nearest would report an idle
+        // machine as constrained by it.
+        LimitText.Text = percent >= LimitHistory.BindingPercent
+            ? $"Held back by {name}, at {percent:0}% of its limit"
+            : "Nothing is holding it back";
     }
 
     private void OnReading(Reading r)
