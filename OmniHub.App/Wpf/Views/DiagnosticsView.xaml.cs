@@ -196,7 +196,12 @@ public partial class DiagnosticsView : UserControl
         {
             null => "the command is not implemented on this board",
             { LooksUnreported: true } => "answered, but carrying nothing. Treated as unknown, not as unsupported",
-            _ => caps.ToString(),
+
+            // Matched as "any non-null" rather than as a discard. A discard does not narrow the
+            // null state, so the compiler read this arm's result as possibly-null and warned --
+            // the only warning in the build, and one that had been hiding behind a wall of
+            // file-lock noise from building over the running application.
+            { } block => block.ToString(),
         });
 
         AddRow(CapabilityRows, "Software fan control", caps switch
