@@ -10,12 +10,30 @@ public partial class GpuView : UserControl
     private readonly HardwareContext _ctx;
     private readonly AppSettings _settings;
 
+    /// <summary>
+    /// Two seconds, and only while this tab is on screen.
+    ///
+    /// GpuTelemetry caches for three, so most ticks are a field read rather than a query, and the
+    /// timer stops entirely when the tab is not visible -- the card should not be woken to draw a
+    /// readout nobody is looking at.
+    /// </summary>
+    private readonly System.Windows.Threading.DispatcherTimer _telemetryTimer =
+        new() { Interval = TimeSpan.FromSeconds(2) };
+
     public GpuView(HardwareContext ctx, AppSettings settings)
     {
         InitializeComponent();
         _ctx = ctx;
         _settings = settings;
         ModeCombo.ItemsSource = new[] { GpuMode.Hybrid, GpuMode.Discrete, GpuMode.Optimus };
+
+        // Paired on Loaded/Unloaded, as DashboardView and FansView are, and for the same reason:
+        // navigating away detaches the control and a constructor-time subscription would be
+        // cancelled the first time the user left the page and never restored.
+        Loaded += (_, _) => { RefreshTelemetry(); _telemetryTimer.Start(); };
+        Unloaded += (_, _) => _telemetryTimer.Stop();
+
+        _telemetryTimer.Tick += (_, _) => RefreshTelemetry();
 
         // Gated on what the firmware says, rather than on the assumption that every HP board has
         // a MUX. These three options were offered unconditionally on every machine, including
@@ -285,4 +303,56 @@ public partial class GpuView : UserControl
             }
         });
     }
+
+    /// <summary>
+    /// Draws what the card is doing, and says where the numbers came from.
+    ///
+    /// The source is on screen because the three routes do not agree: NVML and nvidia-smi read the
+    /// driver, the Windows counters read the compositor's view, and a project whose first rule is
+    /// that a reading names its source should not make an exception for the one tab about the
+    /// hardware in question.
+    ///
+    /// Every field is independently nullable and renders "--" on its own. The vendor-neutral path
+    /// reports utilisation and nothing else, so a card showing three dashes and a percentage is
+    /// the expected output there rather than a fault.
+    /// </summary>
+    private void RefreshTelemetry()
+    {
+        var gpu = GpuTelemetry.Read();
+
+        if (gpu is null)
+        {
+            GpuNameText.Text = "No discrete GPU reading";
+            GpuSourceText.Text = "";
+            GpuTempText.Text = GpuPowerText.Text = GpuClockText.Text = GpuLoadText.Text = "--";
+
+            // Distinguishes the two reasons for a blank, because they call for different actions:
+            // one is a policy this application applies deliberately, the other is a card or driver
+            // that did not answer.
+            GpuLiveFoot.Text = OmniHub.Core.Optimize.PowerSourceWatcher.Read() == OmniHub.Core.Optimize.PowerSource.Battery
+                ? "ON BATTERY - THE CARD IS NOT WOKEN FOR A READOUT"
+                : "NO READING - NO DISCRETE GPU, OR THE DRIVER DID NOT ANSWER";
+            return;
+        }
+
+        GpuNameText.Text = gpu.Name;
+        GpuSourceText.Text = SourceName(gpu.Source).ToUpperInvariant();
+
+        GpuTempText.Text = gpu.TempC is { } t ? $"{Math.Round(t):0}\u00b0" : "--";
+        GpuPowerText.Text = gpu.PowerWatts is { } w ? $"{w:0.0}W" : "--";
+        GpuClockText.Text = gpu.ClockMhz is { } c ? $"{c}" : "--";
+        GpuLoadText.Text = gpu.UtilisationPercent is { } u ? $"{u}%" : "--";
+
+        GpuLiveFoot.Text = gpu.Source == GpuSource.WindowsCounters
+            ? "UTILISATION ONLY - THE WINDOWS COUNTERS DO NOT REPORT TEMPERATURE, POWER OR CLOCK"
+            : "";
+    }
+
+    private static string SourceName(GpuSource source) => source switch
+    {
+        GpuSource.Nvml => "NVML",
+        GpuSource.NvidiaSmi => "nvidia-smi",
+        GpuSource.WindowsCounters => "Windows counters",
+        _ => source.ToString(),
+    };
 }

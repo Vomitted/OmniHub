@@ -17,7 +17,11 @@ public readonly record struct ThermalSample(
     int? CommandedPercent,
     bool? Throttling,
     string? Mode,
-    string? Sensor);
+    string? Sensor,
+
+    /// <summary>The discrete GPU, null on every row written before these columns existed.</summary>
+    double? GpuTempC = null,
+    double? GpuWatts = null);
 
 /// <summary><see cref="RttMs"/> is null for a lost probe, which <see cref="Lost"/> states separately.</summary>
 public readonly record struct NetworkSample(

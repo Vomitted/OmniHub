@@ -651,6 +651,12 @@ public partial class MainWindow : Window
             ? _service.Trend.ForecastC(_service.PredictiveLeadSeconds)
             : -1;
 
+        // Logged so that the question the fan trace has just answered for the fans can eventually
+        // be answered for the GPU. Nothing in this application has ever recorded what the discrete
+        // GPU was doing, which is why there is no evidence about whether it is ever the part that
+        // runs out of thermal budget first.
+        var gpu = GpuTelemetry.Read();
+
         log.Append(DateTime.UtcNow,
             double.IsNaN(r.PreciseTemperatureC) ? r.TemperatureC : r.PreciseTemperatureC,
             // Fan levels only on the ticks that actually read them.
@@ -668,7 +674,13 @@ public partial class MainWindow : Window
                    _service.IsRunning && _service.HasCommanded ? _service.LastCommandedLevelPercent : -1,
                    r.Throttling == ThrottlingState.On,
                    _settings.FanControlMode.ToString(),
-                   r.TemperatureSource.ToString());
+                   r.TemperatureSource.ToString(),
+
+                   // Cached inside GpuTelemetry and NVML-backed, so this is a field read rather
+                   // than a query -- and it returns null on battery, where the policy is not to
+                   // wake the card for a readout. Null writes an empty field.
+                   gpu?.TempC,
+                   gpu?.PowerWatts);
     }
 
     /// <summary>True when the machine is on battery right now.</summary>

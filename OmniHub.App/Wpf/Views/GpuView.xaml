@@ -33,6 +33,47 @@
                            Text="GPU power level and the MUX graphics mode. Per-application routing lives on the App GPU Routing tab."/>
             </StackPanel>
 
+            <!-- What the card is actually doing.
+                 This tab had no telemetry at all: it showed the BIOS flags that set the ceiling
+                 and nothing about whether the card ever reached it. The readings exist already:
+                 the dashboard, the overlay and the tuning rows all use them. They had simply
+                 never been put on the tab for the hardware they describe. -->
+            <Border Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,0,14">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <Grid>
+                            <TextBlock Text="LIVE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricGpuBrush}"/>
+                            <TextBlock x:Name="GpuSourceText" Style="{StaticResource TileFoot}" Margin="0"
+                                       HorizontalAlignment="Right" VerticalAlignment="Top"/>
+                        </Grid>
+
+                        <TextBlock x:Name="GpuNameText" Style="{StaticResource MutedText}" FontSize="12" Margin="0,6,0,0"/>
+
+                        <UniformGrid Rows="1" Margin="0,10,0,0">
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Text="TEMPERATURE" Style="{StaticResource TileLabel}" Foreground="{StaticResource TextFaintBrush}"/>
+                                <TextBlock x:Name="GpuTempText" Style="{StaticResource TileValue}" FontSize="26" Text="--" Margin="0,3,0,0"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Text="POWER" Style="{StaticResource TileLabel}" Foreground="{StaticResource TextFaintBrush}"/>
+                                <TextBlock x:Name="GpuPowerText" Style="{StaticResource TileValue}" FontSize="26" Text="--" Margin="0,3,0,0"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Text="CLOCK" Style="{StaticResource TileLabel}" Foreground="{StaticResource TextFaintBrush}"/>
+                                <TextBlock x:Name="GpuClockText" Style="{StaticResource TileValue}" FontSize="26" Text="--" Margin="0,3,0,0"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="UTILISATION" Style="{StaticResource TileLabel}" Foreground="{StaticResource TextFaintBrush}"/>
+                                <TextBlock x:Name="GpuLoadText" Style="{StaticResource TileValue}" FontSize="26" Text="--" Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock x:Name="GpuLiveFoot" Style="{StaticResource TileFoot}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- Live state -->
             <Grid Margin="0,0,0,18">
                 <Grid.ColumnDefinitions>

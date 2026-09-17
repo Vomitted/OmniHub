@@ -30,6 +30,10 @@ public class TelemetryHistoryTests
     private const string EightColumn =
         "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode";
 
+    // The layout from the change that began recording the discrete GPU.
+    private const string ElevenColumn =
+        "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,gpu_c,gpu_w";
+
     private static readonly DateTime Sep1 = new(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime Sep4 = new(2026, 9, 4, 0, 0, 0, DateTimeKind.Utc);
 
@@ -300,5 +304,67 @@ public class TelemetryHistoryTests
 
         // Temperatures that are present are physically possible.
         Assert.All(samples.Where(s => s.TempC is not null), s => Assert.InRange(s.TempC!.Value, 0, 120));
+    }
+
+    /// <summary>
+    /// A file written before the GPU columns existed reads back with no GPU reading, not a zero.
+    ///
+    /// This is the fifth thermal header to coexist on disk, and the reason the reader has always
+    /// resolved columns by name. Two weeks of trace predate these columns; reporting those rows as
+    /// a GPU at 0 degrees drawing 0 watts would make an unrecorded card look like a cold one, and
+    /// any later analysis of when the GPU was the constrained part would start from that.
+    /// </summary>
+    [Fact]
+    public async Task FilesWrittenBeforeTheGpuColumnsReadBackAsNoReading()
+    {
+        string dir = NewDir();
+        try
+        {
+            Write(dir, "thermal-2026-09-01.csv",
+                NineColumn + "\n2026-09-01T10:00:00Z,61.2,-1,12,12,28,False,Auto,SmuDieTctl\n");
+            Write(dir, "thermal-2026-09-02.csv",
+                ElevenColumn + "\n2026-09-02T10:00:00Z,61.2,-1,12,12,28,False,Auto,SmuDieTctl,54.5,31.2\n");
+
+            var samples = await new TelemetryHistory(dir).ReadThermalAsync(Sep1.AddDays(-1), Sep4);
+
+            Assert.Equal(2, samples.Count);
+
+            Assert.Null(samples[0].GpuTempC);
+            Assert.Null(samples[0].GpuWatts);
+
+            Assert.Equal(54.5, samples[1].GpuTempC);
+            Assert.Equal(31.2, samples[1].GpuWatts);
+        }
+        finally { Cleanup(dir); }
+    }
+
+    /// <summary>
+    /// An empty GPU field is an absent reading, and a written zero is a real one.
+    ///
+    /// The same distinction the fan columns carry, and it matters in the same way: an idle card
+    /// genuinely drawing no measurable power is a reading, and a card that was asleep is not.
+    /// </summary>
+    [Fact]
+    public async Task AnEmptyGpuFieldIsNotAZero()
+    {
+        string dir = NewDir();
+        try
+        {
+            Write(dir, "thermal-2026-09-01.csv",
+                ElevenColumn
+                + "\n2026-09-01T10:00:00Z,61.2,-1,12,12,28,False,Auto,SmuDieTctl,,"
+                + "\n2026-09-01T10:00:02Z,61.2,-1,12,12,28,False,Auto,SmuDieTctl,0,0\n");
+
+            var samples = await new TelemetryHistory(dir).ReadThermalAsync(Sep1.AddDays(-1), Sep4);
+
+            Assert.Equal(2, samples.Count);
+
+            Assert.Null(samples[0].GpuTempC);
+            Assert.Null(samples[0].GpuWatts);
+
+            Assert.Equal(0, samples[1].GpuTempC);
+            Assert.Equal(0, samples[1].GpuWatts);
+        }
+        finally { Cleanup(dir); }
     }
 }

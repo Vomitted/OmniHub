@@ -34,6 +34,33 @@ public readonly record struct GpuDemand(double? LoadPercent, double? TempC, doub
 /// ponytail: one threshold and one branch, wrapping the existing rule rather than replacing it.
 /// A real joint optimiser would need a model of how watts on each side convert into temperature
 /// on the shared pipe, and nobody here has measured that.
+///
+/// AN ADAPTIVE GPU CONTROLLER WAS CONSIDERED AND NOT BUILT
+///
+/// The symmetric feature -- walk the GPU ceiling to hold a temperature, the way AdaptiveTuning
+/// walks STAPM -- does not fit this hardware, for three reasons found by reading rather than by
+/// trying it:
+///
+///   * The actuator is not continuous. STAPM is a wattage stepped three at a time across fifteen
+///     to fifty-four, about thirteen positions. GPU power is two boolean flags, four states,
+///     measured at 60, 65, 70 and 75 W. Integral control over a knob whose smallest step is five
+///     watts would hunt, because one step moves the die further than the deadband it is steering
+///     into. The correct law for four states is bang-bang with hysteresis, which is a different
+///     controller, not this one with a second actuator bolted on.
+///
+///   * ForceMaxPower exists to stop exactly this. Its own note says the latch lives in SetPower
+///     because that is the one function all callers route through, "which makes it the only place
+///     a fourth caller cannot forget to check". An adaptive GPU controller is that fourth caller.
+///
+///   * It would misdiagnose itself. With the latch set, SetPower silently rewrites the payload to
+///     maximum, so a controller commanding Eco would read Performance back, conclude the firmware
+///     had ignored it, and stop with a message blaming the hardware for something this application
+///     did. AdaptiveTuning has precisely that three-strike guard, and it would fire.
+///
+/// What was missing underneath all of it is evidence: nothing in this application had ever
+/// recorded what the discrete GPU was doing, so there was no way to say whether the GPU is ever
+/// the part that runs out of thermal budget first. The thermal log now carries gpu_c and gpu_w,
+/// which is the same instrument that settled the fan question, pointed at this one.
 /// </summary>
 public static class ThermalBudget
 {

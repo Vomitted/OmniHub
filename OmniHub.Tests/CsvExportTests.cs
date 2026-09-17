@@ -26,7 +26,7 @@ public class CsvExportTests
     [Fact]
     public void TheHeaderMatchesTheLog() =>
         Assert.StartsWith(
-            "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor",
+            "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,gpu_c,gpu_w",
             CsvExport.Thermal(Array.Empty<ThermalSample>()));
 
     /// <summary>
@@ -42,13 +42,16 @@ public class CsvExportTests
         string csv = CsvExport.Thermal(new[]
         {
             new ThermalSample(At, 70.5, null, null, null, null, null, "Auto", "SmuDieTctl"),
-            new ThermalSample(At.AddSeconds(2), 70.5, null, 27, 0, 45, false, "Auto", "SmuDieTctl"),
+            new ThermalSample(At.AddSeconds(2), 70.5, null, 27, 0, 45, false, "Auto", "SmuDieTctl",
+                              GpuTempC: 61, GpuWatts: 0),
         });
 
         string[] lines = csv.Split('\n');
 
-        Assert.Equal("2026-09-17T12:00:00Z,70.5,,,,,,Auto,SmuDieTctl", lines[1]);
-        Assert.Equal("2026-09-17T12:00:02Z,70.5,,27,0,45,False,Auto,SmuDieTctl", lines[2]);
+        // The GPU columns take the same rule: absent exports empty, and a genuine zero, an idle
+        // card drawing no measurable power, exports as zero.
+        Assert.Equal("2026-09-17T12:00:00Z,70.5,,,,,,Auto,SmuDieTctl,,", lines[1]);
+        Assert.Equal("2026-09-17T12:00:02Z,70.5,,27,0,45,False,Auto,SmuDieTctl,61,0", lines[2]);
     }
 
     /// <summary>

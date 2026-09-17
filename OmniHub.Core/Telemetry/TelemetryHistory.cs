@@ -45,7 +45,12 @@ public sealed class TelemetryHistory
                 row.NumberUnlessSentinel("commanded_pct", -1) is { } p ? (int)p : null,
                 row.Bool("throttling"),
                 row.Text("mode"),
-                row.Text("sensor"));
+                row.Text("sensor"),
+
+                // Absent from every file written before these columns existed, which the by-name
+                // lookup answers with null rather than with a zero.
+                row.Number("gpu_c"),
+                row.Number("gpu_w"));
         });
 
     public Task<IReadOnlyList<NetworkSample>> ReadNetworkAsync(

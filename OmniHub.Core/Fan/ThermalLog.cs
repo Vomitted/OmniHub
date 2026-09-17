@@ -26,7 +26,11 @@ public sealed class ThermalLog : IDisposable
     // with the fans at 100% throughout -- meant inferring it from whether the temperatures had
     // decimal places. That is a real diagnosis from an accidental signal; the column makes it
     // a recorded fact instead.
-    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor";
+    // Two columns were added here for the discrete GPU. Old files keep their own header and are
+    // not rewritten: EnsureWriterFor rolls to a -2 file when the header of the day's file differs,
+    // which is the mechanism that already produced thermal-2026-09-04-2.csv, and every reader in
+    // this project parses by column name rather than by position.
+    private const string Header = "timestamp,temp_c,forecast_c,fan1_raw,fan2_raw,commanded_pct,throttling,mode,sensor,gpu_c,gpu_w";
 
     private readonly object _lock = new();
     private StreamWriter? _writer;
@@ -68,8 +72,11 @@ public sealed class ThermalLog : IDisposable
     /// writers in this project already do, and the reader already models these two columns as
     /// nullable.
     /// </summary>
+    /// <param name="gpuTempC">The discrete GPU's temperature, or null when it did not answer.</param>
+    /// <param name="gpuWatts">The discrete GPU's power draw, or null when it did not answer.</param>
     public void Append(DateTime utcNow, double tempC, double forecastC, byte? fan1Raw, byte? fan2Raw,
-                       int commandedPercent, bool throttling, string mode, string sensor)
+                       int commandedPercent, bool throttling, string mode, string sensor,
+                       double? gpuTempC = null, double? gpuWatts = null)
     {
         if (_failed) return;
 
@@ -92,7 +99,11 @@ public sealed class ThermalLog : IDisposable
                   .Append(commandedPercent.ToString(CultureInfo.InvariantCulture)).Append(',')
                   .Append(throttling ? "True" : "False").Append(',')
                   .Append(Sanitize(mode)).Append(',')
-                  .Append(Sanitize(sensor));
+                  .Append(Sanitize(sensor)).Append(',')
+                  // Empty, never zero. A GPU that is asleep or absent did not report 0 degrees,
+                  // and a column of zeroes would read as a cold card rather than as no card.
+                  .Append(gpuTempC?.ToString("0.#", CultureInfo.InvariantCulture) ?? "").Append(',')
+                  .Append(gpuWatts?.ToString("0.#", CultureInfo.InvariantCulture) ?? "");
 
                 _writer.WriteLine(sb.ToString());
 
