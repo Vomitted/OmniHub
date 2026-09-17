@@ -46,10 +46,79 @@ public sealed class FanController
     ///
     /// Everything past <paramref name="reported"/> is padding this layer added, not a reading.
     /// </summary>
+    /// <summary>
+    /// Set when the cheap read was caught reporting a stopped fan the expensive one contradicted.
+    ///
+    /// Null while the cheap method is still trusted, or while it was never chosen.
+    /// </summary>
+    public string? CheapReadRejected { get; private set; }
+
+    /// <summary>
+    /// Whether a cheap reply's zero is contradicted by the reply that is known to work.
+    ///
+    /// Pure, so the decision can be tested without a machine. A zero is the only answer worth
+    /// re-reading: it is both the most consequential value this call can return -- a stopped fan
+    /// on a hot machine is the fault the whole application exists to catch -- and the one a
+    /// mis-sized buffer produces most readily.
+    /// </summary>
+    internal static bool CheapReplyIsWrong(byte[] cheap, byte[] expensive, int expensiveReported)
+    {
+        if (cheap.Length < 2 || expensiveReported < 2) return false;
+
+        // Only where the cheap read claims a stop. Two readings disagreeing by a unit or two
+        // while a fan ramps is ordinary and is not what this is looking for.
+        for (int fan = 0; fan < 2; fan++)
+            if (cheap[fan] == 0 && expensive[fan] > 0)
+                return true;
+
+        return false;
+    }
+
     public byte[] GetFanLevel(out int reported)
     {
         if (_fanLevelOutSize is int size)
-            return _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanLevel, null, size, out reported);
+        {
+            var data = _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanLevel, null, size, out reported);
+
+            // A zero from the cheap method gets checked against the method known to work.
+            //
+            // The choice between them is made once, from a single comparison, and then trusted
+            // for the rest of the session -- which is exactly the shape of the fault seen on this
+            // machine: fan 2 reading zero for minutes at a time while fan 1 kept reporting, and
+            // recovering only on restart, when the choice is made afresh. 290 of 1,161 rows in
+            // one afternoon, every one of them with fan 1 at 26 or 27 and the die between 46 and
+            // 82 C.
+            //
+            // Costs nothing in the ordinary case: fans at rest genuinely read zero and the two
+            // methods agree, so this fires on disagreement rather than on every zero.
+            if (size != 128 && (data.Length > 1 && (data[0] == 0 || data[1] == 0)))
+            {
+                try
+                {
+                    var checkedAgainst = _bios.Send(
+                        BiosCmdGroup.Default, FanCmd.GetFanLevel, null, 128, out int checkedReported);
+
+                    if (CheapReplyIsWrong(data, checkedAgainst, checkedReported))
+                    {
+                        _fanLevelOutSize = 128;
+                        CheapReadRejected =
+                            $"The 4-byte fan read reported {data[0]}/{data[1]} while the 128-byte read "
+                            + $"reported {checkedAgainst[0]}/{checkedAgainst[1]} at the same moment. The "
+                            + "cheap method is not trusted for the rest of this session.";
+
+                        reported = checkedReported;
+                        return checkedAgainst;
+                    }
+                }
+                catch
+                {
+                    // The expensive method refused. The cheap reading stands rather than being
+                    // discarded on the strength of a call that did not happen.
+                }
+            }
+
+            return data;
+        }
 
         var large = _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanLevel, null, 128, out reported);
 

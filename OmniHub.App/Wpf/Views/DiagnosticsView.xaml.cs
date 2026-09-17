@@ -217,6 +217,15 @@ public partial class DiagnosticsView : UserControl
         AddRow(CapabilityRows, "Fans",
             _ctx.FanCount is byte n ? $"{n} reported, {Math.Min((int)n, 2)} driven" : "not reported");
 
+        // Whether the cheap fan read has been caught lying this session.
+        //
+        // It is chosen once from a single comparison and then trusted, which on this machine
+        // produced fan 2 reading zero for minutes at a time -- a stopped fan on a hot machine,
+        // out of a buffer rather than a sensor. The cross-check now demotes it when it happens,
+        // and this row is how anybody finds out that it did.
+        AddRow(CapabilityRows, "Fan level read",
+            _ctx.Fan.CheapReadRejected ?? "the 4-byte read has not contradicted the 128-byte one this session");
+
         AddRow(CapabilityRows, "Fan band",
             $"raw {band.MinRawLevel}-{band.MaxRawLevelFan1}"
             + (band.MaxRawLevelFan2 != band.MaxRawLevelFan1 ? $" / {band.MaxRawLevelFan2} on fan 2" : "")
