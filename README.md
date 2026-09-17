@@ -21,7 +21,7 @@ The rule the whole project is built on: **it does not synthesize telemetry.**
 No invented fan RPM, no "AI" workload classification, no plausible-looking
 number standing in for a reading the hardware could not give. If a value is
 unavailable, the UI says so. That extends to tuning — every apply reads the
-hardware back, and the Tuning tab distinguishes a limit the firmware
+hardware back, and the tuning screen distinguishes a limit the firmware
 *accepted* from one it actually *enforces*, because on some platforms the SMU
 returns success for limits the vendor firmware then arbitrates away.
 
@@ -124,7 +124,7 @@ Make a desktop shortcut to that `.exe` if you want it handy.
 
 ### 5. Install PawnIO, for CPU tuning (optional)
 
-Only needed for the Tuning tab: power limits, thermal limit, die temperature
+Only needed for the CPU tuning screen: power limits, thermal limit, die temperature
 and adaptive mode. Everything else works without it.
 
 Easiest way: launch OmniHub and click **Install the PawnIO driver** on the
@@ -139,7 +139,7 @@ while it is missing, so tuning comes online on its own once it registers.
 
 ### 6. Start it with Windows (recommended)
 
-Open the **Settings** tab and turn on **Launch when you sign in**.
+Open **Settings** and turn on **Launch when you sign in**.
 
 This matters more than it sounds: with OmniHub closed, your fans are back on
 the stock BIOS curve, including the 0%-while-hot behaviour described above.
@@ -192,10 +192,27 @@ temperature, throttling state, and GPU mode/power exactly as the BIOS
 reports them, with no interpretation layered on top -- the ground truth
 needed to confirm the command layout matches before relying on the curve.
 
-## Tabs
+## Workspaces
 
-Seven in the sidebar. Four of them group related screens, so a measurement and
-the evidence behind it stay together rather than ending up two clicks apart.
+The sidebar is a list you build. A **workspace** is a name and an ordered set of
+panels laid out across twelve columns; **EDIT LAYOUT** at the bottom of the
+sidebar adds, renames, reorders and resizes them, and **1**-**9** switch between
+the first nine. The arrangement lives in `%AppData%\OmniHub\workspaces.json`.
+
+Editing is a mode rather than panels being draggable wherever they sit: what you
+do ninety-nine times out of a hundred is read a number off a screen, and a layout
+a slightly long click can destroy while you do that is worse than one that cannot
+be rearranged at all.
+
+**Nothing has to be arranged.** A fresh install ships the seven screens below, in
+this order, each filling its own workspace -- so if you never open the editor you
+see exactly the interface described here. A layout that cannot be read falls back
+to these rather than failing to open.
+
+### The screens
+
+Four of them group related sub-screens, so a measurement and the evidence behind
+it stay together rather than ending up two clicks apart.
 
 - **Dashboard** -- live temperature, fan duty and commanded level on one
   multi-series chart; what is currently holding the processor back, and which
@@ -234,6 +251,27 @@ the evidence behind it stay together rather than ending up two clicks apart.
   an admin-required app), close-to-tray behaviour, logging, the predictive
   lead, and the theme.
 
+### The smaller panels
+
+Whole screens are not the only thing a workspace can hold, and they are not what
+makes building one worthwhile:
+
+- **A single reading** -- any of twelve (die and GPU temperature, both fans,
+  package and GPU power, GPU and CPU clock, GPU and CPU load, memory in use, and
+  how close the binding limit is), as a card with its recent trend beside it.
+  The two temperatures and the limit colour their figure past a threshold;
+  nothing else does, because a wattage is not good or bad on its own.
+- **A chart** -- temperature against the level that was commanded, GPU
+  temperature against GPU power, package power, or how hard the binding
+  constraint was being pressed. One hour, read back from the log, refreshed
+  every thirty seconds, with gaps drawn as gaps.
+- **What is limiting the machine** -- the same strip the Dashboard carries, of
+  all five constraints as percentages of their own limits.
+
+A panel from a version you no longer have is kept and drawn as a named
+placeholder rather than dropped, so opening your layout in an older build and
+closing it does not quietly destroy it.
+
 ## Overlay
 
 **Ctrl+Alt+O** toggles a small always-on-top readout that stays visible over a
@@ -253,7 +291,7 @@ visible while something is running full-screen.
 
 By default, closing the window minimizes to the system tray and keeps the
 fan service running (that's the point -- the fix only holds while the app is
-alive). The Settings tab lets you change the X button to fully exit instead.
+alive). Settings lets you change the X button to fully exit instead.
 Either way, use the tray icon's **Exit** (or the X button, if set to exit) to
 fully quit; this always hands fan control back to the BIOS's own automatic
 mode first. Never quit an OmniHub headless process (`-RunHeadless`) with
@@ -285,11 +323,11 @@ you have to remember.
   map onto that band rather than onto the raw byte's full 0-255 span. The
   earlier figure of 20-55 was a borrowed community bound, and its floor cost a
   full 1000 RPM of available quiet. Other boards are expected to differ, which
-  is what the Fans tab's calibration tool and per-model profiles are for.
+  is what the Fans screen's calibration tool and per-model profiles are for.
   GetFanLevel is a real tachometer read rather than an echo of what was
   commanded -- but where the board returns fewer bytes than asked for, the
   missing levels are reported as unavailable rather than as a fan at zero.
-- Per-model curve tuning is manual (via the Fans tab, its Manual Calibration
+- Per-model curve tuning is manual (via the Fans screen, its Manual Calibration
   tool, or `-Probe` output) -- there's no bundled database of per-model
   presets.
 - `SystemController.GetThrottling()` is not independently verified against

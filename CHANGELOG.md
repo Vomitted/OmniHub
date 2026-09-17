@@ -2,7 +2,7 @@
 
 Notable changes to OmniHub.
 
-The **published GitHub releases are the authoritative changelog** — the app's Settings tab and
+The **published GitHub releases are the authoritative changelog** — the app's Settings screen and
 the website both read that list directly, so neither can drift from what actually shipped. This
 file is the same history for anyone reading the repository, plus the unreleased work sitting on
 `main`.
@@ -15,6 +15,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 ## [Unreleased]
 
 ### Added
+
+- **The interface is a layout you build.** The sidebar's seven fixed tabs are a list of
+  *workspaces*: a name and an ordered set of panels across twelve columns, edited through an
+  explicit mode and switched with the number keys. A fresh install ships the same seven screens
+  in the same order, so an interface nobody rearranges is the one that was there before.
+- **Panels smaller than a whole screen**, which is what makes arranging one worthwhile: any of
+  twelve single readings as a card with its recent trend, four charts read back from the log, and
+  the strip that names what is limiting the machine. A panel from a version you no longer have is
+  kept and drawn as a named placeholder rather than dropped.
+- **A separate fan curve on battery**, and **a separate curve for the second fan**, each
+  independently switchable and both off by default. The machine's thermal behaviour and the
+  tolerance for noise are different on battery, and one curve has to compromise between them.
+- **A check that asks whether this board drives its two fans separately**, by holding them apart
+  for forty seconds and reading them back. A second curve the firmware quietly collapses into one
+  would be a control that appears to work and does nothing, and the evidence short of an
+  experiment points at independence without settling it.
+- **The overlay carries what is limiting the machine**, plus CPU load, peak core clock and memory
+  in use — and an optional trend line per row, scaled to its own recent range, with a size
+  control. It is the only surface visible while the game that prompted the question is running.
+- **The GPU screen shows what the card is doing** — temperature, power, clock and utilisation,
+  with the source named beside them, because NVML, nvidia-smi and the Windows counters do not
+  agree. It previously showed the flags that set the ceiling and nothing about whether the card
+  ever reached it.
+- **The thermal log records five more columns**: the discrete GPU's temperature and power, the
+  package's sustained draw, and which of the five constraints was binding with how hard. Nothing
+  had ever recorded what the GPU was doing, or what was holding the machine back, so neither
+  question could be asked about the past.
 
 - **Which limit has been binding, over time.** The Dashboard could say what was holding the
   processor back at this instant. It now says what has been holding it back across the last
@@ -51,6 +78,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   the per-processor clocks, which do.
 
 ### Fixed
+
+- **A stopped fan that was never stopped.** The log recorded fan 2 at zero for stretches of up to
+  twenty-eight minutes while the machine was hot, and the user could hear no difference. Across
+  192,791 readings the pattern turned out to be a single pair — fan 1 at exactly 27 beside fan 2
+  at zero — held whatever was commanded, at die temperatures up to 98.6 °C, and spiking five-fold
+  against its neighbouring values. It is the board reporting that it has no measurement, and it
+  was being rendered as 2700 RPM and 0 RPM. The pair is now reported as no reading; the value 27
+  on its own is ordinary and is kept, and two fans genuinely at rest are still reported, because
+  that is the fault this application exists to catch.
+- **CPU load was about to start measuring the wrong window.** The previous counter read was held
+  in a static, which is correct with one caller and wrong the moment a second appears on its own
+  timer: each call returns the busy time since *whichever* readout asked last. Found before adding
+  the second caller rather than after; the sampler is per-instance now.
 
 - **A stopped fan was being manufactured out of padding.** The vendor WMI call pads its reply to
   the buffer size requested, so a board answering with fewer bytes left zeroes behind, and every
