@@ -211,7 +211,7 @@ internal static class Program
             try { watts = tuning?.ReadPower()?.StapmWatts; } catch { }
 
             double? ghz = null;
-            try { ghz = SystemPerfReader.Read()?.CpuClockGHz; } catch { }
+            try { ghz = new SystemPerfReader().Read()?.CpuClockGHz; } catch { }   // only the clock is wanted here, and that part is stateless
 
             int? rpm = null;
             try { var levels = fan.GetFanLevel(); if (levels.Length > 0) rpm = FanService.RawToRpm(levels[0]); } catch { }

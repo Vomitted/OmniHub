@@ -21,7 +21,7 @@ public sealed record SystemPerf(double? CpuClockGHz, double? CpuLoadPercent, dou
 /// GetSystemTimes is the same source Task Manager reads: three counters, one syscall, no
 /// provider to spin up and no instance to marshal across the WMI boundary.
 /// </summary>
-public static class CpuLoad
+public sealed class CpuLoad
 {
     [StructLayout(LayoutKind.Sequential)]
     private struct FileTime
@@ -36,20 +36,27 @@ public static class CpuLoad
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetSystemTimes(out FileTime idle, out FileTime kernel, out FileTime user);
 
-    private static readonly object Gate = new();
-    private static ulong _idle, _kernel, _user;
-    private static bool _seeded;
+    private readonly object _gate = new();
+    private ulong _idle, _kernel, _user;
+    private bool _seeded;
 
     /// <summary>
-    /// Busy percentage since the previous call, or null when there has not been one.
+    /// Busy percentage since this sampler's previous call, or null when there has not been one.
     ///
     /// Null on the first call rather than zero. These are cumulative counters since boot, so a
     /// single reading says nothing about now -- and reporting zero would put an idle machine on
     /// screen at the exact moment somebody opened the dashboard to find out why theirs was not.
+    ///
+    /// The previous sample is held per instance, not in a static. It used to be shared, which was
+    /// invisible while the dashboard was the only caller and wrong the moment a second one
+    /// appeared: each call consumes the window since ANY caller's last call, so a second readout
+    /// on its own timer would report busy time over whatever few milliseconds happened to have
+    /// passed since the first one asked. Both numbers would be arithmetically correct and neither
+    /// would be a measurement of what its own label claimed.
     /// </summary>
-    public static double? Percent()
+    public double? Percent()
     {
-        lock (Gate)
+        lock (_gate)
         {
             if (!GetSystemTimes(out FileTime idle, out FileTime kernel, out FileTime user))
                 return null;
@@ -62,7 +69,7 @@ public static class CpuLoad
                 return null;
             }
 
-            double? percent = Percent(nowIdle - _idle, nowKernel - _kernel, nowUser - _user);
+            double? percent = Compute(nowIdle - _idle, nowKernel - _kernel, nowUser - _user);
             (_idle, _kernel, _user) = (nowIdle, nowKernel, nowUser);
 
             return percent;
@@ -76,7 +83,7 @@ public static class CpuLoad
     /// forgetting it gives an idle machine a load near fifty per cent, which looks entirely
     /// plausible. Total is kernel plus user; busy is total less idle.
     /// </summary>
-    internal static double? Percent(ulong idleDelta, ulong kernelDelta, ulong userDelta)
+    internal static double? Compute(ulong idleDelta, ulong kernelDelta, ulong userDelta)
     {
         ulong total = kernelDelta + userDelta;
 
@@ -89,12 +96,6 @@ public static class CpuLoad
         if (idleDelta > total) return null;
 
         return (total - idleDelta) * 100.0 / total;
-    }
-
-    /// <summary>Forgets the previous sample, so the next call seeds again. For tests.</summary>
-    internal static void Reset()
-    {
-        lock (Gate) _seeded = false;
     }
 }
 
@@ -111,9 +112,12 @@ public static class CpuLoad
 /// No GPU load, VRAM or clock here deliberately: that lives in GpuTelemetry, where it names its
 /// own source.
 /// </summary>
-public static class SystemPerfReader
+public sealed class SystemPerfReader
 {
-    public static SystemPerf? Read()
+    // One sampler per reader, so two readouts on two timers each measure their own window.
+    private readonly CpuLoad _load = new();
+
+    public SystemPerf? Read()
     {
         try
         {
@@ -138,7 +142,7 @@ public static class SystemPerfReader
 
             return new SystemPerf(
                 clockGHz,
-                CpuLoad.Percent(),
+                _load.Percent(),
                 (totalBytes - availableBytes) / BytesPerGB,
                 totalBytes / BytesPerGB);
         }

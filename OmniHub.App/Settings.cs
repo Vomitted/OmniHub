@@ -131,6 +131,23 @@ public sealed class AppSettings
     /// </summary>
     public List<string> OverlayMetrics { get; set; } = new() { "cpu", "gpu", "fan", "pkg" };
 
+    /// <summary>
+    /// Figure size in the overlay, 0.7 to 2.0. Clamped on use, like the opacity above.
+    ///
+    /// One control rather than a font picker: the overlay has exactly two type sizes and they
+    /// have to stay in proportion to each other and to the row height, so the useful choice is
+    /// how big the card is, not which parts of it are.
+    /// </summary>
+    public double OverlayScale { get; set; } = 1.0;
+
+    /// <summary>
+    /// Whether each row carries a small trend line beside its number.
+    ///
+    /// Off by default, because it widens the card, and the card is drawn over whatever the user
+    /// is actually doing.
+    /// </summary>
+    public bool OverlaySparklines { get; set; }
+
     /// <summary>User-defined tuning profiles, saved from the Tuning tab's sliders.</summary>
     public List<AmdTuningProfile> CustomProfiles { get; set; } = new();
 

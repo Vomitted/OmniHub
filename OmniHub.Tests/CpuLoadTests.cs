@@ -16,12 +16,12 @@ public class CpuLoadTests
     /// <summary>A fully idle interval is zero per cent, not fifty.</summary>
     [Fact]
     public void AnIdleIntervalIsZero() =>
-        Assert.Equal(0.0, CpuLoad.Percent(idleDelta: 1000, kernelDelta: 1000, userDelta: 0)!.Value, 3);
+        Assert.Equal(0.0, CpuLoad.Compute(idleDelta: 1000, kernelDelta: 1000, userDelta: 0)!.Value, 3);
 
     /// <summary>An interval with no idle time at all is a hundred per cent.</summary>
     [Fact]
     public void AFullyBusyIntervalIsAHundred() =>
-        Assert.Equal(100.0, CpuLoad.Percent(idleDelta: 0, kernelDelta: 400, userDelta: 600)!.Value, 3);
+        Assert.Equal(100.0, CpuLoad.Compute(idleDelta: 0, kernelDelta: 400, userDelta: 600)!.Value, 3);
 
     /// <summary>
     /// Half idle is half, with the idle ticks counted once rather than twice.
@@ -32,12 +32,12 @@ public class CpuLoadTests
     /// </summary>
     [Fact]
     public void KernelTimeAlreadyContainsIdleTime() =>
-        Assert.Equal(50.0, CpuLoad.Percent(idleDelta: 500, kernelDelta: 800, userDelta: 200)!.Value, 3);
+        Assert.Equal(50.0, CpuLoad.Compute(idleDelta: 500, kernelDelta: 800, userDelta: 200)!.Value, 3);
 
     /// <summary>Two reads inside one clock tick divide nothing, and say so.</summary>
     [Fact]
     public void NoElapsedTimeIsNoReading() =>
-        Assert.Null(CpuLoad.Percent(idleDelta: 0, kernelDelta: 0, userDelta: 0));
+        Assert.Null(CpuLoad.Compute(idleDelta: 0, kernelDelta: 0, userDelta: 0));
 
     /// <summary>
     /// More idle than total is impossible, so it is reported as no reading.
@@ -48,7 +48,7 @@ public class CpuLoadTests
     /// </summary>
     [Fact]
     public void AnImpossibleCounterIsNotANegativeLoad() =>
-        Assert.Null(CpuLoad.Percent(idleDelta: 2000, kernelDelta: 1000, userDelta: 0));
+        Assert.Null(CpuLoad.Compute(idleDelta: 2000, kernelDelta: 1000, userDelta: 0));
 
     /// <summary>
     /// The first reading has nothing to compare against and says so.
@@ -60,23 +60,22 @@ public class CpuLoadTests
     [Fact]
     public void TheFirstReadingIsNull()
     {
-        CpuLoad.Reset();
-        Assert.Null(CpuLoad.Percent());
+        Assert.Null(new CpuLoad().Percent());
     }
 
     /// <summary>The second reading against this machine is a real percentage.</summary>
     [Fact]
     public void TheSecondReadingIsAPercentage()
     {
-        CpuLoad.Reset();
-        CpuLoad.Percent();
+        var sampler = new CpuLoad();
+        sampler.Percent();
 
         // Something has to have elapsed between the two calls, and running the tests is itself
         // work, so this is not a contrived load -- just enough ticks to divide by.
         var spin = Stopwatch.StartNew();
         while (spin.ElapsedMilliseconds < 30) { }
 
-        if (CpuLoad.Percent() is { } load)
+        if (sampler.Percent() is { } load)
             Assert.InRange(load, 0, 100);
     }
 
@@ -90,10 +89,11 @@ public class CpuLoadTests
     [Fact]
     public void TheWholeReadIsNowhereNearAWmiQuery()
     {
-        SystemPerfReader.Read();   // warm any one-time cost
+        var reader = new SystemPerfReader();
+        reader.Read();   // warm any one-time cost
 
         var clock = Stopwatch.StartNew();
-        for (int i = 0; i < 5; i++) SystemPerfReader.Read();
+        for (int i = 0; i < 5; i++) reader.Read();
         clock.Stop();
 
         Assert.True(clock.ElapsedMilliseconds < 100,
@@ -109,7 +109,7 @@ public class CpuLoadTests
     [Fact]
     public void TheRealMachineReads()
     {
-        var perf = SystemPerfReader.Read();
+        var perf = new SystemPerfReader().Read();
         if (perf is null) return;
 
         Assert.InRange(perf.MemoryTotalGB, 0.5, 4096);
@@ -120,5 +120,32 @@ public class CpuLoadTests
 
         if (perf.CpuLoadPercent is { } load)
             Assert.InRange(load, 0, 100);
+    }
+
+    /// <summary>
+    /// Two samplers do not consume each other's windows.
+    ///
+    /// The previous sample used to be a static, which was harmless while the dashboard was the
+    /// only caller. Adding a second readout on its own timer would have made every call return
+    /// the busy time since whichever readout asked last -- so the overlay, sampling every five
+    /// seconds, would have reported load over the few milliseconds since the dashboard's tick.
+    /// </summary>
+    [Fact]
+    public void TwoSamplersEachKeepTheirOwnWindow()
+    {
+        var first = new CpuLoad();
+        var second = new CpuLoad();
+
+        Assert.Null(first.Percent());        // each seeds independently
+        Assert.Null(second.Percent());
+
+        var spin = Stopwatch.StartNew();
+        while (spin.ElapsedMilliseconds < 30) { }
+
+        // With shared state the first of these would consume the window and the second would
+        // divide by a near-zero delta, which returns null from Compute rather than a number.
+        // Both must produce a reading.
+        Assert.NotNull(first.Percent());
+        Assert.NotNull(second.Percent());
     }
 }

@@ -2,10 +2,12 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 using OmniHub.Core.Fan;
 using OmniHub.Core.Hardware;
 using OmniHub.Core.Optimize;
+using OmniHub.Core.Telemetry;
 
 namespace OmniHub.App.Wpf;
 
@@ -41,11 +43,6 @@ public partial class OverlayWindow : Window
     private readonly AppSettings _settings;
     private AmdTuning? _tuning;
     private DispatcherTimer? _powerTimer;
-    private string _powerLabel = "--";
-
-    // GPU figures, refreshed on the same slow timer as package power and cached here.
-    // Never read on the UI thread: GpuTelemetry spawns nvidia-smi on a cache miss.
-    private string _gpuTempLabel = "--", _gpuPowerLabel = "--", _gpuClockLabel = "--", _gpuLoadLabel = "--";
 
     public OverlayWindow(HardwareContext ctx, AppSettings settings)
     {
@@ -117,9 +114,31 @@ public partial class OverlayWindow : Window
         ("gpuw",    "GPU W"),
         ("gpuclk",  "GPU MHz"),
         ("gpuload", "GPU %"),
+
+        // The one that answers "why is this slow", from a snapshot the power timer already takes.
+        // The tray flyout has carried it for a while; the overlay is the surface it belongs on,
+        // because it is the only one visible while the game that prompted the question is running.
+        ("limit",   "LIMIT"),
+
+        ("cpuload", "CPU %"),
+        ("cpuclk",  "CPU GHz"),
+        ("mem",     "MEM"),
     };
 
     private readonly Dictionary<string, TextBlock> _valueCells = new();
+    private readonly Dictionary<string, System.Windows.Shapes.Path> _sparkCells = new();
+
+    /// <summary>
+    /// One rolling window per metric, kept whether or not sparklines are switched on.
+    ///
+    /// Kept regardless because the alternative is a blank strip for the first three minutes after
+    /// the user turns them on, which reads as broken.
+    /// </summary>
+    private readonly Dictionary<string, Sparkline> _history = new();
+
+    // Its own sampler: CPU load is the delta since this reader's previous call, and the dashboard
+    // keeps a second one on a faster timer.
+    private readonly SystemPerfReader _perf = new();
 
     /// <summary>
     /// Rebuilds the rows and re-applies opacity. Called at construction and whenever the
@@ -132,43 +151,109 @@ public partial class OverlayWindow : Window
         // overlay that is still there, still click-through, and impossible to find.
         Card.Opacity = Math.Clamp(_settings.OverlayOpacity, 0.2, 1.0);
 
+        // Same reasoning as opacity. The lower bound is where the figures stop being readable at
+        // arm's length on this panel; the upper is where the card starts covering a useful part
+        // of the screen it is drawn over.
+        double scale = Math.Clamp(_settings.OverlayScale, 0.7, 2.0);
+
         MetricRows.Children.Clear();
         _valueCells.Clear();
+        _sparkCells.Clear();
+
+        SourceLabel.FontSize = 10 * scale;
+        StateText.FontSize = 10.5 * scale;
 
         foreach (var key in _settings.OverlayMetrics)
         {
             var metric = AvailableMetrics.FirstOrDefault(m => m.Key == key);
             if (metric.Key is null) continue;   // unknown key from a newer build: skip, never throw
 
-            var grid = new Grid { Margin = new Thickness(0, 0, 0, 3) };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
+            var grid = new Grid { Margin = new Thickness(0, 0, 0, 3 * scale) };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58 * scale) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             grid.Children.Add(new TextBlock
             {
                 Text = metric.Label,
                 Style = (Style)FindResource("MutedText"),
-                FontSize = 11,
+                FontSize = 11 * scale,
                 VerticalAlignment = VerticalAlignment.Center,
             });
 
             var value = new TextBlock
             {
                 Style = (Style)FindResource("BigNumberText"),
-                FontSize = 17,
+                FontSize = 17 * scale,
                 Text = "--",
             };
             Grid.SetColumn(value, 1);
             grid.Children.Add(value);
 
             _valueCells[key] = value;
+            _history.TryAdd(key, new Sparkline());
+
+            if (_settings.OverlaySparklines)
+            {
+                var spark = new System.Windows.Shapes.Path
+                {
+                    Stroke = (Brush)FindResource("AccentBrush"),
+                    StrokeThickness = 1.2,
+                    Width = SparkWidth * scale,
+                    Height = SparkHeight * scale,
+                    Margin = new Thickness(8 * scale, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    SnapsToDevicePixels = true,
+                };
+                Grid.SetColumn(spark, 2);
+                grid.Children.Add(spark);
+                _sparkCells[key] = spark;
+            }
+
             MetricRows.Children.Add(grid);
         }
+
+        // The rows just changed shape, so whatever is already in the windows should be drawn at
+        // the new size rather than waiting for the next tick to look right.
+        foreach (var key in _sparkCells.Keys) DrawSpark(key);
     }
 
-    private void Set(string key, string text)
+    private const double SparkWidth = 46, SparkHeight = 14;
+
+    /// <summary>
+    /// Sets one row: the number that is drawn, and the value behind it for the rolling window.
+    ///
+    /// The two are separate arguments because the text is formatted for reading -- "82.4 degrees",
+    /// "EDC 94%" -- and the window needs the quantity. Parsing the label back out would be the
+    /// kind of shortcut that works until a unit changes.
+    /// </summary>
+    private void Show(string key, string text, double? value)
     {
         if (_valueCells.TryGetValue(key, out var cell)) cell.Text = text;
+
+        if (!_history.TryGetValue(key, out var history)) return;
+
+        history.Push(value);
+        DrawSpark(key);
+    }
+
+    private void DrawSpark(string key)
+    {
+        if (!_sparkCells.TryGetValue(key, out var path) || !_history.TryGetValue(key, out var history)) return;
+
+        var geometry = new PathGeometry();
+
+        foreach (var segment in history.Segments(path.Width, path.Height))
+        {
+            var figure = new PathFigure { StartPoint = new Point(segment[0].X, segment[0].Y), IsFilled = false };
+            for (int i = 1; i < segment.Count; i++)
+                figure.Segments.Add(new LineSegment(new Point(segment[i].X, segment[i].Y), isStroked: true));
+
+            geometry.Figures.Add(figure);
+        }
+
+        geometry.Freeze();
+        path.Data = geometry;
     }
 
     public void Update(Reading r, FanService service)
@@ -188,20 +273,17 @@ public partial class OverlayWindow : Window
         // appending a "+" to it does not make it one.
         bool ceiling = !fromDie && SystemController.IsAtSensorCeiling(tempC);
 
-        Set("cpu", ceiling ? "--" : fromDie ? $"{displayC:0.0}°" : $"{Math.Round(displayC):0}°");
+        Show("cpu",
+             ceiling ? "--" : fromDie ? $"{displayC:0.0}°" : $"{Math.Round(displayC):0}°",
+             ceiling ? null : displayC);
         SourceLabel.Text = fromDie ? "OMNIHUB · DIE" : "OMNIHUB · ACPI";
 
-        Set("fan", FanService.RpmText(r.FanLevel1));
-        Set("fan2", FanService.RpmText(r.FanLevel2));
-        Set("pkg", _powerLabel);
+        Show("fan", FanService.RpmText(r.FanLevel1), r.FanLevel1 is { } f1 ? FanService.RawToRpm(f1) : null);
+        Show("fan2", FanService.RpmText(r.FanLevel2), r.FanLevel2 is { } f2 ? FanService.RawToRpm(f2) : null);
 
-        // GPU values come from the slow timer's cached snapshot, never read on this thread:
-        // a cache miss spawns nvidia-smi, and 53 ms of process startup on the UI thread is a
-        // visible stutter in something drawn over a game.
-        Set("gpu", _gpuTempLabel);
-        Set("gpuw", _gpuPowerLabel);
-        Set("gpuclk", _gpuClockLabel);
-        Set("gpuload", _gpuLoadLabel);
+        // Package power, the GPU and the system figures are not read here. They arrive on the slow
+        // timer and write their own rows, because a cache miss in GpuTelemetry spawns nvidia-smi
+        // and 53 ms of process startup on the UI thread is a visible stutter over a game.
 
         StateText.Text = r.Throttling == ThrottlingState.On ? "THROTTLING"
             : r.MaxFanActive ? "MAX FAN"
@@ -228,29 +310,46 @@ public partial class OverlayWindow : Window
 
             Task.Run(() =>
             {
-                string power = "--";
+                PowerSnapshot? snapshot = null;
                 if (tuning is not null)
                 {
-                    try { power = tuning.ReadPower() is { } p ? $"{p.StapmWatts:0.0}W" : "--"; }
-                    catch { power = "--"; }
+                    try { snapshot = tuning.ReadPower(); } catch { }
                 }
 
-                var gpu = GpuTelemetry.Read();
-                return (power, gpu);
+                // Three cheap syscalls -- kernel tick counters, the per-processor clocks and
+                // GlobalMemoryStatusEx. Off the UI thread anyway, since it shares a task with
+                // the two that genuinely cost something.
+                SystemPerf? perf = null;
+                try { perf = _perf.Read(); } catch { }
+
+                return (snapshot, gpu: GpuTelemetry.Read(), perf);
             }).ContinueWith(t =>
             {
                 if (t.IsFaulted) return;
-                var (power, gpu) = t.Result;
+                var (snapshot, gpu, perf) = t.Result;
 
-                _powerLabel = power;
+                // Null is an ordinary answer throughout -- no NVIDIA GPU, no SMU, a failed query.
+                // Each renders "--" rather than holding the last value, so a dead reading cannot
+                // sit on screen looking live.
+                var limit = snapshot?.TightestLimit();
 
-                // Null is an ordinary answer -- no NVIDIA GPU, or a failed query. It renders
-                // as "--" rather than holding the last value, so a dead reading cannot sit on
-                // screen looking live.
-                _gpuTempLabel  = gpu?.TempC is double gt ? $"{Math.Round(gt):0}°" : "--";
-                _gpuPowerLabel = gpu?.PowerWatts is double gw ? $"{gw:0.0}W" : "--";
-                _gpuClockLabel = gpu?.ClockMhz is int gc ? $"{gc}" : "--";
-                _gpuLoadLabel  = gpu?.UtilisationPercent is int gu ? $"{gu}%" : "--";
+                Dispatcher.BeginInvoke(() =>
+                {
+                    Show("pkg", snapshot is { } p ? $"{p.StapmWatts:0.0}W" : "--", snapshot?.StapmWatts);
+
+                    Show("limit",
+                         limit is { } l ? $"{l.Name} {l.Percent:0}%" : "--",
+                         limit?.Percent);
+
+                    Show("gpu",     gpu?.TempC is double gt ? $"{Math.Round(gt):0}°" : "--", gpu?.TempC);
+                    Show("gpuw",    gpu?.PowerWatts is double gw ? $"{gw:0.0}W" : "--", gpu?.PowerWatts);
+                    Show("gpuclk",  gpu?.ClockMhz is int gc ? $"{gc}" : "--", gpu?.ClockMhz);
+                    Show("gpuload", gpu?.UtilisationPercent is int gu ? $"{gu}%" : "--", gpu?.UtilisationPercent);
+
+                    Show("cpuload", perf?.CpuLoadPercent is double cl ? $"{Math.Round(cl):0}%" : "--", perf?.CpuLoadPercent);
+                    Show("cpuclk",  perf?.CpuClockGHz is double cc ? $"{cc:0.00}" : "--", perf?.CpuClockGHz);
+                    Show("mem",     perf is { } m ? $"{m.MemoryUsedGB:0.0}G" : "--", perf?.MemoryUsedGB);
+                });
             }, TaskScheduler.Default);
         };
 

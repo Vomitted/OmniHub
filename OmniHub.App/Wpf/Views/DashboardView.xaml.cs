@@ -488,12 +488,16 @@ public partial class DashboardView : UserControl
     // thread. Runs the query on a background thread and only marshals the cheap
     // string updates back. _perfRefreshInFlight skips overlapping calls rather
     // than queuing them up if a query is ever slow to return.
+    // Its own sampler: CPU load is a delta against this reader's previous call, and the overlay
+    // keeps a second one on a different timer.
+    private readonly SystemPerfReader _perfReader = new();
+
     private void RefreshPerf()
     {
         if (_perfRefreshInFlight) return;
         _perfRefreshInFlight = true;
 
-        Task.Run(() => SystemPerfReader.Read()).ContinueWith(t =>
+        Task.Run(() => _perfReader.Read()).ContinueWith(t =>
         {
             _perfRefreshInFlight = false;
             SystemPerf? perf = t.IsCompletedSuccessfully ? t.Result : null;

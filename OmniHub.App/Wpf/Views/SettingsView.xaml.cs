@@ -199,6 +199,9 @@ public partial class SettingsView : UserControl
         _suppressOverlayEvents = true;
         OverlayOpacitySlider.Value = Math.Clamp(_settings.OverlayOpacity, 0.2, 1.0);
         OverlayOpacityLabel.Text = $"{OverlayOpacitySlider.Value * 100:0}%";
+        OverlayScaleSlider.Value = Math.Clamp(_settings.OverlayScale, 0.7, 2.0);
+        OverlayScaleLabel.Text = $"{OverlayScaleSlider.Value * 100:0}%";
+        OverlaySparklineToggle.IsChecked = _settings.OverlaySparklines;
         _suppressOverlayEvents = false;
 
         // One checkbox per available metric, ticked if the user has it. Overlay order follows
@@ -229,6 +232,25 @@ public partial class SettingsView : UserControl
 
         _settings.OverlayOpacity = OverlayOpacitySlider.Value;
         OverlayOpacityLabel.Text = $"{OverlayOpacitySlider.Value * 100:0}%";
+        _settings.Save();
+        Owner()?.RefreshOverlayAppearance();
+    }
+
+    private void OverlayScale_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_suppressOverlayEvents || OverlayScaleLabel is null) return;
+
+        _settings.OverlayScale = OverlayScaleSlider.Value;
+        OverlayScaleLabel.Text = $"{OverlayScaleSlider.Value * 100:0}%";
+        _settings.Save();
+        Owner()?.RefreshOverlayAppearance();
+    }
+
+    private void OverlaySparklines_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressOverlayEvents) return;
+
+        _settings.OverlaySparklines = OverlaySparklineToggle.IsChecked == true;
         _settings.Save();
         Owner()?.RefreshOverlayAppearance();
     }

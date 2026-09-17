@@ -101,7 +101,7 @@
                             <StackPanel Grid.Column="0" Margin="0,0,16,0">
                                 <TextBlock Text="Always-on-top telemetry readout" Style="{StaticResource SettingTitle}"/>
                                 <TextBlock Style="{StaticResource SettingNote}"
-                                           Text="Die temperature, fan RPM and package power, in a corner of the screen. Clicks pass straight through it and it stays out of Alt-Tab. It draws as an ordinary desktop window, so it shows over borderless and windowed games but not over true fullscreen exclusive ones, which composite through the display driver and need a graphics-API hook such as RTSS."/>
+                                           Text="Temperature, fans, power, clocks and what is currently limiting the machine, in a corner of the screen. Clicks pass straight through it and it stays out of Alt-Tab. It draws as an ordinary desktop window, so it shows over borderless and windowed games but not over true fullscreen exclusive ones, which composite through the display driver and need a graphics-API hook such as RTSS."/>
                             </StackPanel>
                             <CheckBox Grid.Column="1" x:Name="OverlayToggle" Style="{StaticResource ToggleSwitchStyle}"
                                       VerticalAlignment="Center" Checked="OverlayToggle_Changed" Unchecked="OverlayToggle_Changed"/>
@@ -118,6 +118,23 @@
                                     VerticalAlignment="Center" Style="{StaticResource OmniSliderStyle}"
                                     ValueChanged="OverlayOpacity_Changed"/>
                             <TextBlock x:Name="OverlayOpacityLabel" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="46"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <TextBlock Text="Size" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="52"/>
+                            <Slider x:Name="OverlayScaleSlider" Width="200" Minimum="0.7" Maximum="2.0"
+                                    VerticalAlignment="Center" Style="{StaticResource OmniSliderStyle}"
+                                    ValueChanged="OverlayScale_Changed"/>
+                            <TextBlock x:Name="OverlayScaleLabel" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="46"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <TextBlock Text="Trend" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="52"/>
+                            <CheckBox x:Name="OverlaySparklineToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                      VerticalAlignment="Center"
+                                      Checked="OverlaySparklines_Changed" Unchecked="OverlaySparklines_Changed"/>
+                            <TextBlock Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                       Text="A short trend line beside each number, scaled to its own recent range."/>
                         </StackPanel>
 
                         <TextBlock Text="What it shows" Style="{StaticResource SettingTitle}" Margin="0,16,0,2"/>
