@@ -66,6 +66,25 @@
                     </StackPanel>
                 </Grid>
             </Border>
+
+            <TextBlock Text="SUPPORT BUNDLE" Style="{StaticResource SubHeadingText}" Margin="0,18,0,8"/>
+            <Border Style="{StaticResource CardBorderStyle}">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                                   MaxWidth="700" TextWrapping="Wrap"
+                                   Text="Collects the thermal trace, the power transitions, the poll timings, the crash log, the firmware report above and your settings into one archive. It is the same list assembled by hand every time this machine has needed diagnosing, which is what makes it worth a button."/>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                                   MaxWidth="700" TextWrapping="Wrap"
+                                   Text="The archive includes your settings file, which carries the paths of any applications you have given a graphics preference. A manifest inside lists everything collected. Nothing is sent anywhere -- the file is written to disk and what happens to it next is your decision."/>
+                        <Button x:Name="SaveBundleBtn" Content="Save support bundle" Width="200" Height="36"
+                                HorizontalAlignment="Left" Style="{StaticResource FlatButtonStyle}" Click="SaveBundleBtn_Click"/>
+                        <TextBlock x:Name="BundleStatus" Style="{StaticResource MutedText}" FontSize="11"
+                                   Margin="0,10,0,0" TextWrapping="Wrap" MaxWidth="760"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

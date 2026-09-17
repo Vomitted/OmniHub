@@ -436,4 +436,88 @@ public partial class DiagnosticsView : UserControl
                 : t.Result;
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
+
+    /// <summary>
+    /// Writes everything needed to diagnose this machine to one archive.
+    ///
+    /// The user picks where. Somewhere convenient is offered as a default rather than chosen for
+    /// them, because the archive carries their settings and their machine's activity times, and a
+    /// file like that should land where they said and nowhere else.
+    /// </summary>
+    private void SaveBundleBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Save OmniHub support bundle",
+            FileName = $"omnihub-support-{DateTime.Now:yyyy-MM-dd-HHmmss}.zip",
+            DefaultExt = ".zip",
+            Filter = "Zip archive (*.zip)|*.zip",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        SaveBundleBtn.IsEnabled = false;
+        BundleStatus.Text = "Collecting...";
+
+        // The notes are gathered here rather than inside the bundle, because this is where the
+        // hardware has already been asked. Building an archive should not become a reason to
+        // start another round of BIOS round trips.
+        var notes = new Dictionary<string, string>
+        {
+            ["capabilities.txt"] = DescribeCapabilities(),
+            ["system.txt"] = DescribeSystem(),
+        };
+
+        string path = dialog.FileName;
+
+        Task.Run(() => SupportBundle.Create(path, notes)).ContinueWith(t =>
+        {
+            SaveBundleBtn.IsEnabled = true;
+
+            if (t.IsFaulted)
+            {
+                BundleStatus.Text = $"The bundle failed: {t.Exception?.GetBaseException().Message}";
+                return;
+            }
+
+            var result = t.Result;
+
+            BundleStatus.Text = result.Error is { Length: > 0 } error
+                ? $"The bundle could not be written: {error}"
+                : $"Wrote {result.Entries.Count} file(s), {result.Bytes / 1024.0 / 1024.0:0.#} MB "
+                  + $"before compression, to {result.Path}. MANIFEST.txt inside lists every one.";
+        }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    /// <summary>The capability rows as text, so the archive carries what the screen shows.</summary>
+    private string DescribeCapabilities()
+    {
+        var text = new System.Text.StringBuilder();
+
+        foreach (var child in CapabilityRows.Children.OfType<Grid>())
+        {
+            var blocks = child.Children.OfType<TextBlock>().ToList();
+            if (blocks.Count >= 2) text.AppendLine($"{blocks[0].Text}: {blocks[1].Text}");
+        }
+
+        return text.Length > 0 ? text.ToString() : "The capability rows had not been built yet.";
+    }
+
+    /// <summary>Model, memory and storage, which is the first thing anybody asks about a machine.</summary>
+    private string DescribeSystem()
+    {
+        var text = new System.Text.StringBuilder();
+
+        text.AppendLine($"{_ctx.Model.Manufacturer} {_ctx.Model.Product}".Trim());
+        text.AppendLine($"Baseboard {_ctx.Model.BaseboardProduct}");
+        text.AppendLine($"{Environment.OSVersion.VersionString}, {Environment.ProcessorCount} logical processors");
+        text.AppendLine();
+        text.AppendLine(SystemInventory.ReadMemory().Describe());
+        text.AppendLine();
+        text.AppendLine(SystemInventory.DescribeStorage(
+            SystemInventory.ReadStorage(out string? driveError), driveError));
+
+        return text.ToString();
+    }
 }
