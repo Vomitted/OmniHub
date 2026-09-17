@@ -82,12 +82,11 @@ public sealed class FanController
 
             // A zero from the cheap method gets checked against the method known to work.
             //
-            // The choice between them is made once, from a single comparison, and then trusted
-            // for the rest of the session -- which is exactly the shape of the fault seen on this
-            // machine: fan 2 reading zero for minutes at a time while fan 1 kept reporting, and
-            // recovering only on restart, when the choice is made afresh. 290 of 1,161 rows in
-            // one afternoon, every one of them with fan 1 at 26 or 27 and the die between 46 and
-            // 82 C.
+            // This was built to explain the zeros seen on this machine, and it did not: both
+            // methods agree on them. The cause turned out to be the sentinel pair documented at
+            // NoReadingFan1 -- the board answering "no measurement" rather than either method
+            // mis-reading one. The check is kept anyway, because a mis-sized buffer producing a
+            // zero is a real failure mode that simply is not the one that was happening here.
             //
             // Costs nothing in the ordinary case: fans at rest genuinely read zero and the two
             // methods agree, so this fires on disagreement rather than on every zero.
@@ -157,9 +156,54 @@ public sealed class FanController
     /// Zero is still returned when the board genuinely reports zero -- that reading is real and
     /// suppressing it would be the opposite mistake, hiding a stall to tidy up a display.
     /// </summary>
+    /// <summary>
+    /// The pair this board returns when it has no fan measurement to give.
+    ///
+    /// Not a guess. Fourteen days of thermal log -- 192,791 readings -- were searched for it after
+    /// the user reported hearing no difference at the times the log claimed a stopped fan, and the
+    /// evidence that it is a sentinel rather than a reading is four-fold:
+    ///
+    ///   * The commanded level during those 6,400 rows is spread flat across the whole range --
+    ///     3, 11, 26, 40 and 52 per cent each account for two to four per cent of them. A fan
+    ///     reading that is identical whether three or fifty-two per cent was commanded is not
+    ///     tracking anything.
+    ///   * The die was above 70 C for 2,401 of them and reached 98.6 C. A genuinely stopped fan
+    ///     at 98.6 C is not a reading, it is an emergency that did not happen.
+    ///   * Fan 1 reads exactly 27 in 15,236 rows against roughly 3,000 each for 26 and 28. A real
+    ///     fan's readings do not spike five-fold at one value.
+    ///   * It holds unchanged for up to 28 minutes at a stretch, 268 separate times.
+    ///
+    /// The value 27 on its own is ordinary -- it pairs with 24 and with 27 in the majority of its
+    /// appearances -- so it is the pair that is rejected, not the number.
+    ///
+    /// This is board-specific (8C2F) and is deliberately not generalised into a profile: one
+    /// board's measured sentinel is evidence, and a table of them would be an invitation to add
+    /// unmeasured entries.
+    /// </summary>
+    internal const byte NoReadingFan1 = 27;
+    internal const byte NoReadingFan2 = 0;
+
+    /// <summary>Whether a reply is the sentinel above rather than a measurement.</summary>
+    internal static bool IsNoReading(byte fan1, byte fan2) => fan1 == NoReadingFan1 && fan2 == NoReadingFan2;
+
+    /// <summary>
+    /// How many times the sentinel has been seen this session.
+    ///
+    /// Counted rather than merely suppressed, because a reading the hardware declined to give is
+    /// worth knowing about -- silently returning nulls would replace a wrong number with an
+    /// unexplained blank, which is better but still not an explanation.
+    /// </summary>
+    public int NoReadingCount { get; private set; }
+
     public (byte? Fan1, byte? Fan2) ReadLevels()
     {
         byte[] data = GetFanLevel(out int reported);
+
+        if (reported > 1 && IsNoReading(data[0], data[1]))
+        {
+            NoReadingCount++;
+            return (null, null);
+        }
 
         return (reported > 0 ? data[0] : null,
                 reported > 1 ? data[1] : null);

@@ -351,6 +351,22 @@ public partial class FansView : UserControl
         Chart.RefreshData();
     }
 
+    /// <summary>
+    /// Says so when the board has declined to report a fan speed.
+    ///
+    /// The readings themselves already render as "--", which is honest but silent about why. This
+    /// is the difference between a blank that looks like a bug in this application and a blank
+    /// that is the firmware not answering.
+    /// </summary>
+    private void RefreshSensorNote()
+    {
+        int declined = _ctx.Fan.NoReadingCount;
+        if (declined == 0) return;
+
+        SensorNote.Visibility = Visibility.Visible;
+        SensorNote.Text = $"THE BOARD DECLINED A FAN READING {declined}× THIS SESSION - SHOWN AS -- RATHER THAN AS A SPEED";
+    }
+
     private void OnHardwareReading(Reading r)
     {
         // BeginInvoke: see DashboardView.OnReading. A synchronous Invoke from the poll thread
@@ -359,6 +375,7 @@ public partial class FansView : UserControl
         Dispatcher.BeginInvoke(() =>
         {
             SetTemperature(r.TemperatureC, r.Throttling == ThrottlingState.On);
+            RefreshSensorNote();
 
             if (_settings.FanControlMode != FanControlMode.Auto)
             {

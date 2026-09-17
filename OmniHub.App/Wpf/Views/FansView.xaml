@@ -80,6 +80,11 @@
                                 <TextBlock Text="%" Style="{StaticResource TileUnit}"/>
                             </StackPanel>
                             <TextBlock x:Name="LevelFoot" Style="{StaticResource TileFoot}"/>
+                            <!-- Collapsed until the board declines a reading at least once, so a
+                                 machine that never does it never sees a line about it. -->
+                            <TextBlock x:Name="SensorNote" Style="{StaticResource TileFoot}"
+                                       Foreground="{StaticResource TextFaintBrush}"
+                                       TextWrapping="Wrap" Margin="0,3,0,0" Visibility="Collapsed"/>
                         </StackPanel>
                     </Grid>
                 </Border>
