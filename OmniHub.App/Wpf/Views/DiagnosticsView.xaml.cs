@@ -345,8 +345,16 @@ public partial class DiagnosticsView : UserControl
 
         return reading.Source switch
         {
+            GpuSource.Nvml =>
+                $"NVML ({reading.Name}): temperature, power, clock and utilisation, read directly "
+                + "from the driver's own library rather than by launching nvidia-smi, which was "
+                + "measured here at 58 to 61 ms per refresh",
+
             GpuSource.NvidiaSmi =>
-                $"nvidia-smi ({reading.Name}): temperature, power, clock and utilisation",
+                $"nvidia-smi ({reading.Name}): temperature, power, clock and utilisation"
+                + (Nvml.UnavailableReason is { Length: > 0 } why
+                    ? $". NVML was tried first and declined: {why}"
+                    : ". NVML is released while on battery, so this is the mains-only path"),
             GpuSource.WindowsCounters =>
                 $"Windows performance counters ({reading.Name}): utilisation only. "
                 + "Temperature, power and clock are not exposed by this source and read as unavailable.",

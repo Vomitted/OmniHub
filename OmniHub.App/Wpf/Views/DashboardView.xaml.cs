@@ -264,6 +264,7 @@ public partial class DashboardView : UserControl
 
     private static string SourceName(GpuSource source) => source switch
     {
+        GpuSource.Nvml => "NVML",
         GpuSource.NvidiaSmi => "nvidia-smi",
         GpuSource.WindowsCounters => "Windows counters",
         var other => other.ToString(),

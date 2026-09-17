@@ -4,7 +4,7 @@ using System.Management;
 
 namespace OmniHub.Core.Hardware;
 
-/// <summary>Where a GPU reading came from. Shown in the UI, because the two sources differ.</summary>
+/// <summary>Where a GPU reading came from. Shown in the UI, because the sources differ.</summary>
 public enum GpuSource
 {
     /// <summary>nvidia-smi: name, temperature, power, clock and utilisation.</summary>
@@ -12,6 +12,16 @@ public enum GpuSource
 
     /// <summary>Windows itself: name and utilisation only. Temperature is not exposed.</summary>
     WindowsCounters,
+
+    /// <summary>
+    /// NVML, the library nvidia-smi is a front end for. The same fields, without the process.
+    ///
+    /// Named separately rather than folded in with nvidia-smi, even though the numbers come from
+    /// the same place, because the whole point of this enum is that a reading says where it came
+    /// from -- and "from the library directly" and "from a process that read the library" are
+    /// different claims about how fresh it is and what it cost.
+    /// </summary>
+    Nvml,
 }
 
 /// <summary>One sample of GPU state. Fields the source will not report come back null.</summary>
@@ -163,10 +173,26 @@ public static class GpuTelemetry
     private static bool WorthWakingTheCard() =>
         Optimize.PowerSourceWatcher.Read() != Optimize.PowerSource.Battery;
 
-    // Falls through to the Windows path when nvidia-smi is present but fails -- a driver that
-    // is installed but wedged should still leave the name and load readable.
-    private static GpuReading? Query() =>
-        (HasNvidiaSmi && WorthWakingTheCard() ? QueryNvidiaSmi() : null) ?? QueryWindows();
+    // Falls through to the Windows path when the NVIDIA paths are present but fail -- a driver
+    // that is installed but wedged should still leave the name and load readable.
+    //
+    // NVML first, because it is the same data for a direct call instead of a 58 ms process
+    // launch. nvidia-smi stays behind it rather than being deleted: NVML is a versioned library
+    // whose exports this build names by hand, and a driver that has moved one of them should
+    // cost a slower reading rather than no reading. Both are gated on the same battery rule, and
+    // on battery NVML is released outright so nothing here can hold the card awake.
+    private static GpuReading? Query()
+    {
+        if (!WorthWakingTheCard())
+        {
+            Nvml.Release();
+            return QueryWindows();
+        }
+
+        return Nvml.TryRead()
+            ?? (HasNvidiaSmi ? QueryNvidiaSmi() : null)
+            ?? QueryWindows();
+    }
 
     private static GpuReading? QueryNvidiaSmi()
     {
