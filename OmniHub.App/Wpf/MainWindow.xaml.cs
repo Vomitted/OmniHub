@@ -142,7 +142,19 @@ public partial class MainWindow : Window
         if (_settings.HighResolutionTimer) OmniHub.Core.Optimize.SystemTuning.ApplyHighResolutionTimer();
         if (_settings.DwmMmcss) OmniHub.Core.Optimize.SystemTuning.SetMmcss(true);
 
-        ViewHost.Content = _views["dashboard"];
+        // The saved arrangement, or the seven screens this application has always had when there
+        // is not one yet. Load never throws -- see WorkspaceLayout.Load for why that matters more
+        // here than for an ordinary settings file.
+        _layout = OmniHub.Core.Workspaces.WorkspaceLayout.Load();
+        _currentWorkspace = 0;
+        BuildWorkspaceNav();
+
+        // Assigned directly rather than through the navigation path, which fades the old content
+        // out before swapping. There is no old content at startup, so going through it would show
+        // a blank window for the length of the fade -- which is exactly the stall the deferred
+        // view construction was introduced to remove.
+        ViewHost.Content = new WorkspaceHost(_layout.Workspaces[0], ResolveView);
+        SelectNavItem(0);
 
         BuildTrayIcon();
 
@@ -205,6 +217,7 @@ public partial class MainWindow : Window
 
         StartActivityRibbon();
 
+        PreviewKeyDown += OnWorkspaceShortcut;
         Closing += OnClosing;
         Closed += (_, _) => Cleanup();
         ThemeManager.ThemeChanged += OnThemeChanged;
@@ -274,12 +287,199 @@ public partial class MainWindow : Window
         ActivityRibbon.BeginAnimation(OpacityProperty, pulse);
     }
 
+    // ---------- workspaces ----------
+
+    private OmniHub.Core.Workspaces.WorkspaceLayout _layout =
+        OmniHub.Core.Workspaces.WorkspaceLayout.Defaults();
+
+    private int _currentWorkspace = -1;
+
+    /// <summary>Set while the switcher is being brought in line with the layout, not the reverse.</summary>
+    private bool _suppressNav;
+
+    /// <summary>
+    /// Builds the switcher from the saved layout.
+    ///
+    /// One item per workspace, in the user's order, each carrying the number key that reaches it.
+    /// The figure replaces the hand-drawn icon each of the seven fixed items used to have: an icon
+    /// cannot be drawn for a workspace somebody invented this morning, and a shortcut that is
+    /// written down is worth more than one that has to be discovered.
+    /// </summary>
+    private void BuildWorkspaceNav()
+    {
+        NavItems.Children.Clear();
+
+        for (int i = 0; i < _layout.Workspaces.Count; i++)
+        {
+            var workspace = _layout.Workspaces[i];
+            int index = i;
+
+            var row = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+            row.Children.Add(new TextBlock
+            {
+                // Only the first nine get a key. Saying "10" beside an item that no keystroke
+                // reaches would be a shortcut that does not exist.
+                Text = i < 9 ? (i + 1).ToString() : " ",
+                Width = 16,
+                FontFamily = (FontFamily)FindResource("MonoFont"),
+                FontSize = 11,
+                Opacity = 0.55,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 10, 0),
+            });
+            row.Children.Add(new TextBlock { Text = workspace.Name, VerticalAlignment = VerticalAlignment.Center });
+
+            var item = new System.Windows.Controls.RadioButton
+            {
+                GroupName = "Nav",
+                Style = (Style)FindResource("NavButtonStyle"),
+                Content = row,
+                Tag = index,
+                IsChecked = index == _currentWorkspace,
+            };
+            System.Windows.Automation.AutomationProperties.SetName(item, workspace.Name);
+
+            item.Checked += NavChecked;
+            NavItems.Children.Add(item);
+        }
+    }
+
     private void NavChecked(object sender, RoutedEventArgs e)
     {
+        if (_suppressNav) return;
         if (sender is not System.Windows.Controls.RadioButton rb) return;
+
         MoveNavIndicator(rb);
-        if (rb.Tag is string key && ResolveView(key) is { } view) AnimateTo(view);
+        if (rb.Tag is int index) ShowWorkspace(index);
     }
+
+    /// <summary>
+    /// Shows one workspace, building its container afresh each time.
+    ///
+    /// The container is rebuilt rather than cached, and that is not an oversight. A panel can
+    /// appear in more than one workspace -- which is most of the point of being able to arrange
+    /// them -- and a control has exactly one parent, so showing the second workspace necessarily
+    /// takes the control out of the first. A cached container would then be an empty grid on the
+    /// way back, and the screen would simply be blank.
+    ///
+    /// Rebuilding costs a Grid and some re-parenting. The views inside it, which are the expensive
+    /// part and the ones holding live subscriptions, stay in the cache untouched.
+    /// </summary>
+    private void ShowWorkspace(int index)
+    {
+        if (index < 0 || index >= _layout.Workspaces.Count) return;
+        _currentWorkspace = index;
+
+        AnimateTo(new WorkspaceHost(_layout.Workspaces[index], ResolveView));
+    }
+
+    /// <summary>
+    /// Rebuilds everything after the layout changed.
+    ///
+    /// The hosts are dropped rather than patched: a workspace can have gained, lost or reordered
+    /// panels, and rebuilding is both simpler and cheaper than reasoning about which. The views
+    /// themselves survive in the cache, so nothing is reconstructed and no subscription is lost.
+    /// </summary>
+    public void ReloadWorkspaces(OmniHub.Core.Workspaces.WorkspaceLayout layout)
+    {
+        _layout = layout.Normalised();
+        try { _layout.Save(); } catch { /* a layout that cannot be saved is still usable now */ }
+
+        _currentWorkspace = Math.Clamp(_currentWorkspace, 0, _layout.Workspaces.Count - 1);
+
+        BuildWorkspaceNav();
+        SelectNavItem(_currentWorkspace);
+        ShowWorkspace(_currentWorkspace);
+    }
+
+    /// <summary>
+    /// Switches to the first workspace containing a given panel, if any.
+    ///
+    /// Anything that wants to send the user to a screen asks for the panel rather than for a
+    /// position in the switcher, because the switcher is the user's now. A panel the user has
+    /// removed from every workspace is simply not navigated to -- which is the correct outcome,
+    /// not a failure: they took it off their screens deliberately.
+    /// </summary>
+    private void NavigateToPanel(string type)
+    {
+        for (int i = 0; i < _layout.Workspaces.Count; i++)
+        {
+            if (!_layout.Workspaces[i].Panels.Any(p => p.Type == type)) continue;
+
+            if (NavItems.Children.Count > i
+                && NavItems.Children[i] is System.Windows.Controls.RadioButton item)
+                item.IsChecked = true;   // raises Checked, which shows the workspace
+            else
+                ShowWorkspace(i);
+
+            return;
+        }
+    }
+
+    /// <summary>
+    /// Number keys switch workspaces, matching the figure drawn beside each one.
+    ///
+    /// Handled as a PREVIEW on the window rather than as an input binding so a digit typed into a
+    /// fan curve cell or a wattage box still reaches the box. Anything with keyboard focus that
+    /// accepts text wins; the shortcut only applies when nothing is being typed into.
+    /// </summary>
+    private void OnWorkspaceShortcut(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key < System.Windows.Input.Key.D1 || e.Key > System.Windows.Input.Key.D9) return;
+
+        if (System.Windows.Input.Keyboard.Modifiers != System.Windows.Input.ModifierKeys.None) return;
+        if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.TextBox
+                                                          or System.Windows.Controls.Primitives.TextBoxBase
+                                                          or System.Windows.Controls.ComboBox) return;
+
+        int index = e.Key - System.Windows.Input.Key.D1;
+        if (index >= NavItems.Children.Count) return;
+
+        if (NavItems.Children[index] is System.Windows.Controls.RadioButton item)
+        {
+            item.IsChecked = true;
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    /// Ticks a switcher item without navigating, for when the content is already where it should
+    /// be and only the sidebar needs to agree.
+    /// </summary>
+    private void SelectNavItem(int index)
+    {
+        if (index < 0 || index >= NavItems.Children.Count) return;
+        if (NavItems.Children[index] is not System.Windows.Controls.RadioButton item) return;
+
+        _suppressNav = true;
+        item.IsChecked = true;
+        _suppressNav = false;
+
+        MoveNavIndicator(item);
+    }
+
+    private void EditLayoutBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var editor = new Views.LayoutEditorWindow(_layout, PanelCatalogue) { Owner = this };
+        if (editor.ShowDialog() == true) ReloadWorkspaces(editor.Result);
+    }
+
+    /// <summary>
+    /// Every panel this build can place, as key and display name.
+    ///
+    /// The keys are the ones the fixed tabs already used, so the defaults -- which reproduce those
+    /// tabs -- resolve without translation, and ResolveView remains the one registry.
+    /// </summary>
+    public static IReadOnlyList<(string Key, string Name)> PanelCatalogue { get; } = new[]
+    {
+        ("dashboard", "Dashboard"),
+        ("fans", "Fans"),
+        ("performance", "Performance (CPU and GPU)"),
+        ("power", "Battery"),
+        ("system", "System (Windows, network, routing)"),
+        ("diagnostics", "Diagnostics (measure, history, compare)"),
+        ("settings", "Settings"),
+    };
 
     /// <summary>
     /// Builds every not-yet-built tab, one idle callback at a time.
@@ -796,7 +996,10 @@ public partial class MainWindow : Window
         // App routing now lives inside the System group, which owns building and showing it, so
         // there is nothing to reach into from here. Navigating is enough: the screen reads the
         // registry when it is constructed, and the preference was written a line ago.
-        NavSystem.IsChecked = true;
+        //
+        // Asked for by panel rather than by tab, because there is no longer a fixed tab to name:
+        // the user decides which workspace holds the system panel, and may hold it in several.
+        NavigateToPanel("system");
     }
 
     // Fires a real Windows notification the moment thermal throttling starts, so you
