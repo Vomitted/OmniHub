@@ -11,7 +11,7 @@
         <StackPanel x:Name="HistorySection" Visibility="Collapsed" Margin="0,16,0,0">
             <TextBlock Text="AND OVER TIME" Style="{DynamicResource DataLabelText}" Margin="0,0,0,7"/>
 
-            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="3"
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}"
                     Height="22" ClipToBounds="True">
                 <Grid x:Name="Band"/>
             </Border>

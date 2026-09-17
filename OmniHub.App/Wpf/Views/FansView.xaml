@@ -25,7 +25,7 @@
                                Text="Curve control with a safety floor, re-applied every two seconds."/>
                 </StackPanel>
                 <Border Grid.Column="1" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
-                        BorderThickness="1" CornerRadius="5" Padding="3" VerticalAlignment="Center">
+                        BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <RadioButton x:Name="AutoModeBtn" GroupName="FanMode" Content="AUTO" Width="88" Height="30" Style="{StaticResource PillRadioStyle}" Checked="ModeButtonChecked" Tag="Auto"/>
                         <RadioButton x:Name="BiosModeBtn" GroupName="FanMode" Content="BIOS" Width="88" Height="30" Margin="3,0" Style="{StaticResource PillRadioStyle}" Checked="ModeButtonChecked" Tag="BiosDefault"/>
@@ -37,7 +37,7 @@
             <!-- Left accent bar rather than a tinted fill: a warm wash behind text is nearly
                  invisible on a true-black ground, so the rule carries the emphasis instead. -->
             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1" CornerRadius="5" Margin="0,0,0,18">
+                    BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Margin="0,0,0,18">
                 <Grid>
                     <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource WarnBrush}" CornerRadius="5,0,0,5"/>
                     <StackPanel Margin="17,13,14,13">

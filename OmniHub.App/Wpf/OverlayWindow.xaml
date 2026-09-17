@@ -9,7 +9,7 @@
          Rows are built in code from the user's chosen metric list rather than fixed in XAML,
          because which ones appear is now a setting. -->
     <Border x:Name="Card" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
-            BorderThickness="1" CornerRadius="8" Padding="12,9" Opacity="0.88">
+            BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Padding="12,9" Opacity="0.88">
         <StackPanel MinWidth="128">
             <TextBlock x:Name="SourceLabel" Style="{StaticResource DataLabelText}" Text="OMNIHUB" Margin="0,0,0,6"/>
             <StackPanel x:Name="MetricRows"/>

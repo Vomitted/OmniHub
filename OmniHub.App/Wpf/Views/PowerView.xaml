@@ -165,7 +165,7 @@
                  same two BIOS commands with no shared state is how they ended up disagreeing
                  about what the machine was set to, so Tuning is now the only owner. -->
             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1" CornerRadius="5">
+                    BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}">
                 <StackPanel Margin="17,13,14,13">
                     <TextBlock Text="LOOKING FOR CPU POWER LIMITS?" Style="{StaticResource TileLabel}"
                                Foreground="{StaticResource MetricCpuBrush}" Margin="0,0,0,5"/>

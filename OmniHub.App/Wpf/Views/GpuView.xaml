@@ -131,7 +131,7 @@
                              GPU was actually configured. The checked pill is now set from the
                              flags read back off the BIOS. -->
                         <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
-                                BorderThickness="1" CornerRadius="5" Padding="3" HorizontalAlignment="Left">
+                                BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
                                 <RadioButton x:Name="EcoBtn" GroupName="GpuPreset" Content="ECO" Width="120" Height="32" Style="{StaticResource PillRadioStyle}" Checked="EcoBtn_Click"/>
                                 <RadioButton x:Name="BalancedBtn" GroupName="GpuPreset" Content="BALANCED" Width="120" Height="32" Margin="3,0" Style="{StaticResource PillRadioStyle}" Checked="BalancedBtn_Click"/>
@@ -169,7 +169,7 @@
                  into Safe Mode. That warrants a full card and the danger colour, not a
                  footnote under the button. -->
             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1" CornerRadius="5">
+                    BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}">
                 <Grid>
                     <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource DangerBrush}" CornerRadius="5,0,0,5"/>
                     <StackPanel Margin="17,13,14,13">

@@ -53,7 +53,7 @@
                 <!-- Active mode readout. Left accent rail instead of a gradient outline:
                      it matches the selected nav item's rail, so the sidebar reads as one
                      system rather than two unrelated highlight treatments. -->
-                <Border DockPanel.Dock="Bottom" Margin="14,0,14,18" CornerRadius="4"
+                <Border DockPanel.Dock="Bottom" Margin="14,0,14,18" CornerRadius="{DynamicResource RadiusMd}"
                         Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                     <Grid>
                         <Border Width="2.5" HorizontalAlignment="Left" Background="{StaticResource AccentBrush}" CornerRadius="2,0,0,2"/>
