@@ -315,18 +315,9 @@ public partial class MainWindow : Window
             int index = i;
 
             var row = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
-            row.Children.Add(new TextBlock
-            {
-                // Only the first nine get a key. Saying "10" beside an item that no keystroke
-                // reaches would be a shortcut that does not exist.
-                Text = i < 9 ? (i + 1).ToString() : " ",
-                Width = 16,
-                FontFamily = (FontFamily)FindResource("MonoFont"),
-                FontSize = 11,
-                Opacity = 0.55,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 10, 0),
-            });
+
+            if (NavIconFor(workspace) is { } icon) row.Children.Add(icon);
+
             row.Children.Add(new TextBlock { Text = workspace.Name, VerticalAlignment = VerticalAlignment.Center });
 
             var item = new System.Windows.Controls.RadioButton
@@ -339,9 +330,28 @@ public partial class MainWindow : Window
             };
             System.Windows.Automation.AutomationProperties.SetName(item, workspace.Name);
 
+            // The shortcut is discoverable without being drawn. Only the first nine have one --
+            // promising a key that does not exist would be worse than not mentioning it.
+            if (index < 9) item.ToolTip = $"{workspace.Name}  ·  press {index + 1}";
+
             item.Checked += NavChecked;
             NavItems.Children.Add(item);
         }
+    }
+
+    /// <summary>
+    /// The icon for a workspace: the one belonging to the panel it leads with.
+    ///
+    /// Each of the seven screens has carried its own since long before the switcher was
+    /// user-defined, and losing them was not a price worth paying for the flexibility. Keyed off
+    /// the first panel because that is what a workspace is named after in practice, with a generic
+    /// mark for one that leads with something this build does not know, or with nothing yet.
+    /// </summary>
+    private UIElement? NavIconFor(OmniHub.Core.Workspaces.Workspace workspace)
+    {
+        string key = workspace.Panels.Count > 0 ? workspace.Panels[0].Type : "generic";
+
+        return NavIcons.For(key);
     }
 
     private void NavChecked(object sender, RoutedEventArgs e)

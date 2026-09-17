@@ -5,6 +5,7 @@
         Icon="/app.ico"
         Background="{StaticResource AppBackgroundGradient}"
         WindowStartupLocation="CenterScreen">
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="212"/>
