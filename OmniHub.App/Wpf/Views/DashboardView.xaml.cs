@@ -496,7 +496,7 @@ public partial class DashboardView : UserControl
         Task.Run(() => SystemPerfReader.Read()).ContinueWith(t =>
         {
             _perfRefreshInFlight = false;
-            var perf = t.IsFaulted ? null : t.Result;
+            SystemPerf? perf = t.IsCompletedSuccessfully ? t.Result : null;
             Dispatcher.Invoke(() =>
             {
                 // A failed read used to return here, which left the previous numbers sitting on
@@ -518,17 +518,23 @@ public partial class DashboardView : UserControl
                 }
 
                 // The unit suffix lives in its own TextBlock now, so the value is bare.
-                CpuClockText.Text = $"{perf.CpuClockGHz:0.0}";
-                CpuLoadText.Text = $"{perf.CpuLoadPercent:0}%";
+                //
+                // Both CPU figures are nullable and both render as two dashes when absent. The
+                // load has no value until a second sample exists, because these are cumulative
+                // counters since boot and one reading of them says nothing about now.
+                CpuClockText.Text = perf.CpuClockGHz is { } ghz ? $"{ghz:0.0}" : "--";
+                CpuLoadText.Text = perf.CpuLoadPercent is { } load ? $"{load:0}%" : "--";
                 CpuFootLeft.Text = $"{Environment.ProcessorCount} LOGICAL CORES";
-                StripLoad.Text = $"{perf.CpuLoadPercent:0}%";
+                StripLoad.Text = CpuLoadText.Text;
 
                 MemText.Text = $"{perf.MemoryUsedGB:0.0}";
                 double memPercent = perf.MemoryTotalGB > 0 ? perf.MemoryUsedGB / perf.MemoryTotalGB * 100.0 : 0;
                 MemSubText.Text = $"USED {perf.MemoryUsedGB:0.0} / {perf.MemoryTotalGB:0.0} GB";
                 MemFootRight.Text = $"{memPercent:0}%";
 
-                SetBar(CpuLoadBar, perf.CpuLoadPercent);
+                // A bar with no reading behind it sits at zero, which looks like an idle
+                // machine. Left where it was instead, so only the number changes.
+                if (perf.CpuLoadPercent is { } bar) SetBar(CpuLoadBar, bar);
                 SetBar(MemLoadBar, memPercent);
             });
         }, TaskScheduler.Default);
