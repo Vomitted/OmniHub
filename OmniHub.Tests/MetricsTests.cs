@@ -112,4 +112,24 @@ public class MetricsTests
         Assert.Equal("85.4°", Metrics.Text("cpu", 85.44));
         Assert.Equal("45°", Metrics.Text("gpu", 45.4));
     }
+
+    [Fact]
+    public void EveryMetricHasANameThatFitsANarrowCard()
+    {
+        // The overlay draws these in a label column about sixty pixels wide. A name that does not
+        // fit is not a cosmetic problem there: the column is fixed, so it clips rather than wraps,
+        // and a clipped name is a reading the user cannot identify.
+        foreach (var metric in Metrics.All)
+            Assert.True(metric.Compact.Length <= 8,
+                        $"{metric.Key}: compact name \"{metric.Compact}\" is {metric.Compact.Length} characters");
+    }
+
+    [Fact]
+    public void ACompactNameIsOnlyDefinedWhereItDiffers()
+    {
+        // A short label identical to the long one is a line of table that says nothing and one
+        // more place to forget to change.
+        foreach (var metric in Metrics.All)
+            Assert.NotEqual(metric.Label, metric.ShortLabel);
+    }
 }

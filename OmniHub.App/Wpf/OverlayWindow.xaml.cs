@@ -104,26 +104,20 @@ public partial class OverlayWindow : Window
     /// The order here is the order the settings UI offers them in; the order the user picks is
     /// what the overlay draws, so a list is the right shape rather than a flags enum.
     /// </summary>
-    public static IReadOnlyList<(string Key, string Label)> AvailableMetrics { get; } = new[]
-    {
-        ("cpu",     "CPU"),
-        ("gpu",     "GPU"),
-        ("fan",     "FAN"),
-        ("fan2",    "FAN 2"),
-        ("pkg",     "PKG"),
-        ("gpuw",    "GPU W"),
-        ("gpuclk",  "GPU MHz"),
-        ("gpuload", "GPU %"),
+    public static IReadOnlyList<(string Key, string Label)> AvailableMetrics { get; } =
+        Metrics.All.Select(m => (m.Key, Label: m.Compact)).ToArray();
 
-        // The one that answers "why is this slow", from a snapshot the power timer already takes.
-        // The tray flyout has carried it for a while; the overlay is the surface it belongs on,
-        // because it is the only one visible while the game that prompted the question is running.
-        ("limit",   "LIMIT"),
-
-        ("cpuload", "CPU %"),
-        ("cpuclk",  "CPU GHz"),
-        ("mem",     "MEM"),
-    };
+    // Derived rather than written out again. The keys existed in two places, and a reading added
+    // to the catalogue in Core would simply not have appeared here -- silently, because a missing
+    // key is indistinguishable from one nobody chose.
+    //
+    // The VALUES are still formatted below rather than by Metrics.Text, and that is deliberate.
+    // This card is about a hundred and thirty pixels wide over somebody's game, so it writes "2400"
+    // where a panel writes "2400 RPM" and "14.2G" where a panel writes "14.2GB". The cpu row also
+    // changes precision with the sensor that answered -- a tenth from the die, whole degrees from
+    // the ACPI zone, which is as much resolution as that zone has. A shared formatter cannot
+    // express "depends which sensor replied", and flattening it would show a tenth of a degree the
+    // reading does not contain.
 
     private readonly Dictionary<string, TextBlock> _valueCells = new();
     private readonly Dictionary<string, System.Windows.Shapes.Path> _sparkCells = new();

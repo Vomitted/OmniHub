@@ -26,8 +26,19 @@ public sealed record MetricDefinition(
     string Label,
     string Unit,
     string Format,
+    string? ShortLabel = null,
     double? WarnAt = null,
-    double? HotAt = null);
+    double? HotAt = null)
+{
+    /// <summary>
+    /// The name to use where there is no room for the full one.
+    ///
+    /// The overlay is a card drawn over somebody's game and is about a hundred and thirty pixels
+    /// wide; "GPU CLOCK" does not fit and "GPU MHz" does. The two are the same reading, which is
+    /// the point of them living on one definition rather than in two lists that can drift.
+    /// </summary>
+    public string Compact => ShortLabel ?? Label;
+}
 
 /// <summary>
 /// The catalogue of readings, and how to render one.
@@ -56,14 +67,15 @@ public static class Metrics
         new MetricDefinition("gpu",     "GPU",       "°", "0",   WarnAt: 80, HotAt: 87),
         new MetricDefinition("fan",     "FAN",       " RPM",   "0"),
         new MetricDefinition("fan2",    "FAN 2",     " RPM",   "0"),
-        new MetricDefinition("pkg",     "PACKAGE",   "W",      "0.0"),
-        new MetricDefinition("gpuw",    "GPU POWER", "W",      "0.0"),
-        new MetricDefinition("gpuclk",  "GPU CLOCK", "MHz",    "0"),
-        new MetricDefinition("gpuload", "GPU LOAD",  "%",      "0"),
-        new MetricDefinition("limit",   "LIMIT",     "%",      "0", WarnAt: LimitHistory.BindingPercent, HotAt: 99),
-        new MetricDefinition("cpuload", "CPU LOAD",  "%",      "0"),
-        new MetricDefinition("cpuclk",  "CPU CLOCK", "GHz",    "0.00"),
-        new MetricDefinition("mem",     "MEMORY",    "GB",     "0.0"),
+        new MetricDefinition("pkg",     "PACKAGE",   "W",      "0.0", ShortLabel: "PKG"),
+        new MetricDefinition("gpuw",    "GPU POWER", "W",      "0.0", ShortLabel: "GPU W"),
+        new MetricDefinition("gpuclk",  "GPU CLOCK", "MHz",    "0",   ShortLabel: "GPU MHz"),
+        new MetricDefinition("gpuload", "GPU LOAD",  "%",      "0",   ShortLabel: "GPU %"),
+        new MetricDefinition("limit",   "LIMIT",     "%",      "0",
+                             WarnAt: LimitHistory.BindingPercent, HotAt: 99),
+        new MetricDefinition("cpuload", "CPU LOAD",  "%",      "0",   ShortLabel: "CPU %"),
+        new MetricDefinition("cpuclk",  "CPU CLOCK", "GHz",    "0.00", ShortLabel: "CPU GHz"),
+        new MetricDefinition("mem",     "MEMORY",    "GB",     "0.0", ShortLabel: "MEM"),
     };
 
     public static MetricDefinition? Find(string key)
