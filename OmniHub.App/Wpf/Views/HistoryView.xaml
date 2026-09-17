@@ -19,6 +19,13 @@
 
         <WrapPanel Grid.Row="1" Margin="0,0,0,12">
             <StackPanel x:Name="WindowPills" Orientation="Horizontal" Margin="0,0,16,0"/>
+
+            <!-- A trace that cannot leave the window is half a proof. -->
+            <Button x:Name="ExportCsvBtn" Content="Export CSV" Width="120" Height="36"
+                    Margin="0,0,6,0" Style="{StaticResource FlatButtonStyle}" Click="ExportCsvBtn_Click"/>
+            <Button x:Name="ExportPngBtn" Content="Save as image" Width="140" Height="36"
+                    Margin="0,0,16,0" Style="{StaticResource FlatButtonStyle}" Click="ExportPngBtn_Click"/>
+
             <TextBlock x:Name="CoverageText" Style="{StaticResource TileFoot}" VerticalAlignment="Center"/>
         </WrapPanel>
 

@@ -21,6 +21,13 @@
                         <TextBlock Text="COMPARE AGAINST" Style="{StaticResource DataLabelText}" Margin="0,0,0,8"/>
                         <WrapPanel x:Name="BaselinePills"/>
 
+                        <WrapPanel Margin="0,14,0,0">
+                            <Button x:Name="ExportCsvBtn" Content="Export CSV" Width="130" Height="36"
+                                    Margin="0,0,8,0" Style="{StaticResource FlatButtonStyle}" Click="ExportCsvBtn_Click"/>
+                            <Button x:Name="ExportPngBtn" Content="Save as image" Width="150" Height="36"
+                                    Style="{StaticResource FlatButtonStyle}" Click="ExportPngBtn_Click"/>
+                        </WrapPanel>
+
                         <TextBlock x:Name="Status" Style="{StaticResource MutedText}" FontSize="11.5"
                                    Margin="0,14,0,0" TextWrapping="Wrap" MaxWidth="760"/>
                     </StackPanel>

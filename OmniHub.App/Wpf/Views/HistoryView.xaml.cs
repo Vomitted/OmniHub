@@ -152,6 +152,9 @@ public partial class HistoryView : UserControl, IDisposable
             var events = await _history.ReadPowerEventsAsync(from, to, cts.Token).ConfigureAwait(true);
             if (cts.IsCancellationRequested) return;
 
+            // Retained for the export, so the file is the window on screen.
+            _shown = thermal;
+
             // Points only where a reading exists. A sample whose sensor failed contributes
             // nothing rather than a zero, which is the rule the writer followed too.
             _chart.SetSeriesData(_temp, Series(thermal, s => s.TempC));
@@ -170,6 +173,52 @@ public partial class HistoryView : UserControl, IDisposable
         catch (Exception ex)
         {
             Status.Text = $"Could not read the history ({ex.Message}).";
+        }
+    }
+
+    /// <summary>
+    /// The samples currently drawn, kept so the export is the window on screen.
+    ///
+    /// Re-reading at export time would fetch a window that has since moved, so the file would not
+    /// be the chart somebody was looking at when they pressed the button.
+    /// </summary>
+    private IReadOnlyList<ThermalSample> _shown = Array.Empty<ThermalSample>();
+
+    private void ExportCsvBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_shown.Count == 0)
+        {
+            Status.Text = "Nothing to export: this window holds no samples.";
+            return;
+        }
+
+        try
+        {
+            string? path = Export.SaveText(
+                $"omnihub-thermal-{DateTime.Now:yyyy-MM-dd-HHmmss}.csv",
+                "CSV file (*.csv)|*.csv",
+                CsvExport.Thermal(_shown));
+
+            if (path is { Length: > 0 })
+                Status.Text = $"Exported {_shown.Count:N0} samples to {path}.";
+        }
+        catch (Exception ex)
+        {
+            Status.Text = $"Could not save ({ex.Message}).";
+        }
+    }
+
+    private void ExportPngBtn_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string? path = Export.SavePng(_chart, $"omnihub-thermal-{DateTime.Now:yyyy-MM-dd-HHmmss}.png");
+
+            if (path is { Length: > 0 }) Status.Text = $"Saved the chart to {path}.";
+        }
+        catch (Exception ex)
+        {
+            Status.Text = $"Could not save the image ({ex.Message}).";
         }
     }
 

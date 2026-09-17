@@ -134,6 +134,7 @@ public partial class CompareView : UserControl, IDisposable
             if (cts.IsCancellationRequested) return;
 
             var result = RunComparison.Compare(baseline, recent);
+            _lastResult = result;
 
             Status.Text =
                 $"Baseline {baselineFrom.ToLocalTime():MMM d HH:mm} to {baselineTo.ToLocalTime():HH:mm}, "
@@ -156,6 +157,52 @@ public partial class CompareView : UserControl, IDisposable
         catch (Exception ex)
         {
             Status.Text = $"Could not read the trace ({ex.Message}).";
+        }
+    }
+
+    /// <summary>
+    /// The last comparison, kept so it can be exported without being recomputed.
+    ///
+    /// Recomputing would re-read the trace, and between the two reads the "recent" window would
+    /// have moved -- so the exported file would not be the one on screen. A proof that differs
+    /// from what was shown is not much of a proof.
+    /// </summary>
+    private RunComparisonResult? _lastResult;
+
+    private void ExportCsvBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_lastResult is not { } result)
+        {
+            Status.Text = "Nothing to export yet.";
+            return;
+        }
+
+        try
+        {
+            string? path = Export.SaveText(
+                $"omnihub-compare-{DateTime.Now:yyyy-MM-dd-HHmmss}.csv",
+                "CSV file (*.csv)|*.csv",
+                CsvExport.Comparison(result));
+
+            if (path is { Length: > 0 }) Status.Text = $"Saved to {path}.";
+        }
+        catch (Exception ex)
+        {
+            Status.Text = $"Could not save ({ex.Message}).";
+        }
+    }
+
+    private void ExportPngBtn_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string? path = Export.SavePng(this, $"omnihub-compare-{DateTime.Now:yyyy-MM-dd-HHmmss}.png");
+
+            if (path is { Length: > 0 }) Status.Text = $"Saved to {path}.";
+        }
+        catch (Exception ex)
+        {
+            Status.Text = $"Could not save the image ({ex.Message}).";
         }
     }
 
