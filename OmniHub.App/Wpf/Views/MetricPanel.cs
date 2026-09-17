@@ -71,17 +71,7 @@ public sealed class MetricPanel : UserControl
         stack.Children.Add(_spark);
         stack.Children.Add(_foot);
 
-        Content = new Border
-        {
-            Margin = new Thickness(6),
-            Padding = new Thickness(16, 13, 16, 13),
-            CornerRadius = new CornerRadius(10),
-            BorderThickness = new Thickness(1),
-            Background = Brush("PanelBrush"),
-            BorderBrush = Brush("BorderBrush"),
-            VerticalAlignment = System.Windows.VerticalAlignment.Top,
-            Child = stack,
-        };
+        Content = PanelChrome.Card(stack);
 
         // Paired on Loaded/Unloaded rather than subscribed once, the same as DashboardView and
         // FansView: switching workspaces rebuilds the container and re-parents this control, and a

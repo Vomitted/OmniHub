@@ -128,7 +128,7 @@ public sealed class WorkspaceHost : UserControl
         {
             Margin = new Thickness(8),
             Padding = new Thickness(16, 13, 16, 13),
-            CornerRadius = new CornerRadius(8),
+            CornerRadius = PanelChrome.Radius(),
             BorderThickness = new Thickness(1),
             Background = Token("PanelAltBrush"),
             BorderBrush = Token("BorderBrush"),

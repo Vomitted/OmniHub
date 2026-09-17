@@ -82,17 +82,7 @@ public sealed class ChartPanel : UserControl, IDisposable
         stack.Children.Add(new ContentControl { Content = _chart, Height = 180, Focusable = false });
         stack.Children.Add(_status);
 
-        Content = new Border
-        {
-            Margin = new Thickness(6),
-            Padding = new Thickness(16, 13, 16, 13),
-            CornerRadius = new CornerRadius(10),
-            BorderThickness = new Thickness(1),
-            Background = Brush("PanelBrush"),
-            BorderBrush = Brush("BorderBrush"),
-            VerticalAlignment = System.Windows.VerticalAlignment.Top,
-            Child = stack,
-        };
+        Content = PanelChrome.Card(stack);
 
         _timer.Tick += (_, _) => _ = Load();
 
