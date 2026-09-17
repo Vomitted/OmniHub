@@ -244,14 +244,21 @@ public partial class FansView : UserControl
                 // Raw is an RPM/100 target on a ~20-55 usable scale, not a 0-255 PWM duty
                 // cycle -- see FanService.RawToPercent. The old raw/255*100 here was the
                 // debunked PWM assumption and under-reported this tile by roughly half.
-                int levelPercent = FanService.RawToPercent(r.FanLevel1);
-                LevelValue.Text = levelPercent.ToString();
+                int? levelPercent = r.FanLevel1 is { } raw1 ? FanService.RawToPercent(raw1) : null;
+                LevelValue.Text = levelPercent?.ToString() ?? "--";
+
                 // Both fans: this is a tachometer reading, not an echo of the commanded level,
                 // so the two can differ from each other and from the curve's target while the
                 // fans are still spinning up (measured: about six seconds for a full step).
-                LevelFoot.Text = $"RAW {r.FanLevel1}/{r.FanLevel2} - " +
-                                 $"{FanService.RawToRpm(r.FanLevel1)}/{FanService.RawToRpm(r.FanLevel2)} RPM";
-                Chart.SetLive(r.TemperatureC, (byte)Math.Clamp(levelPercent, 0, 100));
+                //
+                // And a fan the board did not report on shows as "--" rather than as zero. The
+                // difference matters most on exactly this screen: zero here reads as a stopped
+                // fan, which is the fault the curve exists to prevent.
+                LevelFoot.Text = $"RAW {FanService.RawText(r.FanLevel1)}/{FanService.RawText(r.FanLevel2)} - " +
+                                 $"{FanService.RpmText(r.FanLevel1)}/{FanService.RpmText(r.FanLevel2)} RPM";
+
+                if (levelPercent is { } plotted)
+                    Chart.SetLive(r.TemperatureC, (byte)Math.Clamp(plotted, 0, 100));
             }
             else
             {
@@ -260,7 +267,7 @@ public partial class FansView : UserControl
                 // heading for. The two disagreeing is the fan spinning up -- measured at about
                 // six seconds for a full step -- not a fault, which is exactly why both are
                 // shown rather than just the one that happens to look tidier.
-                string measured = $"{FanService.RawToRpm(r.FanLevel1)}/{FanService.RawToRpm(r.FanLevel2)} RPM";
+                string measured = $"{FanService.RpmText(r.FanLevel1)}/{FanService.RpmText(r.FanLevel2)} RPM";
                 if (_service.HasCommanded)
                 {
                     byte targetRaw = FanService.PercentToRawLevel(_service.LastCommandedLevelPercent);

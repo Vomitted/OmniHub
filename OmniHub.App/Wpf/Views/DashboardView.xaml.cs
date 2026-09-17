@@ -766,10 +766,17 @@ public partial class DashboardView : UserControl
             // Showing only the measured figure made the app look like it was ignoring its own
             // curve -- 2700 RPM beside a high temperature reads as the fan refusing to spin up
             // when it is actually mid-ramp. The target is shown alongside while they differ.
-            int fanPercent = FanService.RawToPercent(r.FanLevel1);
-            string fanText = $"FANS {FanService.RawToRpm(r.FanLevel1)} RPM ({fanPercent}%)";
-            if (_service.IsRunning && _service.HasCommanded
-                && Math.Abs(_service.LastCommandedLevelPercent - fanPercent) > 4)
+            // A level the board did not report reads as unavailable. It used to read as a fan at
+            // 0 RPM, which on a hot machine is indistinguishable from the fault this application
+            // was written to catch.
+            int? fanPercent = r.FanLevel1 is { } raw1 ? FanService.RawToPercent(raw1) : null;
+
+            string fanText = fanPercent is { } pct
+                ? $"FANS {FanService.RpmText(r.FanLevel1)} RPM ({pct}%)"
+                : "FANS -- (the board did not report a level)";
+
+            if (fanPercent is { } measured && _service.IsRunning && _service.HasCommanded
+                && Math.Abs(_service.LastCommandedLevelPercent - measured) > 4)
             {
                 fanText += $" -> {_service.LastCommandedLevelPercent}%";
             }
@@ -863,7 +870,13 @@ public partial class DashboardView : UserControl
             var at = DateTime.UtcNow;
 
             TrendChart.Append(_trendTemp, at, tempC);
-            TrendChart.Append(_trendFan, at, FanService.RawToPercent(r.FanLevel1));
+
+            // Nothing appended when the board did not report a level. The chart already draws a
+            // hole as a hole rather than joining across it, so an absent reading leaves a visible
+            // gap instead of a line dropping to the floor and back -- which is what a plot of
+            // "0 because we did not ask successfully" looks like, and it looks alarming.
+            if (r.FanLevel1 is { } raw)
+                TrendChart.Append(_trendFan, at, FanService.RawToPercent(raw));
 
             // -1 is the log's sentinel for "the service has not commanded", and it means the
             // same here: nothing to plot rather than a zero-percent command that never happened.

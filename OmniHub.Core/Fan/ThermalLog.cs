@@ -40,13 +40,35 @@ public sealed class ThermalLog : IDisposable
     public static string LogDirectory => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OmniHub", "logs");
 
+    private readonly string _directory;
+
+    /// <summary>
+    /// Writes to the application's log directory, or to one given.
+    ///
+    /// The override exists so the writer can be tested. It is the only piece of this class worth
+    /// testing -- a null fan level has to reach the file as an empty field and not as a zero,
+    /// because a zero there means a stopped fan -- and without it a test would have to write
+    /// into the real trace to check, which is not a thing to do to somebody's telemetry.
+    /// </summary>
+    public ThermalLog(string? directory = null) => _directory = directory ?? LogDirectory;
+
     /// <summary>Full path of the file currently being written, or null if logging is off or failed.</summary>
     public string? CurrentPath { get; private set; }
 
     // tempC is a double, not an int: Tctl resolves to 0.125C, and rounding it here made the log
     // ambiguous about which sensor produced a row -- an ACPI 85 and a die 85.2 looked identical,
     // which is exactly what made diagnosing a "temp is wrong" report harder than it needed to be.
-    public void Append(DateTime utcNow, double tempC, double forecastC, byte fan1Raw, byte fan2Raw,
+    /// <summary>
+    /// Appends one row.
+    ///
+    /// The fan levels are nullable, and a null writes an empty field rather than a zero. That
+    /// distinction is the whole point of this log: a zero here means a fan is stopped, and on a
+    /// hot machine that is the fault the application exists to catch, so "the board did not
+    /// answer" must not be able to wear the same clothes. The empty field follows what the other
+    /// writers in this project already do, and the reader already models these two columns as
+    /// nullable.
+    /// </summary>
+    public void Append(DateTime utcNow, double tempC, double forecastC, byte? fan1Raw, byte? fan2Raw,
                        int commandedPercent, bool throttling, string mode, string sensor)
     {
         if (_failed) return;
@@ -65,8 +87,8 @@ public sealed class ThermalLog : IDisposable
                 sb.Append(utcNow.ToString("yyyy-MM-ddTHH:mm:ss'Z'", CultureInfo.InvariantCulture)).Append(',')
                   .Append(tempC.ToString("0.#", CultureInfo.InvariantCulture)).Append(',')
                   .Append(forecastC.ToString("0.#", CultureInfo.InvariantCulture)).Append(',')
-                  .Append(fan1Raw.ToString(CultureInfo.InvariantCulture)).Append(',')
-                  .Append(fan2Raw.ToString(CultureInfo.InvariantCulture)).Append(',')
+                  .Append(fan1Raw?.ToString(CultureInfo.InvariantCulture) ?? "").Append(',')
+                  .Append(fan2Raw?.ToString(CultureInfo.InvariantCulture) ?? "").Append(',')
                   .Append(commandedPercent.ToString(CultureInfo.InvariantCulture)).Append(',')
                   .Append(throttling ? "True" : "False").Append(',')
                   .Append(Sanitize(mode)).Append(',')
@@ -95,15 +117,15 @@ public sealed class ThermalLog : IDisposable
         if (_writer is not null && _openedForDate == utcNow.Date) return;
 
         CloseWriter();
-        Directory.CreateDirectory(LogDirectory);
+        Directory.CreateDirectory(_directory);
 
         // If today's file was written by a build with a different column set, appending to it
         // would produce a file whose rows do not all match its own header -- silently
         // unparseable by anything reading it later, which defeats the point of keeping a
         // trace. Roll to a suffixed file instead of corrupting the existing one.
-        var path = Path.Combine(LogDirectory, $"thermal-{utcNow:yyyy-MM-dd}.csv");
+        var path = Path.Combine(_directory, $"thermal-{utcNow:yyyy-MM-dd}.csv");
         for (int suffix = 2; suffix < 100 && HasDifferentHeader(path); suffix++)
-            path = Path.Combine(LogDirectory, $"thermal-{utcNow:yyyy-MM-dd}-{suffix}.csv");
+            path = Path.Combine(_directory, $"thermal-{utcNow:yyyy-MM-dd}-{suffix}.csv");
 
         bool isNew = !File.Exists(path) || new FileInfo(path).Length == 0;
 
@@ -136,9 +158,14 @@ public sealed class ThermalLog : IDisposable
     /// Only thermal-*.csv is touched. Load-test runs live in the same directory and are
     /// deliberate artefacts someone created in order to compare against later; deleting one
     /// would throw away the baseline half of a measurement.
+    ///
+    /// An instance method, and that is not tidiness. Pruning the directory this log writes to is
+    /// the only correct behaviour once the directory can be overridden -- as a static reading the
+    /// application-wide path, a log pointed at a temporary directory would have swept the real
+    /// trace instead, which is precisely the data this class exists to protect.
     /// </summary>
-    private static void PruneOldLogs(string currentPath) =>
-        Diagnostics.LogRetention.Prune(LogDirectory, "thermal-*.csv", keepPath: currentPath);
+    private void PruneOldLogs(string currentPath) =>
+        Diagnostics.LogRetention.Prune(_directory, "thermal-*.csv", keepPath: currentPath);
 
     /// <summary>True when the file exists, has content, and its header is not the current one.</summary>
     private static bool HasDifferentHeader(string path)

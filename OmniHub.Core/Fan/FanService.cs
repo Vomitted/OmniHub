@@ -391,6 +391,19 @@ public sealed class FanService : IDisposable
     public static int RawToRpm(byte raw) => raw * 100;
 
     /// <summary>
+    /// An RPM figure for display, or the two dashes this application uses for "no reading".
+    ///
+    /// Here rather than in each view because three of them render this and the alternative is
+    /// three chances to write <c>RawToRpm(raw ?? 0)</c> -- which is the bug this whole change
+    /// exists to remove, reintroduced one call site at a time. A fan whose level the board did
+    /// not report reads as unavailable, not as stopped.
+    /// </summary>
+    public static string RpmText(byte? raw) => raw is { } v ? RawToRpm(v).ToString() : "--";
+
+    /// <summary>A raw level for display, or two dashes. See <see cref="RpmText"/>.</summary>
+    public static string RawText(byte? raw) => raw?.ToString() ?? "--";
+
+    /// <summary>
     /// The raw EC level a curve percentage maps to, and the RPM that implies.
     ///
     /// Public counterpart to <see cref="RawToPercent"/> so the UI never has to reimplement the

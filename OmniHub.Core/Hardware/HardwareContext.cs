@@ -13,8 +13,20 @@ namespace OmniHub.Core.Hardware;
 /// </summary>
 public sealed record Reading(
     byte TemperatureC,
-    byte FanLevel1,
-    byte FanLevel2,
+
+    /// <summary>
+    /// Fan 1's raw level, or null when the board did not report one.
+    ///
+    /// Nullable because those two things used to be the same value. The vendor call pads its
+    /// reply out to a fixed buffer size, so a board that answers with fewer bytes than asked
+    /// leaves zeroes behind, and this record presented them as fan levels. A stopped fan on a
+    /// hot machine is the fault the whole application exists to catch, and it was being
+    /// manufactured out of padding.
+    /// </summary>
+    byte? FanLevel1,
+
+    /// <summary>Fan 2's raw level, or null when the board did not report one. See FanLevel1.</summary>
+    byte? FanLevel2,
     bool MaxFanActive,
     ThrottlingState Throttling,
     double PreciseTemperatureC = double.NaN,
@@ -238,7 +250,10 @@ public sealed class HardwareContext : IDisposable
     /// Empty until the first poll, which the seed above makes the very first tick, so the
     /// dashboard never renders a fabricated zero while waiting for a real one.
     /// </summary>
-    private byte[] _lastLevels = Array.Empty<byte>();
+    // Null until the board has answered. Kept as the pair rather than the raw buffer, so the
+    // "how many bytes were actually supplied" question is settled once, at the read, instead of
+    // being re-derived from a padded array by whoever looks at it next.
+    private (byte? Fan1, byte? Fan2) _lastLevels;
 
     private bool _lastMaxFan;
     private ThrottlingState _lastThrottle = ThrottlingState.Unknown;
@@ -377,7 +392,7 @@ public sealed class HardwareContext : IDisposable
                     // read per five ticks that is still about every eleven seconds -- current by
                     // any standard the display needs, for a quarter of the poll's cost.
                     long beforeFan = tick.ElapsedMilliseconds;
-                    try { _lastLevels = Fan.GetFanLevel(); } catch { /* keep the last good read */ }
+                    try { _lastLevels = Fan.ReadLevels(); } catch { /* keep the last good read */ }
                     fanMs = tick.ElapsedMilliseconds - beforeFan;
 
                     try
@@ -397,8 +412,8 @@ public sealed class HardwareContext : IDisposable
                 var maxFan = _lastMaxFan;
                 var throttle = _lastThrottle;
                 var payload = new Reading(temp,
-                    levels.Length > 0 ? levels[0] : (byte)0,
-                    levels.Length > 1 ? levels[1] : (byte)0,
+                    levels.Fan1,
+                    levels.Fan2,
                     maxFan, throttle,
                     reading.Celsius, reading.Source);
 

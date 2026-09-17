@@ -82,7 +82,24 @@ public sealed class BiosInterop : IDisposable
 
     private ManagementClass? _inDataClass;
 
-    public byte[] Send(BiosCmdGroup group, byte commandId, byte[]? inData, int outSize)
+    public byte[] Send(BiosCmdGroup group, byte commandId, byte[]? inData, int outSize) =>
+        Send(group, commandId, inData, outSize, out _);
+
+    /// <summary>
+    /// As <see cref="Send(BiosCmdGroup, byte, byte[], int)"/>, but also reports how many bytes
+    /// the BIOS actually supplied.
+    ///
+    /// The reply is always padded out to <paramref name="outSize"/> so the buffer has a
+    /// predictable shape, and that padding has been indistinguishable from data. A board that
+    /// answers GetFanLevel with one byte produces a buffer reading "27, 0, 0, 0", and the second
+    /// fan is then reported as stopped -- on a hot machine that is the exact fault this
+    /// application exists to detect, manufactured out of a zero nobody sent.
+    ///
+    /// <paramref name="reported"/> is the only signal available: the reply class exposes just
+    /// Data and rwReturnCode, with no length field, so the length of the array WMI hands back is
+    /// all there is. A caller that reads past it is reading padding.
+    /// </summary>
+    public byte[] Send(BiosCmdGroup group, byte commandId, byte[]? inData, int outSize, out int reported)
     {
         inData ??= new byte[4];
         if (inData.Length != 4)
@@ -107,7 +124,7 @@ public sealed class BiosInterop : IDisposable
 
         lock (_sendLock)
         {
-            return SendLocked(methodName, group, commandId, inData, outSize);
+            return SendLocked(methodName, group, commandId, inData, outSize, out reported);
         }
     }
 
@@ -132,11 +149,12 @@ public sealed class BiosInterop : IDisposable
 
         lock (_sendLock)
         {
-            return SendLocked(MethodNameFor(outSize), group, commandId, null, outSize);
+            return SendLocked(MethodNameFor(outSize), group, commandId, null, outSize, out _);
         }
     }
 
-    private byte[] SendLocked(string methodName, BiosCmdGroup group, byte commandId, byte[]? inData, int outSize)
+    private byte[] SendLocked(
+        string methodName, BiosCmdGroup group, byte commandId, byte[]? inData, int outSize, out int reported)
     {
         // Non-null by construction: Send refuses before reaching here unless IsAvailable, and
         // IsAvailable is only set once Initialise has assigned both of these.
@@ -180,8 +198,13 @@ public sealed class BiosInterop : IDisposable
             throw new InvalidOperationException($"BIOS call failed (0x{returnCode:X}) -- group={group}, cmd=0x{commandId:X2}");
 
         var raw = (byte[])outData[BiosWmi.OutDataField];
+
+        // How much of the buffer below is the board's answer and how much is padding this
+        // method added. Capped at outSize, since anything past that is not copied through.
+        reported = Math.Min(outSize, raw.Length);
+
         var result = new byte[outSize];
-        Array.Copy(raw, 0, result, 0, Math.Min(outSize, raw.Length));
+        Array.Copy(raw, 0, result, 0, reported);
         return result;
     }
 

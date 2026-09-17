@@ -37,12 +37,19 @@ public sealed class FanController
     /// cannot have. A board that disagrees, or that refuses the small method, keeps the 128-byte
     /// call for the rest of the session and behaves exactly as it did before.
     /// </summary>
-    public byte[] GetFanLevel()
+    public byte[] GetFanLevel() => GetFanLevel(out _);
+
+    /// <summary>
+    /// The levels, plus how many bytes the board actually supplied.
+    ///
+    /// Everything past <paramref name="reported"/> is padding this layer added, not a reading.
+    /// </summary>
+    public byte[] GetFanLevel(out int reported)
     {
         if (_fanLevelOutSize is int size)
-            return _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanLevel, null, size);
+            return _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanLevel, null, size, out reported);
 
-        var large = _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanLevel, null, 128);
+        var large = _bios.Send(BiosCmdGroup.Default, FanCmd.GetFanLevel, null, 128, out reported);
 
         try
         {
@@ -65,6 +72,26 @@ public sealed class FanController
         }
 
         return large;
+    }
+
+    /// <summary>
+    /// The two fan levels, with "the board did not say" kept distinct from "the fan is stopped".
+    ///
+    /// Those two have rendered identically for the whole life of this application, as a raw
+    /// level of zero. That is the worst possible collision to have: a stopped fan on a hot
+    /// machine is the precise fault the fan curve exists to prevent, and the thermal log has
+    /// been recording it out of bytes the board never sent. Fourteen days of that trace contain
+    /// thousands of such rows.
+    ///
+    /// Zero is still returned when the board genuinely reports zero -- that reading is real and
+    /// suppressing it would be the opposite mistake, hiding a stall to tidy up a display.
+    /// </summary>
+    public (byte? Fan1, byte? Fan2) ReadLevels()
+    {
+        byte[] data = GetFanLevel(out int reported);
+
+        return (reported > 0 ? data[0] : null,
+                reported > 1 ? data[1] : null);
     }
 
     /// <summary>

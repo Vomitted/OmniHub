@@ -191,8 +191,8 @@ public partial class OverlayWindow : Window
         Set("cpu", ceiling ? "--" : fromDie ? $"{displayC:0.0}°" : $"{Math.Round(displayC):0}°");
         SourceLabel.Text = fromDie ? "OMNIHUB · DIE" : "OMNIHUB · ACPI";
 
-        Set("fan", $"{FanService.RawToRpm(r.FanLevel1)}");
-        Set("fan2", $"{FanService.RawToRpm(r.FanLevel2)}");
+        Set("fan", FanService.RpmText(r.FanLevel1));
+        Set("fan2", FanService.RpmText(r.FanLevel2));
         Set("pkg", _powerLabel);
 
         // GPU values come from the slow timer's cached snapshot, never read on this thread:
