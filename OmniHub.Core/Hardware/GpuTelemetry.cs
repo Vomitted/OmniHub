@@ -205,7 +205,7 @@ public static class GpuTelemetry
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             };
-            psi.ArgumentList.Add("--query-gpu=name,temperature.gpu,power.draw,clocks.sm,utilization.gpu");
+            psi.ArgumentList.Add("--query-gpu=name,temperature.gpu,power.draw,clocks.sm,utilization.gpu,power.max_limit");
             psi.ArgumentList.Add("--format=csv,noheader,nounits");
 
             using var proc = Process.Start(psi);
@@ -237,10 +237,18 @@ public static class GpuTelemetry
             var parts = line.Split(',').Select(p => p.Trim()).ToArray();
             if (parts.Length < 5) return null;
 
+            // The board's ceiling, when it answered with one. Asked for in the same call because
+            // the process launch is the expensive part and a sixth column costs nothing.
+            double? ceiling = parts.Length > 5 ? Number(parts[5]) : null;
+
             return new GpuReading(
                 parts[0],
                 Number(parts[1]),
-                Number(parts[2]),
+
+                // Refused when it is far above what the board is allowed to draw. This path
+                // reports the same impossible 312.13 W the NVML path does, in the same state, so
+                // the filter belongs on both rather than on whichever one was looked at first.
+                GpuPowerPlausibility.Filter(Number(parts[2]), ceiling),
                 (int?)Number(parts[3]),
                 (int?)Number(parts[4]),
                 "NVIDIA",

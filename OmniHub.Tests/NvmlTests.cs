@@ -106,9 +106,21 @@ public class NvmlTests
 
         // The unit check. Power swings far more than temperature between two samples, so this is
         // deliberately loose -- it is aimed at a factor of a thousand, not at a few watts.
-        if (before.PowerWatts is { } watts && double.TryParse(fields[2], out double smiWatts))
+        //
+        // Both sides are put through the same plausibility rule first. This card reports a fixed
+        // 312.13 W in roughly a quarter of its samples, from both readers, and comparing a
+        // measurement against a value both readers agree is impossible tests nothing: whichever
+        // of the two happened to catch the bad state fails, at random. The rule is asserted on its
+        // own in GpuPowerPlausibilityTests; this test is about the two agreeing.
+        double? ceiling = fields.Length > 5 && double.TryParse(fields[5], out double max) ? max : null;
+
+        if (GpuPowerPlausibility.Filter(before.PowerWatts, ceiling) is { } watts
+            && double.TryParse(fields[2], out double raw)
+            && GpuPowerPlausibility.Filter(raw, ceiling) is { } smiWatts)
+        {
             Assert.True(Math.Abs(watts - smiWatts) <= 40,
                         $"NVML read {watts} W, nvidia-smi read {smiWatts} W -- a unit error?");
+        }
     }
 
     /// <summary>
@@ -172,7 +184,7 @@ public class NvmlTests
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             };
-            psi.ArgumentList.Add("--query-gpu=name,temperature.gpu,power.draw,clocks.sm,utilization.gpu");
+            psi.ArgumentList.Add("--query-gpu=name,temperature.gpu,power.draw,clocks.sm,utilization.gpu,power.max_limit");
             psi.ArgumentList.Add("--format=csv,noheader,nounits");
 
             using var process = Process.Start(psi);
@@ -187,5 +199,43 @@ public class NvmlTests
             return output.Split('\n').FirstOrDefault(l => l.Trim().Length > 0)?.Trim();
         }
         catch { return null; }
+    }
+
+    /// <summary>
+    /// No reading this card gives is above what it is allowed to draw.
+    ///
+    /// Sampled rather than asserted once, because the fault being guarded is intermittent: this
+    /// board reports a fixed 312.13 W in roughly a quarter of its samples, so a single read has a
+    /// three-in-four chance of looking fine.
+    ///
+    /// This is the guard's own proof. The first attempt at it bound to nvmlDeviceGetPowerManagement
+    /// Limit, which this card answers N/A to, so the ceiling read back as null, every reading was
+    /// believed and the filter did nothing at all -- while looking exactly like a filter.
+    /// </summary>
+    [Fact]
+    public void NoPowerReadingExceedsWhatTheBoardMayDraw()
+    {
+        if (Nvml.TryRead() is null) return;   // no NVIDIA card here
+
+        double? ceiling = null;
+        var seen = new List<double>();
+
+        for (int i = 0; i < 40; i++)
+        {
+            if (Nvml.TryRead() is { PowerWatts: { } watts }) seen.Add(watts);
+            Thread.Sleep(25);
+        }
+
+        if (RunNvidiaSmi() is { } line)
+        {
+            var fields = line.Split(',').Select(f => f.Trim()).ToArray();
+            if (fields.Length > 5 && double.TryParse(fields[5], out double max)) ceiling = max;
+        }
+
+        if (ceiling is not { } limit) return;   // nothing to check against
+
+        foreach (double watts in seen)
+            Assert.True(watts <= limit * GpuPowerPlausibility.Tolerance,
+                        $"{watts} W reported by a board whose ceiling is {limit} W");
     }
 }

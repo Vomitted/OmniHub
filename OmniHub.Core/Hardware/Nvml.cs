@@ -66,6 +66,27 @@ public static class Nvml
     [DllImport(Library, EntryPoint = "nvmlDeviceGetPowerUsage")]
     private static extern int GetPowerUsage(IntPtr device, out uint milliwatts);
 
+    // The board's own ceiling, in milliwatts. Read so a draw far above it can be refused --
+    // see GpuPowerPlausibility for the reading on this machine that made that necessary.
+    //
+    // Which call to ask took two wrong answers, and both failed silently, which is why the guard
+    // now has a test of its own against real hardware:
+    //
+    //   nvmlDeviceGetPowerManagementLimit      present, returns NOT_SUPPORTED on this card --
+    //                                          the same N/A nvidia-smi prints for power.limit
+    //   nvmlDeviceGetMaxPowerManagementLimit   not exported by this driver at all, so the
+    //                                          P/Invoke threw and was caught
+    //   nvmlDeviceGetEnforcedPowerLimit        answers 75000 mW, which is the figure nvidia-smi
+    //                                          reports as power.max_limit
+    //
+    // The constraints call is kept as a fallback because it answered too (min 5000, max 75000) and
+    // a driver that drops one export is exactly what this whole class already guards against.
+    [DllImport(Library, EntryPoint = "nvmlDeviceGetEnforcedPowerLimit")]
+    private static extern int GetEnforcedPowerLimit(IntPtr device, out uint milliwatts);
+
+    [DllImport(Library, EntryPoint = "nvmlDeviceGetPowerManagementLimitConstraints")]
+    private static extern int GetPowerLimitConstraints(IntPtr device, out uint minMilliwatts, out uint maxMilliwatts);
+
     [DllImport(Library, EntryPoint = "nvmlDeviceGetClockInfo")]
     private static extern int GetClockInfo(IntPtr device, uint type, out uint megahertz);
 
@@ -130,7 +151,14 @@ public static class Nvml
                     // Milliwatts. Dividing by a thousand is the entire unit conversion, and
                     // getting it wrong would report a 45 W board at 45,000 W -- which is exactly
                     // what the cross-check against nvidia-smi in the tests is there to catch.
-                    GetPowerUsage(device, out uint milliwatts) == Ok ? milliwatts / 1000.0 : null,
+                    //
+                    // Filtered against the board's own ceiling, because this card reports a fixed
+                    // 312.13 W in about a quarter of its samples and that is four times a limit it
+                    // enforces. The cross-check caught it; it is not a reader bug, since nvidia-smi
+                    // reports the same value in the same state.
+                    GpuPowerPlausibility.Filter(
+                        GetPowerUsage(device, out uint milliwatts) == Ok ? milliwatts / 1000.0 : null,
+                        PowerCeilingWatts(device)),
 
                     GetClockInfo(device, ClockSm, out uint megahertz) == Ok ? (int)megahertz : null,
                     GetUtilization(device, out Utilization used) == Ok ? (int)used.Gpu : null,
@@ -182,5 +210,38 @@ public static class Nvml
         _unusable = true;
         _initialised = false;
         UnavailableReason = reason;
+    }
+
+    /// <summary>
+    /// The board's power ceiling in watts, or null when it cannot be read.
+    ///
+    /// Cached: it is a property of the card rather than of the moment, and it is consulted on
+    /// every reading. A card that will not report it simply has no ceiling to check against, which
+    /// GpuPowerPlausibility treats as "believe the reading" rather than as a failure.
+    /// </summary>
+    private static double? _ceilingWatts;
+    private static bool _ceilingRead;
+
+    private static double? PowerCeilingWatts(IntPtr device)
+    {
+        if (_ceilingRead) return _ceilingWatts;
+
+        _ceilingRead = true;
+
+        try
+        {
+            if (GetEnforcedPowerLimit(device, out uint milliwatts) == Ok && milliwatts > 0)
+                return _ceilingWatts = milliwatts / 1000.0;
+        }
+        catch (EntryPointNotFoundException) { }
+
+        try
+        {
+            if (GetPowerLimitConstraints(device, out uint _, out uint maxMilliwatts) == Ok && maxMilliwatts > 0)
+                return _ceilingWatts = maxMilliwatts / 1000.0;
+        }
+        catch (EntryPointNotFoundException) { }
+
+        return _ceilingWatts = null;
     }
 }
