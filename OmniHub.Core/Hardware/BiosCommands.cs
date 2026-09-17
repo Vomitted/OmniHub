@@ -490,6 +490,29 @@ public sealed class SystemController
     /// real hardware state -- treat this reading with real skepticism until cross-checked
     /// (e.g. against actual observed clock-speed drops) on real hardware.
     /// </summary>
+    /// <summary>
+    /// The capability byte the board returns for one selector, or null if it would not answer.
+    ///
+    /// Exists so the doubt above can be settled rather than restated. GetThrottling reads data[1]
+    /// after asking with selector 4, and the suspicion is that data[1] is simply that 4 handed
+    /// back -- which is untestable through GetThrottling itself, because it only ever asks one
+    /// question. Asking several and comparing the answers is the whole experiment.
+    ///
+    /// Read-only: the second input byte chooses which capability is being queried, so a different
+    /// value asks a different question rather than changing anything.
+    /// </summary>
+    public byte? ReadCapabilityByte(byte selector)
+    {
+        try
+        {
+            var data = _bios.SendAtLeast(
+                BiosCmdGroup.Default, SysCmd.GetCapability, new byte[] { 0, selector, 0, 0 }, 128, needed: 2);
+
+            return data[1];
+        }
+        catch { return null; }
+    }
+
     public ThrottlingState GetThrottling()
     {
         try

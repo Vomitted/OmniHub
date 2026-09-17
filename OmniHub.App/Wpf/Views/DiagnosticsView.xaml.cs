@@ -266,6 +266,15 @@ public partial class DiagnosticsView : UserControl
         // memory running below its own rating is both common and correctable. Neither has ever
         // been reported anywhere in this application, and neither is visible in Windows without
         // going looking for it.
+        // The throttling reading, and whether it is a reading at all.
+        //
+        // Its source comment has carried the doubt for a long time: GetCapability echoes the
+        // selector byte back at exactly the position this value is read from, and the selector
+        // sent is 4, which is also ThrottlingState.Default's numeric value. Three read-only
+        // queries with different selectors settle it either way, and the answer is shown rather
+        // than the suspicion.
+        AddRow(CapabilityRows, "Throttling reading", ThrottlingProbe.Run(_ctx.System).Describe());
+
         AddRow(CapabilityRows, "Memory", SystemInventory.ReadMemory().Describe());
 
         AddRow(CapabilityRows, "Storage",
