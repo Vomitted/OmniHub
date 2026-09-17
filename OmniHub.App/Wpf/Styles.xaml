@@ -758,7 +758,7 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Track" Property="Background" Value="{StaticResource AccentBrush}"/>
                             <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
-                            <Setter TargetName="Thumb" Property="Background" Value="White"/>
+                            <Setter TargetName="Thumb" Property="Background" Value="{DynamicResource OnAccentBrush}"/>
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
@@ -871,7 +871,7 @@
                                 BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1"
                                 VerticalAlignment="Center">
                             <Path x:Name="Tick" Stretch="Uniform" Margin="3" Visibility="Collapsed"
-                                  Stroke="White" StrokeThickness="2"
+                                  Stroke="{DynamicResource OnAccentBrush}" StrokeThickness="2"
                                   StrokeEndLineCap="Round" StrokeStartLineCap="Round"
                                   Data="M 0,3 L 2.5,5.5 L 7,0.5"/>
                         </Border>
