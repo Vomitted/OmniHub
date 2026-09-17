@@ -508,6 +508,12 @@ public partial class MainWindow : Window
         foreach (var metric in OmniHub.Core.Telemetry.Metrics.All)
             catalogue.Add(($"{MetricPanelPrefix}{metric.Key}", $"Reading: {metric.Label}"));
 
+        // Charts read the log back rather than the hardware, so they show where a number has been
+        // rather than where it is. Same derivation, same reason: a subject added in Core appears
+        // here without anybody remembering to add it twice.
+        foreach (var subject in OmniHub.Core.Telemetry.ChartSubjects.All)
+            catalogue.Add(($"{ChartPanelPrefix}{subject.Key}", $"Chart: {subject.Title}"));
+
         return catalogue;
     }
 
@@ -592,6 +598,9 @@ public partial class MainWindow : Window
         if (key.StartsWith(MetricPanelPrefix, StringComparison.Ordinal))
             return new Views.MetricPanel(key[MetricPanelPrefix.Length..], metrics);
 
+        if (key.StartsWith(ChartPanelPrefix, StringComparison.Ordinal))
+            return new Views.ChartPanel(key[ChartPanelPrefix.Length..]);
+
         if (key == "limits")
         {
             var strip = new Controls.LimitStrip();
@@ -613,6 +622,7 @@ public partial class MainWindow : Window
     }
 
     private const string MetricPanelPrefix = "metric.";
+    private const string ChartPanelPrefix = "chart.";
 
     /// <summary>Stands in for a tab whose constructor threw, naming what happened.</summary>
     private static UserControl FailedTab(string key, Exception ex) => new()
