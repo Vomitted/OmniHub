@@ -259,6 +259,17 @@ public partial class DiagnosticsView : UserControl
         // real cadence, and it is the number two rounds of optimisation aimed at and missed.
         // Averages are appended to polltiming-*.csv beside the thermal logs.
         AddRow(CapabilityRows, "Poll tick cost", _ctx.LastTickTimings);
+
+        // The two static facts that answer "why is this one slower than the same laptop somebody
+        // else has" more often than any tuning knob does. This processor's integrated graphics
+        // have no memory of their own, so the channel count is a graphics bandwidth figure; and
+        // memory running below its own rating is both common and correctable. Neither has ever
+        // been reported anywhere in this application, and neither is visible in Windows without
+        // going looking for it.
+        AddRow(CapabilityRows, "Memory", SystemInventory.ReadMemory().Describe());
+
+        AddRow(CapabilityRows, "Storage",
+            SystemInventory.DescribeStorage(SystemInventory.ReadStorage(out string? driveError), driveError));
     }
 
     /// <summary>
