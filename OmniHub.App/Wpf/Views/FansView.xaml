@@ -100,8 +100,20 @@
             </Grid>
 
             <TextBlock Text="CURVE / TEMPERATURE TO FAN LEVEL" Style="{StaticResource SubHeadingText}"/>
-            <Border Style="{StaticResource CardBorderStyle}" Height="188" Padding="6" Margin="0,0,0,18">
+            <Border Style="{StaticResource CardBorderStyle}" Height="188" Padding="6" Margin="0,0,0,10">
                 <controls:FanCurveChart x:Name="Chart"/>
+            </Border>
+
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
+                <Grid>
+                    <Border Style="{StaticResource CardSheenStyle}"/>
+                    <StackPanel>
+                        <TextBlock Text="WHAT THE CURVE JUST DID" Style="{StaticResource DataLabelText}" Margin="0,0,0,8"/>
+                        <TextBlock x:Name="TickNote" Style="{StaticResource BodyText}" FontSize="12"
+                                   TextWrapping="Wrap" MaxWidth="760"
+                                   Text="Waiting for the first tick."/>
+                    </StackPanel>
+                </Grid>
             </Border>
 
             <TextBlock Text="SAFETY FLOOR" Style="{StaticResource SubHeadingText}"/>

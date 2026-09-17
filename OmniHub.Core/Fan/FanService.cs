@@ -51,6 +51,28 @@ public sealed class FanService : IDisposable
     public double LastReadTempC { get; private set; }
 
     /// <summary>
+    /// The last tick's readings and decision, together.
+    ///
+    /// Computed rather than stored, which keeps this out of the loop entirely: the fields it
+    /// gathers are already assigned within a single tick -- four of them on consecutive lines --
+    /// and the cooling loop is the one piece of this application that should not be edited to
+    /// make a readout nicer.
+    ///
+    /// ponytail: a computed snapshot, not an atomic one. A read racing the loop can pick up one
+    /// field from the following tick, which at a two-second display refresh is invisible. Assign
+    /// the record once at the end of the tick instead if anything ever needs tick-coherent reads.
+    /// </summary>
+    public FanTick LastTick => new(
+        LastReadTempC,
+        LastEffectiveTempC,
+        TemperatureSource,
+        SensorCeilingReached,
+        HasCommanded,
+        LastCommandedLevelPercent,
+        PredictiveLeadSeconds,
+        LastError);
+
+    /// <summary>
     /// Trend of the CONTROL temperature -- the hotter of CPU and GPU -- which is what the
     /// curve steers on and what the predictive lead forecasts.
     /// </summary>

@@ -289,6 +289,13 @@ public partial class FansView : UserControl
             LevelValue.Text = levelPercent.ToString();
             Chart.SetLive(tempC, levelPercent);
 
+            // Everything the tick decided, in a sentence. The service has recorded the measured
+            // temperature, the temperature the curve was actually evaluated against, which
+            // sensor answered and whether it was on its ceiling since the day it was written,
+            // and nothing has ever read one of them -- so the predictive lead, which is a
+            // setting the user can change, has had no observable effect but the fan noise.
+            TickNote.Text = _service.LastTick.Describe();
+
             // "COMMANDED BY CURVE" was all this said, which told you nothing you could act on.
             // The reading handler fills in measured versus target RPM on its own tick.
         });
