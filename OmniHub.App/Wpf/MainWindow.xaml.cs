@@ -145,6 +145,10 @@ public partial class MainWindow : Window
         // The saved arrangement, or the seven screens this application has always had when there
         // is not one yet. Load never throws -- see WorkspaceLayout.Load for why that matters more
         // here than for an ordinary settings file.
+        // One source for every metric panel in every workspace. A dozen panels each reading the
+        // hardware for itself would be a dozen SMU transactions where one will do.
+        _metrics = new MetricSource(_ctx);
+
         _layout = OmniHub.Core.Workspaces.WorkspaceLayout.Load();
         _currentWorkspace = 0;
         BuildWorkspaceNav();
@@ -293,6 +297,7 @@ public partial class MainWindow : Window
         OmniHub.Core.Workspaces.WorkspaceLayout.Defaults();
 
     private int _currentWorkspace = -1;
+    private MetricSource? _metrics;
 
     /// <summary>Set while the switcher is being brought in line with the layout, not the reverse.</summary>
     private bool _suppressNav;
@@ -480,16 +485,31 @@ public partial class MainWindow : Window
     /// The keys are the ones the fixed tabs already used, so the defaults -- which reproduce those
     /// tabs -- resolve without translation, and ResolveView remains the one registry.
     /// </summary>
-    public static IReadOnlyList<(string Key, string Name)> PanelCatalogue { get; } = new[]
+    public static IReadOnlyList<(string Key, string Name)> PanelCatalogue { get; } = BuildCatalogue();
+
+    private static IReadOnlyList<(string Key, string Name)> BuildCatalogue()
     {
-        ("dashboard", "Dashboard"),
-        ("fans", "Fans"),
-        ("performance", "Performance (CPU and GPU)"),
-        ("power", "Battery"),
-        ("system", "System (Windows, network, routing)"),
-        ("diagnostics", "Diagnostics (measure, history, compare)"),
-        ("settings", "Settings"),
-    };
+        var catalogue = new List<(string Key, string Name)>
+        {
+            // The whole screens, under the keys the fixed tabs already used.
+            ("dashboard", "Dashboard"),
+            ("fans", "Fans"),
+            ("performance", "Performance (CPU and GPU)"),
+            ("power", "Battery"),
+            ("system", "System (Windows, network, routing)"),
+            ("diagnostics", "Diagnostics (measure, history, compare)"),
+            ("settings", "Settings"),
+
+            ("limits", "What is limiting the machine"),
+        };
+
+        // One entry per reading, from the catalogue in Core, so the picker cannot offer a metric
+        // that does not exist and cannot miss one that does.
+        foreach (var metric in OmniHub.Core.Telemetry.Metrics.All)
+            catalogue.Add(($"{MetricPanelPrefix}{metric.Key}", $"Reading: {metric.Label}"));
+
+        return catalogue;
+    }
 
     /// <summary>
     /// Builds every not-yet-built tab, one idle callback at a time.
@@ -522,6 +542,16 @@ public partial class MainWindow : Window
     private UserControl? ResolveView(string key)
     {
         if (_views.TryGetValue(key, out var existing)) return existing;
+
+        // The atomic panels are built on demand and cached like everything else, but they are not
+        // in _viewFactories: there is one factory shape per metric, and registering twelve
+        // near-identical closures would be a table pretending to be code.
+        if (BuildAtomicPanel(key) is { } atomic)
+        {
+            _views[key] = atomic;
+            return atomic;
+        }
+
         if (!_viewFactories.TryGetValue(key, out var build)) return null;
 
         UserControl view;
@@ -546,6 +576,43 @@ public partial class MainWindow : Window
         _viewFactories.Remove(key);
         return view;
     }
+
+    /// <summary>
+    /// The small panels: one reading, or the limit strip.
+    ///
+    /// Null for anything that is not one, so the caller falls through to the ordinary view
+    /// factories and then to the placeholder. A metric key this build does not know still resolves
+    /// to a panel -- MetricPanel renders an unrecognised key as its own name over a dash, which is
+    /// more useful than no panel at all.
+    /// </summary>
+    private UserControl? BuildAtomicPanel(string key)
+    {
+        if (_metrics is not { } metrics) return null;
+
+        if (key.StartsWith(MetricPanelPrefix, StringComparison.Ordinal))
+            return new Views.MetricPanel(key[MetricPanelPrefix.Length..], metrics);
+
+        if (key == "limits")
+        {
+            var strip = new Controls.LimitStrip();
+            var host = new UserControl { Focusable = false, Content = strip };
+
+            // Driven off the metric source tick rather than a timer of its own: the snapshot it
+            // wants is the one already being read, and asking the SMU twice on two schedules is
+            // the cost this arrangement exists to avoid.
+            void Show() => strip.Show(_ctx.Smu?.ReadPowerSnapshot(),
+                                      _ctx.Smu is null ? "No SMU on this machine." : null);
+
+            host.Loaded += (_, _) => { metrics.Updated += Show; Show(); };
+            host.Unloaded += (_, _) => metrics.Updated -= Show;
+
+            return host;
+        }
+
+        return null;
+    }
+
+    private const string MetricPanelPrefix = "metric.";
 
     /// <summary>Stands in for a tab whose constructor threw, naming what happened.</summary>
     private static UserControl FailedTab(string key, Exception ex) => new()
@@ -1544,6 +1611,7 @@ public partial class MainWindow : Window
         try { if (_displayStateHandle != IntPtr.Zero) UnregisterPowerSettingNotification(_displayStateHandle); } catch { }
         try { _powerLog.Append(DateTime.UtcNow, "OmniHub", "Shutdown", "", "clean exit"); } catch { }
         try { _powerLog.Dispose(); } catch { }
+        try { _metrics?.Dispose(); } catch { }
         try { _thermalLog?.Dispose(); } catch { }
         try { ThemeManager.ThemeChanged -= OnThemeChanged; } catch { }
         try { if (_hotkeyHwnd != IntPtr.Zero) UnregisterHotKey(_hotkeyHwnd, OverlayHotkeyId); } catch { }
