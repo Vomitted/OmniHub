@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using OmniHub.Core.Hardware;
+using OmniHub.Core.Telemetry;
 using UserControl = System.Windows.Controls.UserControl;
 
 namespace OmniHub.App.Wpf.Controls;
@@ -31,8 +33,28 @@ public partial class LimitStrip : UserControl
     /// readings: a processor genuinely pinned against a limit reads 97, 99, 101, 98 across
     /// consecutive samples, and a threshold at 100 would report it as unconstrained most of the
     /// time it was constrained.
+    ///
+    /// Taken from Core rather than declared again here. The band below this strip answers the
+    /// same question over time and has to use the same threshold, and two copies of a number
+    /// that must agree is how they come to disagree.
     /// </summary>
-    private const double BindingPercent = 95.0;
+    private const double BindingPercent = LimitHistory.BindingPercent;
+
+    /// <summary>
+    /// A colour per constraint, so one limit keeps the same colour in the band and the legend.
+    ///
+    /// Theme brushes rather than literals: the palette carries eight variants and a hard-coded
+    /// colour would be the one element on screen that ignores the user's choice of theme.
+    /// </summary>
+    private static readonly Dictionary<string, string> BandBrushes = new()
+    {
+        ["Sustained power"] = "MetricCpuBrush",
+        ["Boost power"] = "MetricMemBrush",
+        ["Core current (EDC)"] = "AccentBrush",
+        ["Core current (TDC)"] = "MetricGpuBrush",
+        ["Temperature"] = "DangerBrush",
+        [LimitHistory.Unconstrained] = "BorderBrush",
+    };
 
     private readonly List<(Border Fill, ColumnDefinition Filled, ColumnDefinition Remainder, TextBlock Value)> _rows = new();
 
@@ -143,5 +165,107 @@ public partial class LimitStrip : UserControl
 
         Rows.Children.Add(grid);
         _rows.Add((bar, filled, rest, value));
+    }
+
+    // ------------------------------------------------------------ the same question over time
+
+    /// <summary>
+    /// Draws what has been binding across the window, as a band on a real time axis.
+    ///
+    /// The strip above says what is holding the machine back at this instant. This says what has
+    /// been holding it back, which is the question somebody actually arrives with -- and the
+    /// answer, "you were current-limited for forty per cent of the last hour", is one nothing in
+    /// this class of tool reports.
+    ///
+    /// Drawn with proportional grid columns rather than a custom control. A band is a row of
+    /// rectangles whose widths are durations, which is what star sizing already does; a Canvas
+    /// with measure and arrange overrides would be a lot of code to reimplement that.
+    ///
+    /// ponytail: one column per segment, bounded by the ring at 1,440. Move to a drawn Visual if
+    /// a band ever gets slow enough to notice.
+    /// </summary>
+    public void ShowHistory(LimitHistory history, TimeSpan window)
+    {
+        var segments = LimitHistory.Segments(history.Since(DateTime.UtcNow - window));
+
+        Band.ColumnDefinitions.Clear();
+        Band.Children.Clear();
+        Legend.Children.Clear();
+
+        // Nothing yet is its own state. An empty band under a caption reads as a machine that
+        // was measured and found to be doing nothing, which is not what it means.
+        if (segments.Count == 0)
+        {
+            HistorySection.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        HistorySection.Visibility = Visibility.Visible;
+        BandNote.Text = LimitHistory.Describe(segments, window);
+
+        for (int i = 0; i < segments.Count; i++)
+        {
+            // A real gap gets a column of its own rather than being closed up. Compressing it
+            // would slide everything after it leftwards and quietly redraw when things happened.
+            // Sub-threshold gaps are the moment between two samples at a change of limit, which
+            // is not an outage and is absorbed.
+            if (i > 0 && segments[i].FromUtc - segments[i - 1].ToUtc > LimitHistory.MaxGap)
+                AddBandColumn(segments[i].FromUtc - segments[i - 1].ToUtc, null,
+                              $"Not measured\n{segments[i - 1].ToUtc.ToLocalTime():HH:mm:ss} to "
+                              + $"{segments[i].FromUtc.ToLocalTime():HH:mm:ss}");
+
+            AddBandColumn(segments[i].Duration, segments[i].Name,
+                          $"{segments[i].Name}\n{segments[i].FromUtc.ToLocalTime():HH:mm:ss} to "
+                          + $"{segments[i].ToUtc.ToLocalTime():HH:mm:ss}");
+        }
+
+        foreach (var share in LimitHistory.Shares(segments))
+            Legend.Children.Add(LegendChip(share));
+    }
+
+    /// <summary>One stretch of the band. A null name is an unmeasured gap, left empty.</summary>
+    private void AddBandColumn(TimeSpan width, string? name, string tooltip)
+    {
+        Band.ColumnDefinitions.Add(new ColumnDefinition
+        {
+            Width = new GridLength(Math.Max(width.TotalSeconds, 0.001), GridUnitType.Star),
+        });
+
+        var block = new Border { ToolTip = tooltip };
+
+        if (name is not null)
+            block.SetResourceReference(BackgroundProperty,
+                BandBrushes.TryGetValue(name, out string? key) ? key : "BorderBrush");
+
+        Grid.SetColumn(block, Band.ColumnDefinitions.Count - 1);
+        Band.Children.Add(block);
+    }
+
+    /// <summary>A dot and a percentage. Colour on the dot, never on the words beside it.</summary>
+    private UIElement LegendChip(LimitShare share)
+    {
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 0, 14, 4),
+        };
+
+        var dot = new Border
+        {
+            Width = 9,
+            Height = 9,
+            CornerRadius = new CornerRadius(2),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 6, 0),
+        };
+        dot.SetResourceReference(BackgroundProperty,
+            BandBrushes.TryGetValue(share.Name, out string? key) ? key : "BorderBrush");
+
+        var text = new TextBlock { Text = $"{share.Name}  {share.Fraction:0}%" };
+        text.SetResourceReference(StyleProperty, "TileFoot");
+
+        row.Children.Add(dot);
+        row.Children.Add(text);
+        return row;
     }
 }

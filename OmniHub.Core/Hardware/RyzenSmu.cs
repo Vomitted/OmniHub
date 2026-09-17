@@ -486,14 +486,30 @@ public sealed class RyzenSmu : IDisposable
     /// </summary>
     private static readonly TimeSpan PowerCacheLife = TimeSpan.FromSeconds(5);
 
+    /// <summary>
+    /// Which limit has been binding, over the last couple of hours.
+    ///
+    /// Fed from the read below rather than from a timer of its own. Every consumer of the PM
+    /// table already shares one cached read precisely because the transaction is expensive, so
+    /// recording there costs nothing and cannot raise the rate -- and it means the history
+    /// covers whenever anything was looking, which is exactly what it claims to cover.
+    /// </summary>
+    public Telemetry.LimitHistory Limits { get; } = new();
+
     public PowerSnapshot? ReadPowerSnapshot()
     {
         lock (_powerLock)
         {
             if (DateTime.UtcNow - _cachedPowerAtUtc < PowerCacheLife) return _cachedPower;
+
             var fresh = ReadPowerSnapshotUncached();
             _cachedPower = fresh;
             _cachedPowerAtUtc = DateTime.UtcNow;
+
+            // Only on a real read. Recording cache hits too would stamp one snapshot with a
+            // dozen different times and report a density of measurement that never happened.
+            if (fresh is not null) Limits.Record(_cachedPowerAtUtc, fresh);
+
             return fresh;
         }
     }

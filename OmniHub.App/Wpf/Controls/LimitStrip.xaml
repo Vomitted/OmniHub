@@ -5,5 +5,21 @@
         <TextBlock x:Name="Verdict" Style="{DynamicResource BodyText}" FontSize="12.5"
                    TextWrapping="Wrap" Margin="0,0,0,10"/>
         <StackPanel x:Name="Rows"/>
+
+        <!-- The same question over time. Hidden until there is history to draw, so a fresh
+             launch shows the live strip alone rather than an empty band with a caption. -->
+        <StackPanel x:Name="HistorySection" Visibility="Collapsed" Margin="0,16,0,0">
+            <TextBlock Text="AND OVER TIME" Style="{DynamicResource DataLabelText}" Margin="0,0,0,7"/>
+
+            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="3"
+                    Height="22" ClipToBounds="True">
+                <Grid x:Name="Band"/>
+            </Border>
+
+            <WrapPanel x:Name="Legend" Margin="0,8,0,0"/>
+
+            <TextBlock x:Name="BandNote" Style="{DynamicResource MutedText}" FontSize="11"
+                       TextWrapping="Wrap" MaxWidth="760" Margin="0,8,0,0"/>
+        </StackPanel>
     </StackPanel>
 </UserControl>

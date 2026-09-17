@@ -223,11 +223,28 @@ public partial class DashboardView : UserControl
         }).ContinueWith(t =>
         {
             Interlocked.Exchange(ref _limitsInFlight, 0);
-            Dispatcher.BeginInvoke(() => Limits.Show(
-                t.IsCompletedSuccessfully ? t.Result : null,
-                _ctx.SmuUnavailableReason));
+            Dispatcher.BeginInvoke(() =>
+            {
+                Limits.Show(
+                    t.IsCompletedSuccessfully ? t.Result : null,
+                    _ctx.SmuUnavailableReason);
+
+                // The band underneath, from the history the read above has just contributed to.
+                // No second hardware access: the SMU records into it on every real read, so this
+                // is a walk over an in-memory ring.
+                if (_ctx.Smu is { } smu) Limits.ShowHistory(smu.Limits, LimitWindow);
+            });
         });
     }
+
+    /// <summary>
+    /// How far back the binding-limit band looks.
+    ///
+    /// An hour, because the question it answers is about a session rather than a moment -- "what
+    /// held this back while I was playing" -- and because the ring holds two, so an hour is a
+    /// window the history can always fill rather than a claim it cannot back.
+    /// </summary>
+    private static readonly TimeSpan LimitWindow = TimeSpan.FromHours(1);
 
     private void RefreshPowerDraw()
     {
