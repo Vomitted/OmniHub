@@ -36,7 +36,31 @@ public sealed class FanService : IDisposable
     /// </summary>
     public string? LastError { get; private set; }
     public FanCurve Curve => _curve;
+
+    /// <summary>
+    /// A separate curve for the second fan, or null while both fans share the first one.
+    ///
+    /// Null by default, and null is exactly today's behaviour: one curve, evaluated once, sent to
+    /// both fans. Settable because the power rail can change under a running loop and the curve in
+    /// force changes with it.
+    ///
+    /// Its own instance, not a copy of the first, because FanCurve carries hysteresis and
+    /// ramp-down state between evaluations. Sharing one would make each fan's step-down decision
+    /// depend on what the other fan was told a moment earlier.
+    /// </summary>
+    public FanCurve? Curve2 { get; set; }
+
     public byte LastCommandedLevelPercent { get; private set; }
+
+    /// <summary>
+    /// The second fan's commanded level, equal to the first unless Curve2 is set.
+    ///
+    /// ponytail: the thermal log still records one commanded_pct column, which is fan 1's. With a
+    /// second curve in force the log therefore under-describes what was commanded. Left as it is
+    /// because the feature defaults off and the column is parsed by four other things; add a
+    /// commanded2_pct column if anybody actually runs two curves for long enough to analyse.
+    /// </summary>
+    public byte LastCommandedLevel2Percent { get; private set; }
 
     /// <summary>
     /// False until the curve loop has completed a tick and actually computed a level.
@@ -230,9 +254,21 @@ public sealed class FanService : IDisposable
                     SensorCeilingReached = false;
                 }
 
+                // Fan 2 runs its own curve when it has been given one, from the same control
+                // temperature rather than from a different sensor. Not from a different sensor
+                // because which fan cools which part is not known on this board: GetFanType
+                // answers 0x21, which is not a value the FanType enum describes, and routing the
+                // GPU's temperature to a fan on a guess would cool the wrong part of the machine
+                // half the time.
+                byte level2Percent = Curve2 is { } second ? second.Evaluate(effectiveTemp) : levelPercent;
+
+                // The blind-sensor override is a safety response to not knowing the temperature,
+                // so it applies to both fans whatever the second curve would have said.
+                if (SensorCeilingReached) level2Percent = 100;
+
                 // Per-fan maxima: the two fans do not share a ceiling on this chassis.
                 byte raw1 = PercentToRaw(levelPercent, MaxRawLevelFan1);
-                byte raw2 = PercentToRaw(levelPercent, MaxRawLevelFan2);
+                byte raw2 = PercentToRaw(level2Percent, MaxRawLevelFan2);
 
                 // Only write when the level actually changes, plus a slow refresh.
                 //
@@ -283,6 +319,7 @@ public sealed class FanService : IDisposable
                 LastReadTempC = temp;
                 LastEffectiveTempC = effectiveTemp;
                 LastCommandedLevelPercent = levelPercent;
+                LastCommandedLevel2Percent = level2Percent;
                 HasCommanded = true; // set only after the level was genuinely computed and sent
                 LastError = null;
                 OnTick?.Invoke(temp, levelPercent);

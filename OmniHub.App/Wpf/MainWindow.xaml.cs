@@ -67,6 +67,10 @@ public partial class MainWindow : Window
             // The discrete GPU shares these fans. Reading it is cached inside GpuTelemetry, so
             // the curve's own tick does not pay for a process spawn every time.
             ReadSecondaryTempC = () => GpuTelemetry.Read()?.TempC,
+
+            // Null unless the user has asked for two, which is what makes both fans share the
+            // first curve exactly as they always have.
+            Curve2 = _settings.SeparateFan2Curve ? _settings.BuildCurve(OnBattery, fan2: true) : null,
         };
 
         // The curve follows the charger, when the user has asked it to.
@@ -687,11 +691,7 @@ public partial class MainWindow : Window
         if (!_settings.SeparateBatteryCurve) return;
 
         bool battery = source == OmniHub.Core.Optimize.PowerSource.Battery;
-        var wanted = _settings.BuildCurve(battery);
-
-        _service.Curve.SetPoints(wanted.Points);
-        _service.Curve.FloorTempC = wanted.FloorTempC;
-        _service.Curve.FloorLevelPercent = wanted.FloorLevelPercent;
+        ApplyCurves(battery);
 
         _thermalLog?.Append(
             DateTime.UtcNow, 0, -1, null, null, -1, false,
@@ -708,11 +708,31 @@ public partial class MainWindow : Window
     {
         if (_settings.SeparateBatteryCurve) _ctx.PowerSource.Start();
 
-        var wanted = _settings.BuildCurve(OnBattery);
+        ApplyCurves(OnBattery);
+    }
+
+    /// <summary>
+    /// Puts the curves for a power rail into the running service.
+    ///
+    /// The first fan's curve is mutated in place rather than replaced, because FanCurve carries
+    /// hysteresis and ramp-down state and swapping the instance would reset it -- the fan would be
+    /// free to make a full step on the very next tick, which is the chatter the deadband exists to
+    /// prevent.
+    ///
+    /// The second fan's is assigned rather than mutated, because it does not exist at all until
+    /// the feature is switched on, and switching it off has to leave nothing behind: a stale
+    /// second curve still driving fan 2 after the user turned the feature off would be the same
+    /// class of fault as a battery curve that came back.
+    /// </summary>
+    private void ApplyCurves(bool onBattery)
+    {
+        var wanted = _settings.BuildCurve(onBattery);
 
         _service.Curve.SetPoints(wanted.Points);
         _service.Curve.FloorTempC = wanted.FloorTempC;
         _service.Curve.FloorLevelPercent = wanted.FloorLevelPercent;
+
+        _service.Curve2 = _settings.SeparateFan2Curve ? _settings.BuildCurve(onBattery, fan2: true) : null;
     }
 
     private void ScanForNewApps()

@@ -318,6 +318,34 @@ public sealed class AppSettings
     public byte BatteryFloorLevelPercent { get; set; } = 15;
 
     /// <summary>
+    /// Whether the second fan runs its own curve rather than following the first.
+    ///
+    /// Off by default, and off is exactly the behaviour this application has always had: one
+    /// curve, evaluated once, sent to both fans.
+    ///
+    /// Worth having because the firmware itself runs the two fans at different speeds -- across
+    /// 192,791 logged readings they sit exactly two apart in 98.4 per cent of the steady samples
+    /// where the BIOS was driving. Whether it lets this application do the same is a separate
+    /// question, and the Fans tab has a measurement that answers it rather than a claim.
+    /// </summary>
+    public bool SeparateFan2Curve { get; set; }
+
+    public List<CurvePoint> Fan2CurvePoints { get; set; } = FanCurve.CreateDefault().Points.ToList();
+    public double Fan2FloorTempC { get; set; } = 55.0;
+    public byte Fan2FloorLevelPercent { get; set; } = 15;
+
+    public List<CurvePoint> BatteryFan2CurvePoints { get; set; } = FanCurve.CreateDefault().Points.ToList();
+    public double BatteryFan2FloorTempC { get; set; } = 55.0;
+    public byte BatteryFan2FloorLevelPercent { get; set; } = 15;
+
+    /// <summary>All four stored curves, in the shape the selection logic in Core expects.</summary>
+    public CurveSet BuildCurveSet() => new(
+        MainsFan1:   new CurveRail(CurvePoints, FloorTempC, FloorLevelPercent),
+        MainsFan2:   new CurveRail(Fan2CurvePoints, Fan2FloorTempC, Fan2FloorLevelPercent),
+        BatteryFan1: new CurveRail(BatteryCurvePoints, BatteryFloorTempC, BatteryFloorLevelPercent),
+        BatteryFan2: new CurveRail(BatteryFan2CurvePoints, BatteryFan2FloorTempC, BatteryFan2FloorLevelPercent));
+
+    /// <summary>
     /// The curve for a rail.
     ///
     /// The two rails are genuinely different problems. On mains the question is how much noise is
@@ -325,12 +353,6 @@ public sealed class AppSettings
     /// runtime, and the machine is usually doing less work anyway. One curve has to compromise
     /// between those, and the compromise is worse than either answer.
     /// </summary>
-    public FanCurve BuildCurve(bool onBattery = false)
-    {
-        return CurveRails.Build(
-            onBattery,
-            SeparateBatteryCurve,
-            new CurveRail(CurvePoints, FloorTempC, FloorLevelPercent),
-            new CurveRail(BatteryCurvePoints, BatteryFloorTempC, BatteryFloorLevelPercent));
-    }
+    public FanCurve BuildCurve(bool onBattery = false, bool fan2 = false) =>
+        CurveRails.Build(BuildCurveSet(), onBattery, SeparateBatteryCurve, fan2, SeparateFan2Curve);
 }

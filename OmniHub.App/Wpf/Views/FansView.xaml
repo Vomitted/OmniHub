@@ -161,7 +161,32 @@
                                   VerticalAlignment="Center" Checked="SeparateCurveToggle_Changed" Unchecked="SeparateCurveToggle_Changed"/>
                     </Grid>
 
-                    <WrapPanel x:Name="EditingRailPills" Margin="0,0,0,8"/>
+                    <!-- The second fan. Whether this board honours two different levels is a
+                         measurement, not an assumption, which is what the button below runs. -->
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                            <TextBlock Text="A separate curve for the second fan" Style="{StaticResource BodyText}"/>
+                            <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" MaxWidth="560" TextWrapping="Wrap"
+                                       Text="Both fans run the same curve when this is off. The firmware itself runs them two units apart, so the hardware can do it; whether it lets this application do it is what the check below asks."/>
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" x:Name="SeparateFan2Toggle" Style="{StaticResource ToggleSwitchStyle}"
+                                  VerticalAlignment="Center" Checked="SeparateFan2Toggle_Changed" Unchecked="SeparateFan2Toggle_Changed"/>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Button x:Name="SplitProbeBtn" Content="CHECK THE FANS MOVE SEPARATELY" Height="36" MinWidth="280"
+                                Style="{StaticResource FlatButtonStyle}" Click="SplitProbeBtn_Click"/>
+                        <TextBlock x:Name="SplitProbeNote" Style="{StaticResource MutedText}" FontSize="11"
+                                   VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="420"
+                                   Text="Holds the two fans 20 raw units apart for 40 seconds and reads them back. Audible, and it pauses the curve while it runs."/>
+                    </StackPanel>
+
+                    <WrapPanel x:Name="EditingRailPills" Margin="0,0,0,4"/>
+                    <WrapPanel x:Name="EditingFanPills" Margin="0,0,0,8"/>
                     <TextBlock x:Name="RailNote" Style="{StaticResource MutedText}" FontSize="11"
                                Margin="0,0,0,10" TextWrapping="Wrap" MaxWidth="700"/>
 

@@ -52,6 +52,7 @@ public partial class FansView : UserControl
         // The rail selector, and the curve for whichever rail is being edited.
         _suppressModeEvent = true;
         SeparateCurveToggle.IsChecked = settings.SeparateBatteryCurve;
+        SeparateFan2Toggle.IsChecked = settings.SeparateFan2Curve;
         _suppressModeEvent = false;
         BuildRailPills();
 
@@ -181,6 +182,49 @@ public partial class FansView : UserControl
     /// </summary>
     private bool _editingBattery;
 
+    /// <summary>Which fan's curve the editor is writing to. See <see cref="_editingBattery"/>.</summary>
+    private bool _editingFan2;
+
+    /// <summary>
+    /// The stored curve the editor is pointed at: 0 mains fan 1, 1 mains fan 2, 2 battery fan 1,
+    /// 3 battery fan 2.
+    ///
+    /// One index rather than a pair of flags threaded through every read and write, because there
+    /// are twelve settings properties behind these four cells and a missed branch in one of them
+    /// would silently edit the wrong curve.
+    /// </summary>
+    private int EditedCell => (_editingBattery ? 2 : 0) + (_editingFan2 ? 1 : 0);
+
+    private (List<CurvePoint> Points, double FloorTempC, byte FloorLevelPercent) EditedRail() => EditedCell switch
+    {
+        1 => (_settings.Fan2CurvePoints, _settings.Fan2FloorTempC, _settings.Fan2FloorLevelPercent),
+        2 => (_settings.BatteryCurvePoints, _settings.BatteryFloorTempC, _settings.BatteryFloorLevelPercent),
+        3 => (_settings.BatteryFan2CurvePoints, _settings.BatteryFan2FloorTempC, _settings.BatteryFan2FloorLevelPercent),
+        _ => (_settings.CurvePoints, _settings.FloorTempC, _settings.FloorLevelPercent),
+    };
+
+    private void WriteEditedPoints(List<CurvePoint> points)
+    {
+        switch (EditedCell)
+        {
+            case 1: _settings.Fan2CurvePoints = points; break;
+            case 2: _settings.BatteryCurvePoints = points; break;
+            case 3: _settings.BatteryFan2CurvePoints = points; break;
+            default: _settings.CurvePoints = points; break;
+        }
+    }
+
+    private void WriteEditedFloor(double tempC, byte levelPercent)
+    {
+        switch (EditedCell)
+        {
+            case 1: _settings.Fan2FloorTempC = tempC; _settings.Fan2FloorLevelPercent = levelPercent; break;
+            case 2: _settings.BatteryFloorTempC = tempC; _settings.BatteryFloorLevelPercent = levelPercent; break;
+            case 3: _settings.BatteryFan2FloorTempC = tempC; _settings.BatteryFan2FloorLevelPercent = levelPercent; break;
+            default: _settings.FloorTempC = tempC; _settings.FloorLevelPercent = levelPercent; break;
+        }
+    }
+
     /// <summary>
     /// Builds the rail selector and says which curve is in force.
     ///
@@ -189,55 +233,88 @@ public partial class FansView : UserControl
     /// </summary>
     private void BuildRailPills()
     {
-        EditingRailPills.Children.Clear();
+        BuildPillRow(EditingRailPills, "CurveRail", "MAINS", "BATTERY",
+                     enabled: _settings.SeparateBatteryCurve, selected: _editingBattery,
+                     onPick: second => _editingBattery = second);
 
-        foreach (var (label, battery) in new[] { ("MAINS", false), ("BATTERY", true) })
+        BuildPillRow(EditingFanPills, "CurveFan", "FAN 1", "FAN 2",
+                     enabled: _settings.SeparateFan2Curve, selected: _editingFan2,
+                     onPick: second => _editingFan2 = second);
+
+        RefreshRailNote();
+    }
+
+    /// <summary>
+    /// One two-way pill row.
+    ///
+    /// The pills are disabled while their feature is off, because with one curve there is nothing
+    /// to choose between and a live selector would imply otherwise.
+    /// </summary>
+    private void BuildPillRow(WrapPanel host, string group, string firstLabel, string secondLabel,
+                              bool enabled, bool selected, Action<bool> onPick)
+    {
+        host.Children.Clear();
+
+        foreach (var (label, isSecond) in new[] { (firstLabel, false), (secondLabel, true) })
         {
-            bool captured = battery;
+            bool captured = isSecond;
 
             var pill = new RadioButton
             {
                 Content = label,
-                GroupName = "CurveRail",
+                GroupName = group,
                 Style = (Style)FindResource("PillRadioStyle"),
                 Height = 28,
                 MinWidth = 82,
                 Margin = new Thickness(0, 0, 3, 0),
-                IsChecked = battery == _editingBattery,
-                IsEnabled = _settings.SeparateBatteryCurve,
+                IsChecked = isSecond == selected,
+                IsEnabled = enabled,
             };
 
-            pill.Checked += (_, _) => { _editingBattery = captured; LoadCurveForEditedRail(); };
-            EditingRailPills.Children.Add(pill);
+            pill.Checked += (_, _) => { onPick(captured); LoadCurveForEditedRail(); };
+            host.Children.Add(pill);
         }
-
-        RefreshRailNote();
     }
 
     private void RefreshRailNote()
     {
         bool onBattery = PowerSourceWatcher.Read() == PowerSource.Battery;
 
-        RailNote.Text = _settings.SeparateBatteryCurve
-            ? $"Editing the {(_editingBattery ? "battery" : "mains")} curve. "
-              + $"This machine is on {(onBattery ? "battery" : "mains")} right now, so the "
+        if (!_settings.SeparateBatteryCurve && !_settings.SeparateFan2Curve)
+        {
+            RailNote.Text = "One curve, applied to both fans on both power rails.";
+            return;
+        }
+
+        string rail = _editingBattery ? "battery" : "mains";
+        string fan = _editingFan2 ? "2" : "1";
+
+        string editing = (_settings.SeparateBatteryCurve, _settings.SeparateFan2Curve) switch
+        {
+            (true, true) => $"the {rail} curve for fan {fan}",
+            (true, false) => $"the {rail} curve",
+            _ => $"the curve for fan {fan}",
+        };
+
+        string inForce = _settings.SeparateBatteryCurve
+            ? $" This machine is on {(onBattery ? "battery" : "mains")} right now, so the "
               + $"{(onBattery ? "battery" : "mains")} curve is the one in force."
-            : "One curve, applied on both rails.";
+            : "";
+
+        RailNote.Text = $"Editing {editing}.{inForce}";
     }
 
     /// <summary>Loads whichever rail's stored curve into the editor.</summary>
     private void LoadCurveForEditedRail()
     {
-        var points = _editingBattery ? _settings.BatteryCurvePoints : _settings.CurvePoints;
+        var (points, floorTempC, floorLevel) = EditedRail();
 
         _rows.Clear();
         foreach (var p in points)
             _rows.Add(new CurvePointRow { TempC = p.TempC, LevelPercent = p.LevelPercent });
 
-        FloorTempBox.Text = (_editingBattery ? _settings.BatteryFloorTempC : _settings.FloorTempC)
-            .ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
-        FloorLevelBox.Text = (_editingBattery ? _settings.BatteryFloorLevelPercent : _settings.FloorLevelPercent)
-            .ToString();
+        FloorTempBox.Text = floorTempC.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+        FloorLevelBox.Text = floorLevel.ToString();
 
         RefreshRailNote();
         RefreshChartFromSettings();
@@ -260,6 +337,106 @@ public partial class FansView : UserControl
         (System.Windows.Application.Current.MainWindow as MainWindow)?.RefreshCurveFromSettings();
     }
 
+    /// <summary>How far apart the two fans are commanded during the check, in raw units.</summary>
+    private const byte SplitProbeHigh = 45, SplitProbeLow = 25;
+
+    /// <summary>Twenty samples two seconds apart -- forty seconds of fans held apart.</summary>
+    private const int SplitProbeSamples = 20;
+
+    /// <summary>
+    /// Asks the board whether it will drive its two fans at two different speeds.
+    ///
+    /// Worth running rather than assuming, because a second curve the firmware quietly collapses
+    /// into one is a control that looks like it works and does nothing. The evidence short of an
+    /// experiment points at independence and does not settle it -- see FanSplitProbe.
+    ///
+    /// Both levels are inside this chassis's measured band and both are above its floor, so the
+    /// experiment only ever moves more air than idle. If this application dies partway through,
+    /// the fans are left at 4500 and 2500 RPM rather than stopped, which is the safe direction to
+    /// fail in.
+    /// </summary>
+    private async void SplitProbeBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_ctx.VendorSupported)
+        {
+            SplitProbeNote.Text = "No vendor interface on this machine, so there is nothing to ask.";
+            return;
+        }
+
+        var go = System.Windows.MessageBox.Show(
+            $"The two fans will be held about {FanService.RawToRpm(SplitProbeHigh)} and "
+            + $"{FanService.RawToRpm(SplitProbeLow)} RPM for {SplitProbeSamples * 2} seconds, then the "
+            + "curve takes over again.\n\nIt is audible and uneven while it runs. Nothing is written "
+            + "that the curve does not overwrite immediately afterwards.",
+            "Check the fans move separately", MessageBoxButton.OKCancel, MessageBoxImage.Information);
+
+        if (go != MessageBoxResult.OK) return;
+
+        SplitProbeBtn.IsEnabled = false;
+        SplitProbeNote.Text = "Running. Holding the fans apart and reading them back...";
+
+        bool wasRunning = _service.IsRunning;
+
+        try
+        {
+            var samples = await Task.Run(() =>
+            {
+                // The curve would overwrite the split on its next tick, so it stands down for the
+                // duration. Max fan would too, and it wins over any level write.
+                if (wasRunning) _service.Stop();
+                SafeCall(() => _ctx.System.SetMaxFan(false));
+
+                var taken = new List<(byte? Fan1, byte? Fan2)>();
+
+                for (int i = 0; i < SplitProbeSamples; i++)
+                {
+                    // Re-asserted every sample for the same reason the curve loop re-asserts it:
+                    // SetFanLevel is ignored unless manual mode is currently held, and the EC can
+                    // reclaim it at any point.
+                    SafeCall(() => _ctx.Fan.SetFanMode(FanMode.Performance));
+                    SafeCall(() => _ctx.Fan.SetFanLevel(SplitProbeHigh, SplitProbeLow));
+
+                    System.Threading.Thread.Sleep(2000);
+                    taken.Add(_ctx.Fan.ReadLevels());
+                }
+
+                return taken;
+            });
+
+            var verdict = FanSplitProbe.Judge(samples, SplitProbeHigh, SplitProbeLow);
+            SplitProbeNote.Text = FanSplitProbe.Describe(verdict, SplitProbeHigh - SplitProbeLow);
+        }
+        catch (Exception ex)
+        {
+            SplitProbeNote.Text = $"The check could not finish: {ex.Message}";
+        }
+        finally
+        {
+            // Hand the fans back whatever happened above, including a thrown BIOS call. Leaving
+            // them held apart because an exception escaped would be the worst outcome here.
+            if (wasRunning) _service.Start();
+            else ApplyMode(_settings.FanControlMode);
+
+            SplitProbeBtn.IsEnabled = true;
+        }
+    }
+
+    private void SeparateFan2Toggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressModeEvent) return;
+
+        _settings.SeparateFan2Curve = SeparateFan2Toggle.IsChecked == true;
+        _settings.Save();
+
+        // Turning it off returns the editor to the one fan there now is.
+        if (!_settings.SeparateFan2Curve) _editingFan2 = false;
+
+        BuildRailPills();
+        LoadCurveForEditedRail();
+
+        (System.Windows.Application.Current.MainWindow as MainWindow)?.RefreshCurveFromSettings();
+    }
+
     private void ApplyFloorBtn_Click(object sender, RoutedEventArgs e)
     {
         if (!double.TryParse(FloorTempBox.Text, out var floorTemp) || !byte.TryParse(FloorLevelBox.Text, out var floorLevel))
@@ -268,17 +445,7 @@ public partial class FansView : UserControl
             return;
         }
 
-        if (_editingBattery)
-        {
-            _settings.BatteryFloorTempC = floorTemp;
-            _settings.BatteryFloorLevelPercent = floorLevel;
-        }
-        else
-        {
-            _settings.FloorTempC = floorTemp;
-            _settings.FloorLevelPercent = floorLevel;
-        }
-
+        WriteEditedFloor(floorTemp, floorLevel);
         _settings.Save();
 
         // Only what is in force reaches the running curve. Writing the battery floor into a
@@ -299,9 +466,7 @@ public partial class FansView : UserControl
                 System.Windows.MessageBox.Show("Need at least 2 curve points.", "Curve not applied", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            if (_editingBattery) _settings.BatteryCurvePoints = points;
-            else _settings.CurvePoints = points;
-
+            WriteEditedPoints(points);
             _settings.Save();
 
             // Only the rail in force reaches the running curve; MainWindow decides which that is.
@@ -319,18 +484,8 @@ public partial class FansView : UserControl
         var defaults = FanCurve.CreateDefault().Points;
         _rows.Clear();
         foreach (var p in defaults) _rows.Add(new CurvePointRow { TempC = p.TempC, LevelPercent = p.LevelPercent });
-        if (_editingBattery)
-        {
-            _settings.BatteryCurvePoints = defaults.ToList();
-            _settings.BatteryFloorTempC = 55.0;
-            _settings.BatteryFloorLevelPercent = 15;
-        }
-        else
-        {
-            _settings.CurvePoints = defaults.ToList();
-            _settings.FloorTempC = 55.0;
-            _settings.FloorLevelPercent = 15;
-        }
+        WriteEditedPoints(defaults.ToList());
+        WriteEditedFloor(55.0, 15);
 
         FloorTempBox.Text = "55";
         FloorLevelBox.Text = "15";
@@ -345,9 +500,11 @@ public partial class FansView : UserControl
     // wrong thing at exactly the moment the numbers below it changed.
     private void RefreshChartFromSettings()
     {
-        Chart.Points = _editingBattery ? _settings.BatteryCurvePoints : _settings.CurvePoints;
-        Chart.FloorTempC = _editingBattery ? _settings.BatteryFloorTempC : _settings.FloorTempC;
-        Chart.FloorLevelPercent = _editingBattery ? _settings.BatteryFloorLevelPercent : _settings.FloorLevelPercent;
+        var (points, floorTempC, floorLevel) = EditedRail();
+
+        Chart.Points = points;
+        Chart.FloorTempC = floorTempC;
+        Chart.FloorLevelPercent = floorLevel;
         Chart.RefreshData();
     }
 
