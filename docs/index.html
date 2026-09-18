@@ -179,7 +179,7 @@ footer a{color:var(--muted);border-bottom-color:#333}
 <body>
 
 <header><div class="wrap">
-  <a class="name" href="#">OmniHub<span>v1.2.0</span></a>
+  <a class="name" href="#">OmniHub<span>v1.3.3</span></a>
   <nav>
     <a href="#problem">Problem</a>
     <a href="#does">What it does</a>
@@ -200,9 +200,9 @@ footer a{color:var(--muted);border-bottom-color:#333}
   </p>
 
   <dl class="facts">
-    <div class="fact"><dt>Version</dt><dd id="fVer">1.2.0</dd></div>
-    <div class="fact"><dt>Released</dt><dd id="fDate">6 Sep 2026</dd></div>
-    <div class="fact"><dt>Size</dt><dd id="fSize">63 MB</dd></div>
+    <div class="fact"><dt>Version</dt><dd id="fVer">1.3.3</dd></div>
+    <div class="fact"><dt>Released</dt><dd id="fDate">10 Sep 2026</dd></div>
+    <div class="fact"><dt>Size</dt><dd id="fSize">49 MB</dd></div>
     <div class="fact"><dt>Platform</dt><dd>Windows 10/11 x64</dd></div>
     <div class="fact"><dt>Runtime</dt><dd>none (self-contained)</dd></div>
     <div class="fact"><dt>Privileges</dt><dd>Administrator</dd></div>
@@ -563,6 +563,48 @@ dotnet build OmniHub.slnx -c Release</pre>
     <a href="https://github.com/Vomitted/OmniHub/blob/main/CHANGELOG.md">CHANGELOG.md</a>.
   </p>
   <div id="log"><p class="muted">Loading releases…</p></div>
+
+  <h3>Not in this download</h3>
+  <p>
+    <strong>105 commits</strong> have landed on <span class="m">main</span> since 1.3.3 was
+    published on 10 September, and no release has been cut from them. The button at the top of
+    this page does not have any of it. It is listed here so the download is not credited with
+    work it does not contain.
+  </p>
+  <ul>
+    <li><strong>The sidebar is a list of workspaces, not seven fixed tabs.</strong> A workspace is
+      a name and an ordered set of panels across twelve columns, edited in an explicit mode and
+      switched with the number keys. A fresh install still opens on the same seven screens in the
+      same order, so an interface nobody rearranges is the one that was already there.</li>
+    <li><strong>Panels smaller than a whole screen</strong>, which is what makes arranging one
+      worth the effort: any single reading as a card with its own recent trend, charts read back
+      from the logs on disk, and the strip that names what is limiting the machine.</li>
+    <li><strong>A separate fan curve on battery, and a separate curve for the second fan</strong>,
+      both off by default — with a check that holds the two fans apart for forty seconds to
+      establish whether this board drives them independently at all. A second curve the firmware
+      quietly collapses into one would be a control that appears to work and does nothing.</li>
+    <li><strong>The thermal log carries five more columns:</strong> the discrete GPU's temperature
+      and power, the package's sustained draw, and which of five constraints was binding and by
+      how much. None of those questions could previously be asked about the past, because nothing
+      recorded the answers.</li>
+    <li><strong>What has been limiting the processor across the last hour</strong>, as a band on a
+      real time axis. A stretch where nothing was sampled is drawn as a gap rather than joined
+      across, and the shares are of the time actually measured rather than of the window asked
+      for.</li>
+    <li><strong>Two measured costs removed.</strong> GPU telemetry no longer launches a process —
+      nvidia-smi was measured at 58&ndash;61 ms per refresh, and NVML is the same counters from
+      the library nvidia-smi is a front end for. The CPU load figure cost a measured 283 ms
+      through WMI and now comes from the kernel counters Task Manager reads.</li>
+    <li><strong>The updater verifies what it downloaded</strong> against the release's own
+      SHA-256 before running it — the step this page asks a person to take by hand, which its
+      own updater skipped. It then installs silently, so the <a href="#install">Updating</a>
+      paragraph above describes 1.3.3 and not what follows it.</li>
+  </ul>
+  <p class="muted" style="font-size:.86rem">
+    The full list is under <span class="m">[Unreleased]</span> in
+    <a href="https://github.com/Vomitted/OmniHub/blob/main/CHANGELOG.md">CHANGELOG.md</a>,
+    including one feature measured and deliberately not built.
+  </p>
 </div></section>
 
 <!-- ==================================================================== -->
@@ -572,6 +614,13 @@ dotnet build OmniHub.slnx -c Release</pre>
     <li>The safety floor protects only while the application is running.</li>
     <li>Curve tuning is manual. A board can carry its own fan band in <span class="m">profiles\&lt;baseboard&gt;.json</span>, but no preset database is bundled — nobody has measured those boards.</li>
     <li>The 10–56 raw fan band was measured on one chassis, not on yours. The Fans tab has a calibration sweep to find your own, and the result can be written into a profile.</li>
+    <li><strong>In 1.3.3 the second fan reads 0 rpm when the board is not measuring it.</strong>
+      The Fans tab prints <span class="m">RAW 27/0 — 2700/0 RPM</span>, and on this chassis
+      <span class="m">(27, 0)</span> is the firmware's no-measurement sentinel rather than a
+      stopped fan — established four ways across 192,791 logged samples, in which the pair never
+      once appears with a real reading beside it. Nothing is wrong with the fan. On
+      <span class="m">main</span> the pair is reported as unavailable instead, which on a page
+      about a fan that really does stop is a distinction worth keeping.</li>
     <li>The capability block this laptop returns is not trustworthy: it reports no software fan control on a machine whose fans the application is demonstrably driving. Capabilities therefore only ever enable a message, never silently disable working hardware.</li>
     <li>Throttling detection is not independently verified against known-good hardware.</li>
     <li>On battery the discrete GPU settles at P8 drawing about 2 W, not D3cold. Measured with
