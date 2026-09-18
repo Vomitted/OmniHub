@@ -211,6 +211,22 @@ public partial class DiagnosticsView : UserControl
             _ => "the board reports none, and the control is left enabled anyway",
         });
 
+        // Which mailbox answered and what firmware is behind it.
+        //
+        // Both were read at startup and then discarded. They are the first two things anybody
+        // needs when tuning behaves differently than it did: the mailbox is picked by probing,
+        // so a different one having answered explains a refusal that looks like a hardware
+        // fault, and the SMU version is what a report against a future firmware is worth
+        // anything without.
+        AddRow(CapabilityRows, "SMU mailbox",
+            _tuning?.MailboxName ?? "none answered");
+
+        AddRow(CapabilityRows, "SMU firmware",
+            _ctx.Smu is { } smu
+                ? $"{smu.SmuVersion >> 16 & 0xFF}.{smu.SmuVersion >> 8 & 0xFF}.{smu.SmuVersion & 0xFF} "
+                  + $"(raw 0x{smu.SmuVersion:X8}), {smu.CodeName} (0x{smu.CodeNameRaw:X2})"
+                : "the SMU did not open");
+
         AddRow(CapabilityRows, "Fan command encoding",
             $"{_ctx.Fan.Encoding} ({(_ctx.Fan.Encoding == ThermalPolicyVersion.Legacy ? "0x00-0x03" : "0x30-0x50")})");
 

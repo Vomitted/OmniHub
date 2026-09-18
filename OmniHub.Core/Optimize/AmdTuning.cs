@@ -290,6 +290,20 @@ public sealed class AmdTuning
     }
 
     /// <summary>Per-core Curve Optimizer offset. Core index is packed into the high bits.</summary>
+     /// <summary>
+    /// Curve Optimizer for one core.
+    ///
+    /// Implemented and encoded correctly -- the twenty-bit two's complement form has its own tests
+    /// -- and deliberately not offered in the interface. Per-core undervolting is the most-wanted
+    /// feature in this class of tool, so the absence is worth explaining rather than leaving as an
+    /// apparent oversight.
+    ///
+    /// The all-core setter beside it is wired up and verified by read-back. This one is not
+    /// exposed because a per-core control is only worth having alongside a stability sweep to find
+    /// each core's floor, and a sweep that can hang the machine is not something to ship unasked.
+    /// Kept rather than deleted: it is a capability this hardware has, and the cost of keeping it
+    /// is these lines.
+    /// </summary>
     public TuningResult SetCurveOptimizerCore(int coreIndex, int counts)
     {
         if (!IsSupported) return new TuningResult(false, UnsupportedReason!);

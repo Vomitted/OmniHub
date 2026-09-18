@@ -231,11 +231,6 @@ public sealed class HardwareContext : IDisposable
     public HpSystemData? Capabilities { get; private set; }
 
     /// <summary>
-    /// True unless the firmware positively states this board has no software fan control.
-    /// </summary>
-    public bool SoftwareFanControlAllowed => !FirmwareDenies(c => c.SoftwareFanControl);
-
-    /// <summary>
     /// True unless the firmware positively states this board cannot switch GPU modes. The GPU
     /// tab offered Hybrid/Discrete/Optimus unconditionally before this, on every machine.
     /// </summary>

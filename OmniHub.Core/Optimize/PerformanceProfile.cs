@@ -41,9 +41,12 @@ public static class PerformanceProfile
     // PowerController's 10-140 W range does not rescue it; that range is a sanity bound, not
     // a statement about this silicon.
     //
-    // CPU power limits therefore stay on the Power tab, where the user sets them explicitly
-    // on a slider, sees the number and owns the decision. A one-click "mode" is not the place
-    // to silently move a thermal ceiling.
+    // The sliders that once set them explicitly were removed for the same reason, and the code
+    // that wrote the wattages went with them: a setter for a value nobody can read back is a
+    // control that cannot be checked, and this project does not keep those.
+    //
+    // What replaced it is the tuning screen, which writes SMU limits the SMU reports back -- so
+    // every one of those is verified by read-back rather than assumed.
 
     private static GpuPowerLevel GpuFor(PerformanceMode mode) => mode switch
     {
@@ -83,14 +86,8 @@ public static class PerformanceProfile
     /// a machine where the BIOS rejects a wattage change still gets the GPU and power plan
     /// applied, and the caller is told exactly which part did not take.
     /// </summary>
-    /// <param name="power">
-    /// Retained so the call site keeps its shape and so a future version can use it once
-    /// there is a way to READ this CPU's rated limits. Intentionally unused today -- see the
-    /// note above on why absolute wattages are not written from a profile.
-    /// </param>
-    public static TuningResult Apply(PerformanceMode mode, GpuController gpu, PowerController power)
+    public static TuningResult Apply(PerformanceMode mode, GpuController gpu)
     {
-        _ = power;
         var applied = new List<string>();
         var failed = new List<string>();
 

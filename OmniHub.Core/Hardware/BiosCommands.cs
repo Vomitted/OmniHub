@@ -138,22 +138,6 @@ public sealed class PowerController
     private readonly BiosInterop _bios;
     public PowerController(BiosInterop bios) => _bios = bios;
 
-    /// <summary>Sets sustained (PL1) and matched PL2 limit, in watts, leaving PL4/concurrent untouched.</summary>
-    public void SetCpuSustainedWatts(byte watts)
-    {
-        watts = Math.Clamp(watts, MinWatts, MaxWatts);
-        var data = new CpuPowerData(watts, watts, 0, 0);
-        _bios.Send(BiosCmdGroup.Default, SysCmd.SetCpuPower, data.ToBytes(), 4);
-    }
-
-    /// <summary>Sets peak/boost (PL4) limit, in watts, leaving the sustained limit untouched.</summary>
-    public void SetCpuBoostWatts(byte watts)
-    {
-        watts = Math.Clamp(watts, MinWatts, MaxWatts);
-        var data = new CpuPowerData(0, 0, watts, 0);
-        _bios.Send(BiosCmdGroup.Default, SysCmd.SetCpuPower, data.ToBytes(), 4);
-    }
-
     public void SetIdle(bool enabled) =>
         _bios.Send(BiosCmdGroup.Default, SysCmd.SetIdle,
             new byte[] { enabled ? (byte)1 : (byte)0, 0, 0, 0 }, 4);
@@ -300,7 +284,6 @@ public sealed class SystemController
     /// unavailable. Separate from <see cref="ReadTemperature"/> because that method returns
     /// the temperature the fan should act on, which may be a different, hotter component.
     /// </summary>
-    public double? ReadDieTemperatureC() => _smu?.ReadDieTemperatureC();
 
     private double _cachedZoneC;
     private DateTime _cachedZoneAtUtc = DateTime.MinValue;

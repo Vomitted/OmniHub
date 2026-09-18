@@ -402,6 +402,10 @@ public partial class TuningView : UserControl, IDisposable
             "The APU's own skin-temperature target.");
         AddRow(ThermalRows, "vrm", "VRM current (TDC)", AmdTuning.MinAmps, AmdTuning.MaxAmps, 70, "A",
             "Sustained current the voltage regulators may deliver. Refused by this firmware.");
+        AddRow(ThermalRows, "prochot", "PROCHOT recovery ramp", 0, 100, 0, "",
+            "How sharply the processor comes back after a thermal trip. The setter was implemented "
+            + "and the apply path already sent it; nothing ever set the value, so it was a knob with "
+            + "no handle. Audible as fan and clock behaviour in the seconds after a spike.");
 
         AddRow(GfxRows, "gfx", "GFX clock", AmdTuning.MinGfxMhz, AmdTuning.MaxGfxMhz, 2800, "MHz",
             "Integrated Radeon clock target.");
@@ -1387,7 +1391,8 @@ public partial class TuningView : UserControl, IDisposable
         ApuSkinTempC: Value("apuSkin"),
         VrmCurrentAmps: Value("vrm"),
         CurveOptimizerAllCore: Value("co"),
-        GfxClockMhz: Value("gfx"));
+        GfxClockMhz: Value("gfx"),
+        ProchotRamp: Value("prochot"));
 
     private void Preset_Click(object sender, RoutedEventArgs e)
     {
@@ -1404,6 +1409,7 @@ public partial class TuningView : UserControl, IDisposable
         Set("apuSkin", p.ApuSkinTempC);
         Set("vrm", p.VrmCurrentAmps);
         Set("gfx", p.GfxClockMhz);
+        Set("prochot", p.ProchotRamp);
 
         // Curve Optimizer is deliberately not loaded from a preset. An undervolt stable on one
         // chip crashes the next, so it stays whatever the user chose.

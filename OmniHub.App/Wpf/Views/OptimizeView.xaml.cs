@@ -168,7 +168,7 @@ public partial class OptimizeView : UserControl
         {
             var (bright, previous) = BatterySaver.ApplyBatterySaver();
             // Eco covers the GPU level, the Windows power plan and releasing the timer.
-            var eco = PerformanceProfile.Apply(PerformanceMode.Eco, _ctx.Gpu, _ctx.Power);
+            var eco = PerformanceProfile.Apply(PerformanceMode.Eco, _ctx.Gpu);
             return (bright, previous, eco);
         }).ContinueWith(t =>
         {
