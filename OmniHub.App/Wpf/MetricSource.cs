@@ -37,6 +37,36 @@ public sealed class MetricSource : IDisposable
     /// <summary>Raised on the UI thread whenever any value changed.</summary>
     public event Action? Updated;
 
+    private bool _active = true;
+
+    /// <summary>
+    /// Whether anybody is actually looking.
+    ///
+    /// This application spends most of its life minimised to the tray, and until this existed the
+    /// slow tick kept taking an SMU transaction, a GPU read and three syscalls every five seconds
+    /// to update panels nobody could see -- and processed every hardware reading on top. The
+    /// dashboard, the battery screen, the tuning screen, the overlay and the tray flyout all gate
+    /// their own work on visibility; this was the one piece added without doing so.
+    ///
+    /// Nothing about cooling goes through here. The fan curve keeps its own loop at its own
+    /// cadence, which is the one thing in this application whose latency is a safety property
+    /// rather than a preference.
+    /// </summary>
+    public bool Active
+    {
+        get => _active;
+        set
+        {
+            if (_active == value) return;
+            _active = value;
+
+            // Coming back, the values are as old as the window has been hidden. Refreshing at once
+            // means the first thing somebody sees is current rather than whatever was true when
+            // they looked away.
+            if (_active) RefreshSlow();
+        }
+    }
+
     public MetricSource(HardwareContext ctx)
     {
         _ctx = ctx;
@@ -82,6 +112,8 @@ public sealed class MetricSource : IDisposable
     // curve. The same reason DashboardView.OnReading gives.
     private void OnReading(Reading r) => _dispatcher.BeginInvoke(() =>
     {
+        if (!_active) return;
+
         double tempC = double.IsNaN(r.PreciseTemperatureC) ? r.TemperatureC : r.PreciseTemperatureC;
         bool fromDie = r.TemperatureSource == TemperatureSource.SmuDieTctl;
 
@@ -101,6 +133,8 @@ public sealed class MetricSource : IDisposable
 
     private void RefreshSlow()
     {
+        if (!_active) return;
+
         var tuning = _tuning;
 
         Task.Run(() =>

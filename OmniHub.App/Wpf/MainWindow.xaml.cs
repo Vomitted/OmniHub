@@ -221,6 +221,14 @@ public partial class MainWindow : Window
 
         StartActivityRibbon();
 
+        // The metric panels stop costing anything the moment the window is not on screen, which on
+        // this machine is most of the time. IsVisibleChanged is the event that tracks Show/Hide --
+        // the same one the dashboard, the battery screen and the tray flyout already use.
+        IsVisibleChanged += (_, e) =>
+        {
+            if (_metrics is { } metrics) metrics.Active = (bool)e.NewValue;
+        };
+
         PreviewKeyDown += OnWorkspaceShortcut;
         Closing += OnClosing;
         Closed += (_, _) => Cleanup();
