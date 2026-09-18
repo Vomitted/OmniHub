@@ -35,7 +35,7 @@ is unavailable and why.
 | --- | --- |
 | CPU/GPU temperature, load, clocks, memory, battery health | Any laptop |
 | Windows power plans, scheduling, MMCSS, timer resolution, process priority | Any laptop |
-| Discrete GPU telemetry | Any NVIDIA GPU (via `nvidia-smi`) |
+| Discrete GPU telemetry | Any NVIDIA GPU (via `nvml.dll`, falling back to `nvidia-smi`) |
 | CPU tuning: power limits, thermal limit, curve optimizer | AMD Ryzen, with the PawnIO driver |
 | Fan curve control, GPU TGP unlock, BIOS power limits | HP laptops exposing `hpqBIntM` |
 
@@ -211,8 +211,9 @@ to these rather than failing to open.
 
 ### The screens
 
-Four of them group related sub-screens, so a measurement and the evidence behind
-it stay together rather than ending up two clicks apart.
+Three of them -- Performance, System and Diagnostics -- group related sub-screens,
+so a measurement and the evidence behind it stay together rather than ending up
+two clicks apart.
 
 - **Dashboard** -- live temperature, fan duty and commanded level on one
   multi-series chart; what is currently holding the processor back, and which
@@ -241,17 +242,17 @@ it stay together rather than ending up two clicks apart.
   Windows Settings > Display > Graphics uses. Apps can be picked by browsing to
   the `.exe` or from the running-app list; it does not guess which apps are
   "games", you choose the preference explicitly.
-- **Diagnostics** -- **Compare** also records *runs*: name a stretch of time,
-  start it before a change and stop it afterwards, then compare against it by
-  name instead of against whatever happened to come before. The power source and
-  fan mode are recorded with it, because a comparison across those is not a
-  comparison. The trace behind a saved run is kept past the usual fourteen days,
-  so an old run still resolves to the data it names rather than to nothing.
-- **Diagnostics** -- **Measure**: the load test, everything the firmware
-  reports about this board, per-core clocks, memory and storage, the probe
-  report and a support bundle. **History**: the thermal trace read back, with
-  gaps drawn as gaps. **Stability**: every unclean shutdown reconstructed, and
-  what is currently holding the machine awake.
+- **Diagnostics** -- **Compare**: two stretches of time held against each other,
+  and it records *runs* so a stretch can be named. Start one before a change and
+  stop it afterwards, then compare against it by name instead of against whatever
+  happened to come before. The power source and fan mode are recorded with it,
+  because a comparison across those is not a comparison, and the trace behind a
+  saved run is kept past the usual fourteen days so an old run still resolves to
+  the data it names rather than to nothing. **Measure**: the load test,
+  everything the firmware reports about this board, per-core clocks, memory and
+  storage, the probe report and a support bundle. **History**: the thermal trace
+  read back, with gaps drawn as gaps. **Stability**: every unclean shutdown
+  reconstructed, and what is currently holding the machine awake.
 - **Settings** -- launch at sign-in (via a Task Scheduler entry set to run
   elevated, not a registry Run key -- a Run key does not reliably auto-elevate
   an admin-required app), close-to-tray behaviour, logging, the predictive
@@ -262,9 +263,12 @@ it stay together rather than ending up two clicks apart.
 Whole screens are not the only thing a workspace can hold, and they are not what
 makes building one worthwhile:
 
-- **A single reading** -- any of twelve (die and GPU temperature, both fans,
-  package and GPU power, GPU and CPU clock, GPU and CPU load, memory in use, and
-  how close the binding limit is), as a card with its recent trend beside it.
+- **A single reading** -- any of fourteen (die and GPU temperature, both fans,
+  package and GPU power, GPU and CPU clock, GPU and CPU load, memory in use, how
+  close the binding limit is, and what OmniHub itself is costing in processor
+  time and memory), as a card with its recent trend beside it. The last pair is
+  there because a tool for finding what drains a laptop should be willing to
+  state what it draws.
   The two temperatures and the limit colour their figure past a threshold;
   nothing else does, because a wattage is not good or bad on its own.
 - **A chart** -- temperature against the level that was commanded, GPU
@@ -276,7 +280,7 @@ makes building one worthwhile:
 - **The fan curve in force**, read-only, with the machine's present position
   marked on it. Beside a temperature and a fan speed it answers the question
   those two raise: whether this is what the curve asked for.
-- **Every reading, with its source** -- a table of all twelve, their values and
+- **Every reading, with its source** -- a table of all fourteen, their values and
   the route each takes, because a figure that looks wrong is only actionable
   once you know whether it came from the SMU, the NVIDIA driver or a kernel
   counter. A reading that did not answer is dimmed rather than dropped: the
@@ -294,7 +298,7 @@ closing it does not quietly destroy it.
 
 Eight ship. A ninth is yours: **Settings > Theme > Build your own** takes four
 colours -- the ground, the panel, the accent and the text -- plus a corner
-radius, and derives the other twenty-three from them. The muted and faint text
+radius, and fills out all twenty-three colour keys a palette defines from them. The muted and faint text
 are the text fading toward the ground; the borders are the panel moving toward
 the text; the status and metric colours are moved until they read on the ground
 you chose rather than being fixed values that only work on a dark one.
@@ -373,6 +377,15 @@ you have to remember.
 ## Settings
 
 Stored as plain JSON at `%AppData%\OmniHub\settings.json` (fan mode, curve
-points, safety floor, close behavior). No telemetry, nothing sent anywhere.
-The startup toggle lives outside this file, as a Windows Task Scheduler
+points, safety floor, close behavior, the theme and the custom palette), with
+the workspace layout beside it in `workspaces.json`. No telemetry, nothing sent
+anywhere.
+
+Both are written to a temporary file and moved into place rather than truncated
+and rewritten, so a machine that hangs mid-save comes back to the previous copy
+instead of to a half-written one. That matters more than it sounds: a settings
+file that fails to parse is not an error you see, it is an app that has quietly
+forgotten your curve.
+
+The startup toggle lives outside both files, as a Windows Task Scheduler
 entry named `OmniHub_AutoStart` (see `OmniHub.App/StartupManager.cs`).
