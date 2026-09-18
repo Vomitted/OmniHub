@@ -501,6 +501,7 @@ public partial class MainWindow : Window
             ("settings", "Settings"),
 
             ("limits", "What is limiting the machine"),
+            ("fancurve", "The fan curve in force"),
         };
 
         // One entry per reading, from the catalogue in Core, so the picker cannot offer a metric
@@ -602,6 +603,8 @@ public partial class MainWindow : Window
 
         if (key.StartsWith(ChartPanelPrefix, StringComparison.Ordinal))
             return new Views.ChartPanel(key[ChartPanelPrefix.Length..]);
+
+        if (key == "fancurve") return new Views.FanCurvePanel(_ctx, _service);
 
         if (key == "limits")
         {

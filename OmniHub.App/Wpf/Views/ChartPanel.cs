@@ -63,9 +63,9 @@ public sealed class ChartPanel : UserControl, IDisposable
             });
         }
 
-        _status.FontFamily = Token<FontFamily>("MonoFont") ?? new FontFamily("Consolas");
+        _status.FontFamily = PanelChrome.Token<FontFamily>("MonoFont") ?? new FontFamily("Consolas");
         _status.FontSize = 9.5;
-        _status.Foreground = Brush("TextFaintBrush");
+        _status.Foreground = PanelChrome.Brush("TextFaintBrush");
         _status.Margin = new Thickness(0, 8, 0, 0);
         _status.TextWrapping = TextWrapping.Wrap;
 
@@ -73,10 +73,10 @@ public sealed class ChartPanel : UserControl, IDisposable
         stack.Children.Add(new TextBlock
         {
             Text = _subject.Title.ToUpperInvariant(),
-            FontFamily = Token<FontFamily>("MonoFont") ?? new FontFamily("Consolas"),
+            FontFamily = PanelChrome.Token<FontFamily>("MonoFont") ?? new FontFamily("Consolas"),
             FontSize = 10.5,
             FontWeight = FontWeights.Bold,
-            Foreground = Brush("TextFaintBrush"),
+            Foreground = PanelChrome.Brush("TextFaintBrush"),
             Margin = new Thickness(0, 0, 0, 10),
         });
         stack.Children.Add(new ContentControl { Content = _chart, Height = 180, Focusable = false });
@@ -152,16 +152,11 @@ public sealed class ChartPanel : UserControl, IDisposable
     /// </summary>
     private static Brush StrokeFor(int index) => index switch
     {
-        0 => Brush("DangerBrush"),
-        1 => Brush("AccentBrush"),
-        _ => Brush("MetricMemBrush"),
+        0 => PanelChrome.Brush("DangerBrush"),
+        1 => PanelChrome.Brush("AccentBrush"),
+        _ => PanelChrome.Brush("MetricMemBrush"),
     };
 
-    private static Brush Brush(string key) =>
-        System.Windows.Application.Current?.TryFindResource(key) as Brush ?? Brushes.Transparent;
-
-    private static T? Token<T>(string key) where T : class =>
-        System.Windows.Application.Current?.TryFindResource(key) as T;
 
     public void Dispose()
     {

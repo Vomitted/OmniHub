@@ -36,7 +36,7 @@ public sealed class MetricPanel : UserControl
         Focusable = false;
 
         var metric = Metrics.Find(key);
-        var mono = Token<FontFamily>("MonoFont") ?? new FontFamily("Consolas");
+        var mono = PanelChrome.Token<FontFamily>("MonoFont") ?? new FontFamily("Consolas");
 
         _value.FontFamily = mono;
         _value.FontSize = 34;
@@ -46,10 +46,10 @@ public sealed class MetricPanel : UserControl
         _foot.FontFamily = mono;
         _foot.FontSize = 9.5;
         _foot.Margin = new Thickness(0, 6, 0, 0);
-        _foot.Foreground = Brush("TextFaintBrush");
+        _foot.Foreground = PanelChrome.Brush("TextFaintBrush");
         _foot.TextWrapping = TextWrapping.Wrap;
 
-        _spark.Stroke = Brush("AccentBrush");
+        _spark.Stroke = PanelChrome.Brush("AccentBrush");
         _spark.StrokeThickness = 1.4;
         _spark.Height = SparkHeight;
         _spark.Margin = new Thickness(0, 10, 0, 0);
@@ -65,7 +65,7 @@ public sealed class MetricPanel : UserControl
             FontFamily = mono,
             FontSize = 10.5,
             FontWeight = FontWeights.Bold,
-            Foreground = Brush("TextFaintBrush"),
+            Foreground = PanelChrome.Brush("TextFaintBrush"),
         });
         stack.Children.Add(_value);
         stack.Children.Add(_spark);
@@ -89,9 +89,9 @@ public sealed class MetricPanel : UserControl
         _value.Text = Metrics.Text(_key, value);
         _value.Foreground = Metrics.LevelOf(_key, value) switch
         {
-            MetricLevel.Hot => Brush("DangerBrush"),
-            MetricLevel.Warn => Brush("WarnBrush"),
-            _ => Brush("TextPrimaryBrush"),
+            MetricLevel.Hot => PanelChrome.Brush("DangerBrush"),
+            MetricLevel.Warn => PanelChrome.Brush("WarnBrush"),
+            _ => PanelChrome.Brush("TextPrimaryBrush"),
         };
 
         // The limit is a percentage of something, and which something is the whole point of it.
@@ -133,11 +133,4 @@ public sealed class MetricPanel : UserControl
         _spark.Data = geometry;
     }
 
-    // Looked up rather than hard-coded, and tolerant of a palette missing one: a theme token that
-    // has gone away should cost a colour, not the panel.
-    private static Brush Brush(string key) =>
-        System.Windows.Application.Current?.TryFindResource(key) as Brush ?? Brushes.Transparent;
-
-    private static T? Token<T>(string key) where T : class =>
-        System.Windows.Application.Current?.TryFindResource(key) as T;
 }
