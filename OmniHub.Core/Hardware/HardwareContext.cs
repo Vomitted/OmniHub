@@ -245,7 +245,39 @@ public sealed class HardwareContext : IDisposable
     public byte? FanCount { get; private set; }
 
     /// <summary>True when the firmware reports more fans than this application drives.</summary>
-    public bool HasUndrivenFans => FanCount is > 2;
+    public bool HasUndrivenFans => FanCount is > DrivenFans;
+
+    /// <summary>
+    /// How many fans this application actually commands.
+    ///
+    /// Two, because the command payload carries two and nobody has verified a wider one. Named
+    /// rather than written as a literal, so the day a backend drives a different number there is
+    /// one thing to change.
+    /// </summary>
+    public const int DrivenFans = 2;
+
+    /// <summary>
+    /// This machine reduced to the facts its support can be decided from.
+    ///
+    /// Gathered here because this is the only object holding all of them, and consumed by
+    /// <see cref="Vendors.MachineSupport"/>, which is where the deciding happens -- in Core, where
+    /// it can be tested without a laptop, rather than inside a view where it used to live.
+    ///
+    /// A fan count that was never read reports zero driven fans as well as zero present, so that
+    /// nothing downstream turns a failed vendor call into a claim about fans going uncommanded.
+    /// </summary>
+    public Vendors.MachineFacts Facts() => new(
+        Manufacturer: Model.Manufacturer,
+        Product: Model.Product,
+        Baseboard: Model.BaseboardProduct,
+        FanTier: FanBackend.Tier,
+        VendorUnavailableReason: VendorUnavailableReason,
+        SmuAvailable: Smu is not null,
+        SmuUnavailableReason: SmuUnavailableReason,
+        FanCount: FanCount ?? 0,
+        DrivenFans: FanCount is null ? 0 : DrivenFans,
+        GpuPresent: GpuTelemetry.IsAvailable,
+        GpuThermalSource: GpuTelemetry.HasThermalSource);
 
     /// <summary>
     /// The one charger watcher, shared by everything that cares which rail the machine is on.

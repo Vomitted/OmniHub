@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using OmniHub.Core.Fan;
 using OmniHub.Core.Hardware;
+using OmniHub.Core.Vendors;
 using OmniHub.Core.Optimize;
 using UserControl = System.Windows.Controls.UserControl;
 using Button = System.Windows.Controls.Button;
@@ -564,62 +565,44 @@ public partial class DashboardView : UserControl
     /// </summary>
     private void BuildReadiness()
     {
-        var missing = new List<(string What, string Why)>();
-
-        if (!_ctx.VendorSupported)
-            missing.Add(("Fan control, GPU power, BIOS limits", _ctx.VendorUnavailableReason ?? "No vendor control interface."));
-
-        if (_ctx.Smu is null)
-            missing.Add(("Processor tuning and die temperature", _ctx.SmuUnavailableReason ?? "The SMU could not be opened."));
-
-        // Named rather than silently ignored. The curve drives two fans, which is baked into the
-        // command payload and every readout here; a chassis reporting more would have been driven
-        // as though it had two, with nothing on screen admitting the difference.
-        if (_ctx.HasUndrivenFans)
-            missing.Add(($"Fans 3 to {_ctx.FanCount}",
-                $"This board reports {_ctx.FanCount} fans and OmniHub drives two. The extra fans stay "
-                + "under BIOS control. Extending the command payload has not been verified on any "
-                + "machine, and guessing at it is not worth the risk to your cooling."));
-
-        // Two different degrees of unavailable, and conflating them was misleading on every
-        // non-NVIDIA machine: those get a name and a load figure, they just get no thermal
-        // sensor, because Windows exposes none generically for a GPU.
-        if (!GpuTelemetry.IsAvailable)
-            missing.Add(("GPU telemetry", "No display adapter could be read."));
-        else if (!GpuTelemetry.HasThermalSource)
-            missing.Add(("GPU temperature and power",
-                "Windows reports GPU name and load for any adapter but exposes no thermal or power sensor. "
-                + "Those readings need nvidia-smi, which installs with an NVIDIA driver."));
+        // The deciding moved to OmniHub.Core.Vendors.MachineSupport, which is a pure function of
+        // stated facts and therefore testable -- this reasoning used to live here, in a view, on
+        // a project whose tests deliberately cannot reference the application at all.
+        var facts = _ctx.Facts();
+        var limited = MachineSupport.Shortfalls(facts);
 
         // Rebuilt from scratch, because this now runs on every return to the tab rather than
         // once: appending without clearing would stack a fresh copy of every row each visit,
         // and a capability that has since become available has to be able to disappear.
         ReadinessRows.Children.Clear();
 
-        if (missing.Count == 0)
+        if (limited.Count == 0)
         {
             ReadinessCard.Visibility = Visibility.Collapsed;
             return;
         }
 
         ReadinessCard.Visibility = Visibility.Visible;
-        ReadinessHeadline.Text =
-            $"Detected {_ctx.Model.Manufacturer} {_ctx.Model.Product}".TrimEnd()
-            + $". {missing.Count} capabilit{(missing.Count == 1 ? "y is" : "ies are")} unavailable here; "
-            + "everything else works normally.";
+        ReadinessHeadline.Text = MachineSupport.Summarise(facts);
 
-        foreach (var (what, why) in missing)
+        foreach (var capability in limited)
         {
             var panel = new StackPanel { Margin = new Thickness(0, 5, 0, 0) };
+
+            // The marker is plain text and stays the colour everything else is. A capability that
+            // reads but cannot be commanded is information, not an alarm, and this application
+            // does not colour prose.
             panel.Children.Add(new TextBlock
             {
-                Text = what,
+                Text = capability.State == SupportState.ReadOnly
+                    ? capability.Name + "  —  READ ONLY"
+                    : capability.Name,
                 Style = (Style)FindResource("BodyText"),
                 FontSize = 12,
             });
             panel.Children.Add(new TextBlock
             {
-                Text = why,
+                Text = capability.Detail,
                 Style = (Style)FindResource("MutedText"),
                 FontSize = 11,
                 TextWrapping = TextWrapping.Wrap,
