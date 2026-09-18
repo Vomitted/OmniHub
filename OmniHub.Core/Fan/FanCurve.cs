@@ -1,4 +1,7 @@
-﻿namespace OmniHub.Core.Fan;
+﻿// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vomitted
+
+namespace OmniHub.Core.Fan;
 
 public readonly record struct CurvePoint(double TempC, byte LevelPercent);
 

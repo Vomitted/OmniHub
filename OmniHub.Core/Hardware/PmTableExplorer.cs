@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vomitted
+
 namespace OmniHub.Core.Hardware;
 
 /// <summary>One capture of the PM table, decoded as floats and labelled by nothing else.</summary>

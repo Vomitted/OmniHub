@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vomitted
+
 using System.Diagnostics;
 using System.IO;
 using System.Security;

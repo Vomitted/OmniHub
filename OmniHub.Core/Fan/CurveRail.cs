@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vomitted
+
 namespace OmniHub.Core.Fan;
 
 /// <summary>One rail's stored curve: the points and the safety floor that goes with them.</summary>

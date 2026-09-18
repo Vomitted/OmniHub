@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vomitted
+
 namespace OmniHub.Core.Diagnostics;
 
 /// <summary>What Windows recorded, reduced to the kinds that matter for a hang.</summary>

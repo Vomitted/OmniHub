@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vomitted
+
 namespace OmniHub.Core.Telemetry;
 
 /// <summary>One value at one instant. The unit a chart is drawn from.</summary>

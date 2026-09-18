@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vomitted
+
 namespace OmniHub.Core.Optimize;
 
 public sealed record CleanupTarget(string Label, string Path, long Bytes, int Files, string Note);

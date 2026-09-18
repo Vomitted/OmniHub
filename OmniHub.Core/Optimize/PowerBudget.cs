@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vomitted
+
 namespace OmniHub.Core.Optimize;
 
 /// <summary>Whether the remainder could be worked out, and if not, why not.</summary>

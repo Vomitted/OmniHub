@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vomitted
+
 // Explicit since this project enabled UseWPF: that changes the implicit-using set, and
 // System.IO no longer arrives on its own.
 using System.IO;

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vomitted
+
 namespace OmniHub.Core.Hardware;
 
 // Constants for the documented HP "hpqBIntM" WMI BIOS interface

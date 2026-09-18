@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Vomitted
+
 namespace OmniHub.Core.Network;
 
 /// <summary>A place to measure the distance to, and the endpoint that stands in for it.</summary>
