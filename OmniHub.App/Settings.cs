@@ -128,6 +128,33 @@ public sealed class AppSettings
     public OmniHub.Core.Optimize.UiDensity Density { get; set; } = OmniHub.Core.Optimize.UiDensity.Normal;
 
     /// <summary>
+    /// The palette built in the application, as the four colours it is described by.
+    ///
+    /// Stored rather than the thirty it produces, so a later build deriving a border differently
+    /// re-derives it rather than keeping whatever this build worked out. It is the choices that are
+    /// the user's; the rest is arithmetic.
+    /// </summary>
+    public string CustomPaletteBackground { get; set; } = "#0A0D12";
+    public string CustomPalettePanel { get; set; } = "#11151B";
+    public string CustomPaletteAccent { get; set; } = "#4F9CF5";
+    public string CustomPaletteText { get; set; } = "#E8ECF2";
+    public int CustomPaletteRadius { get; set; } = 10;
+
+    /// <summary>The four choices as the model understands them, or null if any will not parse.</summary>
+    public OmniHub.Core.Theming.CustomPalette? BuildCustomPalette()
+    {
+        var background = OmniHub.Core.Theming.Rgb.Parse(CustomPaletteBackground);
+        var panel = OmniHub.Core.Theming.Rgb.Parse(CustomPalettePanel);
+        var accent = OmniHub.Core.Theming.Rgb.Parse(CustomPaletteAccent);
+        var text = OmniHub.Core.Theming.Rgb.Parse(CustomPaletteText);
+
+        if (background is null || panel is null || accent is null || text is null) return null;
+
+        return new OmniHub.Core.Theming.CustomPalette(
+            "Custom", background.Value, panel.Value, accent.Value, text.Value, CustomPaletteRadius);
+    }
+
+    /// <summary>
     /// Overlay opacity, 0.2 to 1.0. Clamped on use rather than trusted: this is a
     /// hand-editable file, and an opacity of 0 is an overlay you cannot find to fix.
     /// </summary>

@@ -284,6 +284,25 @@ A panel from a version you no longer have is kept and drawn as a named
 placeholder rather than dropped, so opening your layout in an older build and
 closing it does not quietly destroy it.
 
+### Building a theme
+
+Eight ship. A ninth is yours: **Settings > Theme > Build your own** takes four
+colours -- the ground, the panel, the accent and the text -- plus a corner
+radius, and derives the other twenty-three from them. The muted and faint text
+are the text fading toward the ground; the borders are the panel moving toward
+the text; the status and metric colours are moved until they read on the ground
+you chose rather than being fixed values that only work on a dark one.
+
+**A palette that would be unreadable is refused, not saved**, by the same WCAG
+check the eight shipped ones are audited against, and the refusal names the two
+colours, what they scored and what they needed. The verdict updates as you type,
+so the button is disabled before you press it rather than after.
+
+**Density** sits beside it: Compact, Normal or Roomy, scaling the padding, bar
+heights and figure sizes the palette already asks for. Normal is the palette
+untouched, and the two compose -- Compact on the roomiest theme is still roomier
+than Normal on the tightest.
+
 ## Overlay
 
 **Ctrl+Alt+O** toggles a small always-on-top readout that stays visible over a

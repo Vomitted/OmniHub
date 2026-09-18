@@ -46,6 +46,61 @@
                         <TextBlock Style="{StaticResource MutedText}" FontSize="11" MaxWidth="560" TextWrapping="Wrap"
                                    Text="Scales the padding, the bar heights and the figure sizes this theme asks for. Normal is the theme untouched."/>
                         <WrapPanel x:Name="DensityPills" Margin="0,8,0,0"/>
+
+                        <!-- Four colours, not thirty. The rest are derived and then measured: a
+                             palette that would be unreadable is refused with the pair named, by
+                             the same rule the eight shipped ones are audited against. -->
+                        <TextBlock Text="Build your own" Style="{StaticResource BodyText}" Margin="0,18,0,3"/>
+                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" MaxWidth="560" TextWrapping="Wrap"
+                                   Text="Pick the ground, the panel, the accent and the text. Everything else follows from those, and anything that would be unreadable is refused rather than saved."/>
+
+                        <Grid Margin="0,10,0,0" HorizontalAlignment="Left">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,14,8">
+                                <TextBlock Text="GROUND" Style="{StaticResource MutedText}" FontSize="10"/>
+                                <TextBox x:Name="PaletteBackgroundBox" Width="110" Margin="0,3,0,0"
+                                         Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,14,8">
+                                <TextBlock Text="PANEL" Style="{StaticResource MutedText}" FontSize="10"/>
+                                <TextBox x:Name="PalettePanelBox" Width="110" Margin="0,3,0,0"
+                                         Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,14,8">
+                                <TextBlock Text="ACCENT" Style="{StaticResource MutedText}" FontSize="10"/>
+                                <TextBox x:Name="PaletteAccentBox" Width="110" Margin="0,3,0,0"
+                                         Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="3" Margin="0,0,0,8">
+                                <TextBlock Text="TEXT" Style="{StaticResource MutedText}" FontSize="10"/>
+                                <TextBox x:Name="PaletteTextBox" Width="110" Margin="0,3,0,0"
+                                         Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,14,0">
+                                <TextBlock Text="CORNER" Style="{StaticResource MutedText}" FontSize="10"/>
+                                <TextBox x:Name="PaletteRadiusBox" Width="110" Margin="0,3,0,0"
+                                         Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <Button x:Name="PaletteApplyBtn" Content="USE THIS PALETTE" Height="36" MinWidth="180"
+                                    Style="{StaticResource FlatButtonStyle}" Click="PaletteApply_Click"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="PaletteStatus" Style="{StaticResource MutedText}" FontSize="11"
+                                   Margin="0,8,0,0" TextWrapping="Wrap" MaxWidth="620"/>
                     </StackPanel>
                 </Grid>
             </Border>

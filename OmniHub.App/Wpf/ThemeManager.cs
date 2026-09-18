@@ -1,5 +1,7 @@
 using System.Windows;
 using OmniHub.Core.Optimize;
+using OmniHub.Core.Theming;
+using System.Windows.Media;
 using Application = System.Windows.Application;
 using Window = System.Windows.Window;
 
@@ -49,7 +51,15 @@ public static class ThemeManager
             "Wpf/Palettes/Sandstone.xaml"),
         new ThemeDefinition("Mono", "Mono", "Greyscale, fully square, dense. A reading is the only hue.",
             "Wpf/Palettes/Mono.xaml"),
+
+        // Last, and only meaningful once somebody has built one. Its source is never read: a
+        // custom palette is constructed rather than loaded, which is why the path is empty rather
+        // than pointing at a file that does not exist.
+        new ThemeDefinition(CustomId, "Custom", "Yours. Four colours, the rest derived and checked.", ""),
     };
+
+    /// <summary>The id a palette built in the application takes.</summary>
+    public const string CustomId = "Custom";
 
     public const string DefaultId = "Midnight";
 
@@ -61,10 +71,43 @@ public static class ThemeManager
     public static ThemeDefinition Resolve(string? id) =>
         All.FirstOrDefault(t => string.Equals(t.Id, id, StringComparison.OrdinalIgnoreCase)) ?? All[0];
 
+    /// <summary>
+    /// The palette somebody built, when they have built one.
+    ///
+    /// Held rather than written to a file. A palette shipped with the application is a compiled
+    /// resource, and a user palette cannot be one, so the alternative was writing XAML to disk and
+    /// parsing it back -- a file format, a parse failure to handle and a second way for a palette
+    /// to be malformed, in exchange for nothing. Its four colours live in settings.json and the
+    /// dictionary is built from them.
+    /// </summary>
+    public static CustomPalette? Custom { get; private set; }
+
+    /// <summary>
+    /// Remembers a built palette without switching to it.
+    ///
+    /// Separate from applying because startup has to restore the palette before it knows which
+    /// theme is selected: a saved theme of "Custom" with nothing to resolve to would fall back to
+    /// the default, and the user would find their theme quietly reset on every launch.
+    /// </summary>
+    public static void SetCustom(CustomPalette palette) => Custom = palette;
+
+    /// <summary>Applies a palette built in the application, and remembers it as the current one.</summary>
+    public static void ApplyCustom(CustomPalette palette)
+    {
+        SetCustom(palette);
+        Apply(CustomId);
+    }
+
     public static void Apply(string? id)
     {
         var theme = Resolve(id);
-        var dict = new ResourceDictionary { Source = new Uri(theme.Source, UriKind.Relative) };
+
+        // A custom palette has no file behind it. Everything downstream -- the insert-before-remove
+        // swap, the density pass, the window frame -- works on the dictionary rather than on where
+        // it came from, so this is the only place that has to know the difference.
+        var dict = string.Equals(id, CustomId, StringComparison.OrdinalIgnoreCase) && Custom is { } custom
+            ? BuildCustomDictionary(custom)
+            : new ResourceDictionary { Source = new Uri(theme.Source, UriKind.Relative) };
 
         var merged = Application.Current.Resources.MergedDictionaries;
 
@@ -139,6 +182,41 @@ public static class ThemeManager
         // Last wins for a duplicate key, which is the whole mechanism.
         merged.Add(scaled);
         _densityOverride = scaled;
+    }
+
+    /// <summary>
+    /// Turns a built palette into the dictionary the rest of the application expects.
+    ///
+    /// The shape keys come from the palette too, because a palette here carries shape as well as
+    /// colour -- that is what stops two themes being two names for one look. Everything except the
+    /// corner radius is taken from the default palette's values rather than invented: somebody
+    /// picking four colours has not expressed an opinion about track height.
+    /// </summary>
+    private static ResourceDictionary BuildCustomDictionary(CustomPalette palette)
+    {
+        var dict = new ResourceDictionary();
+
+        foreach (var (key, hex) in palette.Build())
+        {
+            // Through the Core parser rather than a WPF converter. It is the same code that reads
+            // the hex somebody typed into the editor, so a value that survived validation cannot
+            // fail here -- and it sidesteps ColorConverter, which is ambiguous in a project that
+            // references both WPF and WinForms.
+            if (Rgb.Parse(hex) is { } c) dict[key] = Color.FromRgb(c.R, c.G, c.B);
+        }
+
+        int radius = Math.Clamp(palette.RadiusMd, 0, 24);
+
+        dict["RadiusMd"] = new CornerRadius(radius);
+        dict["RadiusSm"] = new CornerRadius(Math.Max(0, radius - 1));
+
+        // Not offered in the editor, so they match the default rather than being invented.
+        dict["CardPadding"] = new Thickness(14);
+        dict["HeadingFont"] = new FontFamily("Cascadia Mono, Consolas, Courier New");
+        dict["TrackHeight"] = 5.0;
+        dict["MetricValueSize"] = 30.0;
+
+        return dict;
     }
 
     /// <summary>Repaints a window's OS-drawn frame to match the active palette.</summary>

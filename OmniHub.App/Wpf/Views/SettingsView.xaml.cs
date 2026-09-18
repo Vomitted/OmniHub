@@ -38,6 +38,7 @@ public partial class SettingsView : UserControl
         _thermalLoggingAtLoad = _settings.ThermalLogging;
         InitialiseOverlayControls();
         BuildDensityPills();
+        InitialisePaletteEditor();
         _suppressEvents = false;
 
         // After the suppression flag clears: these start work whose completion touches
@@ -74,7 +75,32 @@ public partial class SettingsView : UserControl
     {
         foreach (var theme in ThemeManager.All)
         {
-            var dict = new ResourceDictionary { Source = new Uri(theme.Source, UriKind.Relative) };
+            // The custom palette has no file behind it, so its swatch is built from the palette
+            // itself -- and skipped entirely until there is one, because an entry in the picker
+            // that resolves to nothing is worse than an entry that is not there yet.
+            //
+            // Without this the empty source reaches ResourceDictionary and throws, which does not
+            // cost a swatch: it takes the whole Settings screen with it, and Settings is where the
+            // control for undoing whatever caused it lives.
+            ResourceDictionary dict;
+
+            if (string.IsNullOrEmpty(theme.Source))
+            {
+                if (ThemeManager.Custom is not { } built) continue;
+
+                dict = new ResourceDictionary();
+                foreach (var (key, hex) in built.Build())
+                    if (OmniHub.Core.Theming.Rgb.Parse(hex) is { } c) dict[key] = Color.FromRgb(c.R, c.G, c.B);
+
+                dict["RadiusMd"] = new CornerRadius(built.RadiusMd);
+                dict["RadiusSm"] = new CornerRadius(Math.Max(0, built.RadiusMd - 1));
+                dict["CardPadding"] = new Thickness(14);
+            }
+            else
+            {
+                dict = new ResourceDictionary { Source = new Uri(theme.Source, UriKind.Relative) };
+            }
+
             Color Pick(string key, Color fallback) => dict[key] is Color c ? c : fallback;
 
             var bg = Pick("BackgroundColor", Colors.Black);
@@ -226,6 +252,94 @@ public partial class SettingsView : UserControl
 
             DensityPills.Children.Add(pill);
         }
+    }
+
+    // ---------- the palette somebody builds ----------
+
+    private bool _suppressPaletteEvents;
+
+    private void InitialisePaletteEditor()
+    {
+        _suppressPaletteEvents = true;
+
+        PaletteBackgroundBox.Text = _settings.CustomPaletteBackground;
+        PalettePanelBox.Text = _settings.CustomPalettePanel;
+        PaletteAccentBox.Text = _settings.CustomPaletteAccent;
+        PaletteTextBox.Text = _settings.CustomPaletteText;
+        PaletteRadiusBox.Text = _settings.CustomPaletteRadius.ToString();
+
+        _suppressPaletteEvents = false;
+
+        RefreshPaletteStatus();
+    }
+
+    /// <summary>
+    /// The four boxes as a palette, or null when one of them is not a colour.
+    ///
+    /// Read from the boxes rather than from settings, so the verdict shown is about what is on
+    /// screen rather than about what was last saved -- which is the whole point of showing it
+    /// before the button is pressed.
+    /// </summary>
+    private OmniHub.Core.Theming.CustomPalette? PaletteFromBoxes()
+    {
+        var background = OmniHub.Core.Theming.Rgb.Parse(PaletteBackgroundBox.Text);
+        var panel = OmniHub.Core.Theming.Rgb.Parse(PalettePanelBox.Text);
+        var accent = OmniHub.Core.Theming.Rgb.Parse(PaletteAccentBox.Text);
+        var text = OmniHub.Core.Theming.Rgb.Parse(PaletteTextBox.Text);
+
+        if (background is null || panel is null || accent is null || text is null) return null;
+
+        int radius = int.TryParse(PaletteRadiusBox.Text, out int r) ? Math.Clamp(r, 0, 24) : 10;
+
+        return new OmniHub.Core.Theming.CustomPalette(
+            "Custom", background.Value, panel.Value, accent.Value, text.Value, radius);
+    }
+
+    private void PaletteChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        // TextChanged fires while the view is still being built, before the other boxes exist.
+        if (_suppressPaletteEvents || PaletteStatus is null) return;
+
+        RefreshPaletteStatus();
+    }
+
+    /// <summary>
+    /// Says whether what is in the boxes could be used, before anybody presses the button.
+    ///
+    /// Naming the failing pair rather than saying the palette is unreadable. One tells somebody to
+    /// give up; the other tells them which of the four to change.
+    /// </summary>
+    private void RefreshPaletteStatus()
+    {
+        if (PaletteFromBoxes() is not { } palette)
+        {
+            PaletteStatus.Text = "One of those is not a colour. Use six hex digits, such as #0A0D12.";
+            PaletteApplyBtn.IsEnabled = false;
+            return;
+        }
+
+        var problems = palette.Problems();
+
+        PaletteApplyBtn.IsEnabled = problems.Count == 0;
+
+        PaletteStatus.Text = problems.Count == 0
+            ? "Readable. Every text colour clears the contrast threshold on every surface it meets."
+            : "Not readable yet:\n  " + string.Join("\n  ", problems);
+    }
+
+    private void PaletteApply_Click(object sender, RoutedEventArgs e)
+    {
+        if (PaletteFromBoxes() is not { } palette || !palette.IsReadable) return;
+
+        _settings.CustomPaletteBackground = palette.Background.ToString();
+        _settings.CustomPalettePanel = palette.Panel.ToString();
+        _settings.CustomPaletteAccent = palette.Accent.ToString();
+        _settings.CustomPaletteText = palette.TextPrimary.ToString();
+        _settings.CustomPaletteRadius = palette.RadiusMd;
+        _settings.ThemeName = ThemeManager.CustomId;
+        _settings.Save();
+
+        ThemeManager.ApplyCustom(palette);
     }
 
     private void InitialiseOverlayControls()

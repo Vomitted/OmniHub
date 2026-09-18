@@ -214,6 +214,12 @@ public partial class App : Application
             // theme, rather than painting the default palette and re-tinting a frame after.
             var startup = AppSettings.Load();
             ThemeManager.ApplyDensity(startup.Density);
+
+            // Rebuilt from its four colours before the theme is applied, so that a saved theme of
+            // "Custom" has something to resolve to. Without it the palette would fall back to the
+            // default and the user would find their theme silently reset on every launch.
+            if (startup.BuildCustomPalette() is { } custom) ThemeManager.SetCustom(custom);
+
             ThemeManager.Apply(startup.ThemeName);
 
             var window = new MainWindow();
