@@ -37,6 +37,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Added
 
+- **A vendor seam, so support can widen past HP.** The cooling loop, the fan band, the
+  throttling answer, the temperature reader and the optimisation code no longer name an HP type.
+  What stays HP-shaped is the HP screens and the HP commands, which is where it belongs.
+
+  Nothing a user can see changed, and that was the constraint rather than a happy result: every
+  backend is a wrapper whose methods forward one call each, so the commit that introduced the
+  seam is incapable of altering what the hardware is told. The diff inside the fan loop is six
+  lines, all renames.
+
+  The immediate payoff was not vendor support. `FanService` needed HP WMI, which needs an HP
+  laptop, so the one loop in this application whose failure is a hot machine with stopped fans
+  was also the only part of it with no tests. There are ten now, against a fake machine on any
+  desk: control is taken before the first level is written, an unchanged level is not rewritten
+  every tick, a throwing backend does not kill the loop, a blind sensor forces maximum only once
+  it has persisted, a genuine 86 °C from Tctl is not mistaken for one, and stopping hands the
+  fans back even if the loop never ran a tick.
+
+  The README and the website both claimed this layer was already isolated. It was not, and both
+  now say so.
+
 - **The interface is a layout you build.** The sidebar's seven fixed tabs are a list of
   *workspaces*: a name and an ordered set of panels across twelve columns, edited through an
   explicit mode and switched with the number keys. A fresh install ships the same seven screens
