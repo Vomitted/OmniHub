@@ -75,6 +75,10 @@ public partial class MainWindow : Window
             // Null unless the user has asked for two, which is what makes both fans share the
             // first curve exactly as they always have.
             Curve2 = _settings.SeparateFan2Curve ? _settings.BuildCurve(OnBattery, fan2: true) : null,
+
+            // So a controller that will not hand the fans back by itself has the fact that they
+            // were taken written down before they are taken. Writes nothing on this board.
+            Journal = OmniHub.Core.Diagnostics.RestoreJournal.Shared,
         };
 
         // The curve follows the charger, when the user has asked it to.
@@ -1210,7 +1214,12 @@ public partial class MainWindow : Window
         // dialog at startup explaining a repair nobody asked for is worse than a row in a file.
         try
         {
-            foreach (var r in OmniHub.Core.Diagnostics.RestoreReconciler.Run(OmniHub.Core.Diagnostics.RestoreJournal.Shared))
+            // The fan backend is handed in so a previous run that took the fans and died can have
+            // them given back. On this HP board nothing is ever recorded -- its controller reverts
+            // on its own -- but a machine whose controller latches would otherwise still be holding
+            // whatever a crashed process last commanded, with nothing running to change it.
+            foreach (var r in OmniHub.Core.Diagnostics.RestoreReconciler.Run(
+                         OmniHub.Core.Diagnostics.RestoreJournal.Shared, _ctx.FanBackend))
                 _powerLog.Append(DateTime.UtcNow, "OmniHub", "Restore", r.Key, r.Detail);
         }
         catch { }

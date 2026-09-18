@@ -98,6 +98,17 @@ public sealed class HpFanBackend : IFanBackend
         _fan.RestoreAutomaticControl();
     }
 
+    /// <summary>
+    /// True, and measured rather than assumed.
+    ///
+    /// This board's EC returns to its own curve when nothing is commanding it -- which is exactly
+    /// the behaviour the safety floor exists to counter, since that curve contains the
+    /// 0%-while-hot entry this whole application was written about. Unhelpful as a cooling
+    /// strategy; entirely helpful as a crash-recovery one, because it means there is no debt to
+    /// remember.
+    /// </summary>
+    public bool RevertsWhenUncommanded => true;
+
     /// <summary>What a refusal calls this backend.</summary>
     public const string Name = "HP fan control";
 }

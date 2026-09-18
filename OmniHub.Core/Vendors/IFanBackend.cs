@@ -59,6 +59,24 @@ public interface IFanBackend
     void SetLevels(byte raw1, byte raw2);
 
     /// <summary>
+    /// Whether this controller returns to its own curve once nothing is commanding it.
+    ///
+    /// True is the comfortable case and the one this application was built on: the process dies,
+    /// the controller notices nobody is talking to it, and firmware takes over. Nothing has to be
+    /// remembered across a crash because nothing is owed.
+    ///
+    /// False means the opposite, and it is the reason the restore journal now has a fan key. A
+    /// controller that latches holds whatever level a crashed process last sent it, with nothing
+    /// left running to change it -- so the intention to take control has to be written down
+    /// BEFORE it is acted on, or the next launch has no idea anything is owed.
+    ///
+    /// A backend that does not know should answer false. Journalling a debt that turns out not to
+    /// exist costs one redundant hand-back at startup; not journalling one that does exist costs
+    /// a fan pinned until somebody reboots.
+    /// </summary>
+    bool RevertsWhenUncommanded { get; }
+
+    /// <summary>
     /// Hands the fans back to the firmware's own control.
     ///
     /// The one method here whose failure is dangerous rather than merely unhelpful. It runs on

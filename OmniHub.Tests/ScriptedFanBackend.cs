@@ -60,15 +60,30 @@ public sealed class ScriptedFanBackend : IFanBackend
     /// </summary>
     public bool Latches { get; set; }
 
+    /// <summary>The inverse of <see cref="Latches"/>, which is what the interface asks for. One
+    /// flag behind both, so a test cannot set up a controller that contradicts itself.</summary>
+    public bool RevertsWhenUncommanded => !Latches;
+
     /// <summary>Whether the fans are currently off the firmware's own curve.</summary>
     public bool UnderManualControl { get; private set; }
 
     /// <summary>What the controller is actually holding the fans at, or null for its own curve.</summary>
     public (byte Fan1, byte Fan2)? Held { get; private set; }
 
+    /// <summary>
+    /// Runs at the instant control is taken, before anything else is recorded.
+    ///
+    /// Exists so a test can observe what was true AT that moment rather than afterwards. Whether
+    /// the takeover was journalled before or after the hardware was touched is invisible once both
+    /// have happened, and "before" is the entire safety property -- a note written afterwards is
+    /// missing in exactly the case it exists for.
+    /// </summary>
+    public Action? OnTakeControl { get; set; }
+
     public void TakeManualControl()
     {
         WriteGate.Require(Tier, Name, Board);
+        OnTakeControl?.Invoke();
         Calls.Add("control");
         UnderManualControl = true;
         if (FailWith is { } ex) throw ex;

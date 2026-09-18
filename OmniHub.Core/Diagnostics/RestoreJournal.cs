@@ -34,6 +34,23 @@ public sealed class RestoreJournal
     /// <summary>Refresh rate in Hz the display should be returned to. Value is the integer as text.</summary>
     public const string DisplayRefreshHz = "display.refreshHz";
 
+    /// <summary>
+    /// Fans were taken off the firmware's own curve and have not been handed back. The value
+    /// names the backend and board, so a reconciliation can be reported in words.
+    ///
+    /// Recorded only by a backend that does NOT revert on its own. The HP board this application
+    /// was built on does revert -- an EC with nobody commanding it returns to its own curve --
+    /// which is why fan state was deliberately left out of this journal for as long as HP was the
+    /// only backend, and the note above still says so.
+    ///
+    /// That reasoning does not survive contact with other people's hardware. A controller that
+    /// latches keeps whatever level a crashed process last sent it, with nothing running to
+    /// change it and no record that anything was ever taken over. The fan sits there until
+    /// somebody reboots, and on a machine that hangs as often as this one that is not a
+    /// hypothetical.
+    /// </summary>
+    public const string FanManualControl = "fan.manualControl";
+
     private readonly string _path;
     private readonly object _lock = new();
     private Dictionary<string, string> _pending = new(StringComparer.Ordinal);

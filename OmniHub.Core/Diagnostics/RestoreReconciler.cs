@@ -31,7 +31,14 @@ public static class RestoreReconciler
     /// An unrecognised key is dropped rather than kept forever: it can only come from a build
     /// that knew how to honour it, and a newer build has no way to guess.
     /// </summary>
-    public static IReadOnlyList<Restored> Run(RestoreJournal journal)
+    /// <param name="fan">
+    /// The fan backend to hand control back through, when a previous run left it taken.
+    ///
+    /// Optional, and null is a supported state rather than a degraded one: a machine with no
+    /// vendor interface has no backend to reconcile through, and the entry is then left in place
+    /// rather than dropped, because the debt is real even when this launch cannot settle it.
+    /// </param>
+    public static IReadOnlyList<Restored> Run(RestoreJournal journal, Vendors.IFanBackend? fan = null)
     {
         var done = new List<Restored>();
 
@@ -39,6 +46,40 @@ public static class RestoreReconciler
         {
             switch (key)
             {
+                case RestoreJournal.FanManualControl:
+                {
+                    // A previous run took the fans off the firmware's curve on a controller that
+                    // does not give them back by itself, and did not live long enough to undo it.
+                    // Nothing else will: the fan is holding whatever that process last sent.
+                    if (fan is null)
+                    {
+                        done.Add(new Restored(key, false,
+                            $"A previous run left the fans under manual control ({value}), and there "
+                            + "is no fan backend on this machine to hand them back through. Left "
+                            + "recorded so a launch that can will."));
+                        break;
+                    }
+
+                    try
+                    {
+                        fan.RestoreAutomatic();
+                        journal.Clear(key);
+                        done.Add(new Restored(key, true,
+                            "Handed the fans back to firmware control after an unclean shutdown; a "
+                            + $"previous run had taken them ({value})."));
+                    }
+                    catch (Exception ex)
+                    {
+                        // Left in the journal deliberately, exactly as a failed display restore is.
+                        // A fan still pinned by a dead process is not a debt to forget because the
+                        // first attempt to settle it missed.
+                        done.Add(new Restored(key, false,
+                            $"Could not hand the fans back ({ex.Message}). Will try again next launch."));
+                    }
+
+                    break;
+                }
+
                 case RestoreJournal.DisplayRefreshHz:
                 {
                     if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int hz) || hz <= 0)

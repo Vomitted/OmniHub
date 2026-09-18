@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Vomitted
 
+using OmniHub.Core.Diagnostics;
 using OmniHub.Core.Hardware;
 using OmniHub.Core.Vendors;
 
@@ -312,6 +313,11 @@ public sealed class FanService : IDisposable
                     // on the same schedule as a write that was already happening.
                     if (!modeTaken || refreshDue)
                     {
+                        // Written down BEFORE the hardware is touched, which is the only ordering
+                        // that helps. A note made afterwards is missing in exactly the case it
+                        // exists for -- the process dying between taking control and recording it.
+                        NoteManualControl();
+
                         _fan.TakeManualControl();
                         modeTaken = true;
                     }
@@ -404,6 +410,38 @@ public sealed class FanService : IDisposable
     /// A fan whose level the board did not report reads as unavailable, not as stopped.</summary>
     public static string RawText(byte? raw) => raw?.ToString() ?? "--";
 
+    /// <summary>
+    /// Where to record that the fans have been taken over, for a controller that will not hand
+    /// them back by itself.
+    ///
+    /// Optional, and null is today's behaviour exactly. Nothing is written for a backend that
+    /// reverts when uncommanded -- on this HP board there is no debt to record, and a journal
+    /// entry nobody needs to honour is worse than none.
+    /// </summary>
+    public RestoreJournal? Journal { get; set; }
+
+    private bool _noted;
+
+    /// <summary>
+    /// Records, once, that this machine's fans are under manual control.
+    ///
+    /// Deliberately not repeated on the thirty-second refresh: the value does not change, and
+    /// rewriting a journal file every half minute for the life of a session would be a lot of
+    /// disk for one fact. Best-effort, because failing to write a note is not a reason to stop
+    /// cooling the machine.
+    /// </summary>
+    private void NoteManualControl()
+    {
+        if (_noted || Journal is null || _fan.RevertsWhenUncommanded) return;
+
+        try
+        {
+            Journal.Record(RestoreJournal.FanManualControl, _fan.GetType().Name);
+            _noted = true;
+        }
+        catch { /* the fan curve outranks the bookkeeping */ }
+    }
+
     public void Stop()
     {
         _cts?.Cancel();
@@ -414,7 +452,15 @@ public sealed class FanService : IDisposable
         // Guarded for the same reason SetFanMode now is: this is a BIOS call, callers reach it
         // from mode buttons and from shutdown, and a throw here used to escape into whichever
         // of those happened to be running.
-        try { _fan.RestoreAutomatic(); }
+        try
+        {
+            _fan.RestoreAutomatic();
+
+            // Cleared only after the hand-back actually succeeded. Clearing first would settle a
+            // debt that is still owed if the call throws, which is the whole failure this is for.
+            Journal?.Clear(RestoreJournal.FanManualControl);
+            _noted = false;
+        }
         catch (Exception ex) { LastError = ex.Message; }
     }
 
