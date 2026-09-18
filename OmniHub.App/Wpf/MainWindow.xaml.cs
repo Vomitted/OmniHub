@@ -549,32 +549,34 @@ public partial class MainWindow : Window
     {
         if (_views.TryGetValue(key, out var existing)) return existing;
 
-        // The atomic panels are built on demand and cached like everything else, but they are not
-        // in _viewFactories: there is one factory shape per metric, and registering twelve
-        // near-identical closures would be a table pretending to be code.
-        if (BuildAtomicPanel(key) is { } atomic)
-        {
-            _views[key] = atomic;
-            return atomic;
-        }
-
-        if (!_viewFactories.TryGetValue(key, out var build)) return null;
+        bool hasFactory = _viewFactories.TryGetValue(key, out var build);
 
         UserControl view;
+
         try
         {
-            view = build();
+            // The atomic panels are built on demand and cached like everything else, but they are
+            // not in _viewFactories: there is one factory shape per metric, and registering twelve
+            // near-identical closures would be a table pretending to be code.
+            //
+            // Inside the handler, not before it. They were built above it at first, which left the
+            // newest and least exercised screens in this application as the only ones whose
+            // constructor could take the process down -- past a comment explaining precisely why
+            // that must not happen.
+            if (BuildAtomicPanel(key) is { } atomic) view = atomic;
+            else if (hasFactory) view = build!();
+            else return null;   // not a panel this build knows; the host draws a named placeholder
         }
         catch (Exception ex)
         {
-            // A tab that cannot be built must not take the application down with it.
+            // A screen that cannot be built must not take the application down with it.
             //
             // This process holds fan control. If it dies the laptop reverts to the stock BIOS
             // curve, including the 0%-while-hot behaviour this application exists to prevent --
-            // so losing the process is a worse outcome than losing a tab. Building every view up
-            // front used to mean such a failure surfaced at launch; deferring construction moved
-            // it to a click, and an exception out of a click handler reaches the dispatcher
-            // unhandled. Caught here, and shown in place of the tab.
+            // so losing the process is a worse outcome than losing a screen. Building every view
+            // up front used to mean such a failure surfaced at launch; deferring construction
+            // moved it to a click, and an exception out of a click handler reaches the dispatcher
+            // unhandled. Caught here, and shown in place of the screen.
             view = FailedTab(key, ex);
         }
 

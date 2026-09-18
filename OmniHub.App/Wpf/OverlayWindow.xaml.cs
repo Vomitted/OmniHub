@@ -223,7 +223,23 @@ public partial class OverlayWindow : Window
     /// </summary>
     private void Show(string key, string text, double? value)
     {
-        if (_valueCells.TryGetValue(key, out var cell)) cell.Text = text;
+        if (_valueCells.TryGetValue(key, out var cell))
+        {
+            cell.Text = text;
+
+            // The same thresholds the panels use, from the same catalogue. This is the surface
+            // where it matters most: it is the one visible while the machine is actually under
+            // load, and a die crossing eighty degrees is worth noticing without reading the digits.
+            //
+            // The figure only. Nothing else in this card takes a colour -- the labels and the
+            // state line stay what they are.
+            cell.Foreground = Metrics.LevelOf(key, value) switch
+            {
+                MetricLevel.Hot => (Brush)FindResource("DangerBrush"),
+                MetricLevel.Warn => (Brush)FindResource("WarnBrush"),
+                _ => (Brush)FindResource("TextPrimaryBrush"),
+            };
+        }
 
         if (!_history.TryGetValue(key, out var history)) return;
 
