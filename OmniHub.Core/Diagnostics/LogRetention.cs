@@ -33,12 +33,25 @@ public static class LogRetention
     /// Never throws. Housekeeping that can stop logging is worse than no housekeeping, and
     /// every caller is on a path that matters more than this does.
     /// </summary>
-    public static int Prune(string directory, string pattern, TimeSpan? retention = null, string? keepPath = null)
+    /// <param name="keepSince">
+    /// A moment nothing older than which may be deleted, whatever the retention window says.
+    ///
+    /// This is how a saved session protects the trace behind it. A session is a name and a range
+    /// over logs that already exist, so a fortnight-old one would silently resolve to nothing once
+    /// the retention swept the files -- an A/B comparison that has forgotten A, which is worse than
+    /// one that refuses to run, because it still produces a verdict.
+    /// </param>
+    public static int Prune(string directory, string pattern, TimeSpan? retention = null,
+                            string? keepPath = null, DateTime? keepSince = null)
     {
         int removed = 0;
         try
         {
             var cutoff = DateTime.UtcNow - (retention ?? Default);
+
+            // Whichever is earlier wins. A session reaching further back than the retention window
+            // extends it; one inside the window changes nothing.
+            if (keepSince is { } since && since < cutoff) cutoff = since;
 
             foreach (string file in Directory.EnumerateFiles(directory, pattern))
             {

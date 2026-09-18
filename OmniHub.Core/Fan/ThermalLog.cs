@@ -182,8 +182,34 @@ public sealed class ThermalLog : IDisposable
     /// application-wide path, a log pointed at a temporary directory would have swept the real
     /// trace instead, which is precisely the data this class exists to protect.
     /// </summary>
+    /// <summary>
+    /// Sweeps old traces, except any a saved session still points at.
+    ///
+    /// The sessions are read here rather than passed in because this runs from inside the writer,
+    /// on a path no caller of Append knows about. Reading a small JSON file on a day rollover is
+    /// not a cost worth threading a parameter through the fan loop to avoid.
+    /// </summary>
     private void PruneOldLogs(string currentPath) =>
-        Diagnostics.LogRetention.Prune(_directory, "thermal-*.csv", keepPath: currentPath);
+        Diagnostics.LogRetention.Prune(
+            _directory, "thermal-*.csv",
+            keepPath: currentPath,
+            keepSince: EarliestSessionMoment());
+
+    /// <summary>
+    /// The earliest moment a saved session still points at, or null when none do.
+    ///
+    /// Only consulted for the real log directory. A ThermalLog pointed somewhere else is a test or
+    /// a bundle being assembled, and reaching into the user's own state from one is the mistake
+    /// this method used to be static for: as a static it would have swept the real fourteen-day
+    /// trace from a test run. Reading rather than deleting is harmless, but the rule is worth
+    /// keeping the same in both directions.
+    /// </summary>
+    private DateTime? EarliestSessionMoment()
+    {
+        if (!string.Equals(_directory, LogDirectory, StringComparison.OrdinalIgnoreCase)) return null;
+
+        return Telemetry.SessionLog.Load().EarliestReferenced;
+    }
 
     /// <summary>True when the file exists, has content, and its header is not the current one.</summary>
     private static bool HasDifferentHeader(string path)
