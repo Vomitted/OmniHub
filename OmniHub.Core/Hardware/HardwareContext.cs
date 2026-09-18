@@ -215,7 +215,9 @@ public sealed class HardwareContext : IDisposable
         // Constructed last, because it is the only thing here that needs the calibration, and the
         // calibration is the last thing startup learns. Passing it in is what replaced a static
         // that startup assigned and everything else read.
-        FanBackend = new Vendors.HpFanBackend(Fan, calibration);
+        // The tier comes from whether HP's own interface answered, and the board so a refusal can
+        // name the machine it is refusing about.
+        FanBackend = new Vendors.HpFanBackend(Fan, calibration, _bios.IsAvailable, Model.BaseboardProduct);
         GpuBackend = new Vendors.HpGpuBackend(Gpu);
     }
 

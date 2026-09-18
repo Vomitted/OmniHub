@@ -25,6 +25,16 @@ namespace OmniHub.Core.Vendors;
 public interface IFanBackend
 {
     /// <summary>
+    /// How far this backend is trusted on the machine it is attached to.
+    ///
+    /// Reading is offered wherever a read path is known good; writing waits until the board's
+    /// control path has actually been exercised. Every write method here refuses below
+    /// <see cref="VendorTier.Verified"/>, and the suite checks that by reflection rather than
+    /// trusting each backend to remember.
+    /// </summary>
+    VendorTier Tier { get; }
+
+    /// <summary>
     /// The raw band this machine's fans actually run, and the arithmetic that interprets it.
     ///
     /// Carried by the backend rather than held in one place for the whole process, because it is

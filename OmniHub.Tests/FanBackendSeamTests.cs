@@ -23,45 +23,12 @@ namespace OmniHub.Tests;
 /// </summary>
 public class FanBackendSeamTests
 {
-    /// <summary>A machine that records what it was told, in order, and never talks to anything.</summary>
-    private sealed class FakeBackend : IFanBackend
-    {
-        public readonly List<string> Calls = new();
-        public readonly List<(byte Fan1, byte Fan2)> Levels = new();
-
-        /// <summary>
-        /// The measured HP band by default, so the raw levels asserted below are the ones this
-        /// machine would really be sent. Settable because a backend's scale is its own, and a
-        /// test for a board with a different one should be able to say so -- which is the entire
-        /// reason this stopped being a process-wide static.
-        /// </summary>
-        public FanCalibration Calibration { get; set; } = FanCalibration.Default;
-
-        /// <summary>When set, every write throws -- a backend whose firmware has gone away.</summary>
-        public Exception? FailWith { get; set; }
-
-        public void TakeManualControl()
-        {
-            Calls.Add("control");
-            if (FailWith is { } ex) throw ex;
-        }
-
-        public void SetLevels(byte raw1, byte raw2)
-        {
-            Calls.Add($"level {raw1}/{raw2}");
-            Levels.Add((raw1, raw2));
-            if (FailWith is { } ex) throw ex;
-        }
-
-        public void RestoreAutomatic() => Calls.Add("restore");
-    }
-
     private static TemperatureReading Die(double c) => new(c, TemperatureSource.SmuDieTctl);
 
     /// <summary>A zone reading on its ceiling: the sensor has stopped measuring.</summary>
     private static TemperatureReading BlindZone() => new(86.0, TemperatureSource.AcpiThermalZone);
 
-    private static FanService Loop(FakeBackend fan, Func<TemperatureReading> read) =>
+    private static FanService Loop(ScriptedFanBackend fan, Func<TemperatureReading> read) =>
         new(fan, read, FanCurve.CreateDefault(), TimeSpan.FromMilliseconds(5));
 
     /// <summary>Runs until <paramref name="until"/> holds, or gives up and lets the assert speak.</summary>
@@ -82,7 +49,7 @@ public class FanBackendSeamTests
         // The ordering is the whole safety property, not a nicety. A level written before
         // control is taken is accepted by the firmware and quietly discarded, so the reverse
         // order looks identical from here and cools nothing.
-        var fan = new FakeBackend();
+        var fan = new ScriptedFanBackend();
         using var service = Loop(fan, () => Die(70));
 
         service.Start();
@@ -99,7 +66,7 @@ public class FanBackendSeamTests
         // Re-sending an identical level cost one firmware round trip every two seconds and
         // bought nothing -- measured, and the reason the write became conditional. At a 5ms
         // interval this test would see hundreds of writes if the condition regressed.
-        var fan = new FakeBackend();
+        var fan = new ScriptedFanBackend();
         using var service = Loop(fan, () => Die(70));
 
         service.Start();
@@ -115,7 +82,7 @@ public class FanBackendSeamTests
     {
         // The converse of the test above, and it has to be here: "never writes twice" is also
         // what a completely broken loop looks like.
-        var fan = new FakeBackend();
+        var fan = new ScriptedFanBackend();
         double temp = 45;
         using var service = Loop(fan, () => Die(temp));
 
@@ -136,7 +103,7 @@ public class FanBackendSeamTests
     {
         // The most important line in the class. Exiting without this leaves the fans latched at
         // whatever was last commanded, with nothing running to change it.
-        var fan = new FakeBackend();
+        var fan = new ScriptedFanBackend();
         using var service = Loop(fan, () => Die(70));
 
         service.Start();
@@ -152,7 +119,7 @@ public class FanBackendSeamTests
         // Stop() is reached from shutdown paths that do not know whether Start() ever succeeded,
         // and a service that took control and then failed its first tick is exactly the case
         // where handing back matters most.
-        var fan = new FakeBackend();
+        var fan = new ScriptedFanBackend();
         using var service = Loop(fan, () => Die(70));
 
         service.Stop();
@@ -166,7 +133,7 @@ public class FanBackendSeamTests
         // A dead loop is silent and the machine keeps getting hotter, so no single failed tick
         // may end it. The failure is recorded instead, because "the fans did nothing" should be
         // diagnosable rather than guessed at.
-        var fan = new FakeBackend { FailWith = new InvalidOperationException("firmware said no") };
+        var fan = new ScriptedFanBackend { FailWith = new InvalidOperationException("firmware said no") };
         using var service = Loop(fan, () => Die(70));
 
         service.Start();
@@ -185,7 +152,7 @@ public class FanBackendSeamTests
     {
         // The temperature delegate reaches WMI and the SMU on a real machine, and both fail
         // transiently. This used to sit outside the handler.
-        var fan = new FakeBackend();
+        var fan = new ScriptedFanBackend();
         bool fail = true;
         using var service = Loop(fan, () => fail ? throw new TimeoutException("sensor busy") : Die(70));
 
@@ -207,7 +174,7 @@ public class FanBackendSeamTests
         // of an emergency -- at startup it is close to guaranteed, and answering the first one
         // with 5600 rpm is the "jet engine every time I boot" behaviour. Five consecutive
         // samples is the agreed threshold.
-        var fan = new FakeBackend();
+        var fan = new ScriptedFanBackend();
         using var service = Loop(fan, BlindZone);
 
         service.Start();
@@ -223,7 +190,7 @@ public class FanBackendSeamTests
         // 86C from Tctl is a real 86C and should be cooled as such, not treated as a sensor that
         // has run out of range. Testing the bare number rather than the reading would force
         // maximum fan on every genuine hot die reading.
-        var fan = new FakeBackend();
+        var fan = new ScriptedFanBackend();
         using var service = Loop(fan, () => Die(86));
 
         service.Start();
@@ -241,7 +208,7 @@ public class FanBackendSeamTests
         // sentinel. Anything reading it before the first tick records a commanded 0% that never
         // happened -- and in a fan log specifically, a spurious 0% while hot looks exactly like
         // the failure this application exists to detect.
-        var fan = new FakeBackend();
+        var fan = new ScriptedFanBackend();
         using var service = Loop(fan, () => Die(70));
 
         Assert.False(service.HasCommanded);
