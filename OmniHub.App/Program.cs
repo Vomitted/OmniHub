@@ -228,7 +228,7 @@ internal static class Program
             // Recorded, but see SystemController.GetThrottling: this flag documents itself as
             // unverified on this firmware, so a run's throttle column is a hint, not the finding.
             bool throttling = false;
-            try { throttling = sys.GetThrottling() == ThrottlingState.On; } catch { }
+            try { throttling = sys.IsThrottling() == true; } catch { }
 
             return new LoadSample(elapsed, temp, watts, ghz, rpm, null, throttling, sensor);
         }

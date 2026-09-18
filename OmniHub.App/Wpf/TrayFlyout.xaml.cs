@@ -118,7 +118,7 @@ public partial class TrayFlyout : Window
             // re-saved in another encoding, which is exactly how the reference app ended up
             // rendering "59AC" instead of "59°C" throughout its UI.
             TempText.Text = $"{r.TemperatureC}°C";
-            ThrottleText.Text = r.Throttling == ThrottlingState.On ? "Throttling now" : "Normal";
+            ThrottleText.Text = r.Throttling == true ? "Throttling now" : "Normal";
             RefreshModeText();
         });
     }

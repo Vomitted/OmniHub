@@ -47,7 +47,16 @@ public sealed record Reading(
     /// </summary>
     bool FanLevelsFresh,
     bool MaxFanActive,
-    ThrottlingState Throttling,
+
+    /// <summary>
+    /// Whether the processor is being thermally throttled, or null when the machine did not say.
+    ///
+    /// A plain answer rather than a vendor byte. This used to be HP's ThrottlingState, which
+    /// travelled from one WMI command through the poll loop into six views and the tray -- every
+    /// one of which compared it against a single value to ask a yes/no question. The byte stays
+    /// where HP's commands are; what crosses this record is the answer.
+    /// </summary>
+    bool? Throttling,
     double PreciseTemperatureC = double.NaN,
     TemperatureSource TemperatureSource = TemperatureSource.AcpiThermalZone);
 
@@ -284,7 +293,7 @@ public sealed class HardwareContext : IDisposable
     private (byte? Fan1, byte? Fan2) _lastLevels;
 
     private bool _lastMaxFan;
-    private ThrottlingState _lastThrottle = ThrottlingState.Unknown;
+    private bool? _lastThrottle;
 
     /// <summary>How old a cached temperature may be before it stops counting as current.</summary>
     private static readonly TimeSpan TemperatureMaxAge = TimeSpan.FromSeconds(8);
@@ -431,7 +440,7 @@ public sealed class HardwareContext : IDisposable
                     try
                     {
                         _lastMaxFan = System.GetMaxFanActive();
-                        _lastThrottle = System.GetThrottling();
+                        _lastThrottle = System.IsThrottling();
                     }
                     catch
                     {

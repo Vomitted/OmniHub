@@ -534,7 +534,7 @@ public partial class FansView : UserControl
         // fan curve.
         Dispatcher.BeginInvoke(() =>
         {
-            SetTemperature(r.TemperatureC, r.Throttling == ThrottlingState.On);
+            SetTemperature(r.TemperatureC, r.Throttling == true);
             RefreshSensorNote();
 
             if (_settings.FanControlMode != FanControlMode.Auto)

@@ -133,9 +133,9 @@ public partial class DashboardView : UserControl
     // starts biting around 60C, and 80C is where it is already working hard. Actively
     // throttling is always red regardless of the number, because at that point the
     // reading has stopped being the interesting part.
-    private Brush ThermalBrushFor(double tempC, ThrottlingState throttling)
+    private Brush ThermalBrushFor(double tempC, bool? throttling)
     {
-        if (throttling == ThrottlingState.On) return (Brush)FindResource("DangerBrush");
+        if (throttling == true) return (Brush)FindResource("DangerBrush");
         // A saturated reading is at least this hot and possibly far hotter, so it gets the
         // danger colour on its own account rather than by happening to exceed a threshold.
         if (SystemController.IsAtSensorCeiling(tempC)) return (Brush)FindResource("DangerBrush");
@@ -812,7 +812,7 @@ public partial class DashboardView : UserControl
                 fanText += $" -> {_service.LastCommandedLevelPercent}%";
             }
             ThermalSubText.Text = fanText;
-            ThermalFootRight.Text = r.Throttling == ThrottlingState.On ? "THROTTLING"
+            ThermalFootRight.Text = r.Throttling == true ? "THROTTLING"
                 : ceiling ? "AT SENSOR LIMIT"
                 : fromDie ? "DIE SENSOR"
                 : "NOMINAL";
@@ -828,7 +828,7 @@ public partial class DashboardView : UserControl
             Animate.BrushTo(ThermalUnit, TextBlock.ForegroundProperty, thermalBrush);
             Animate.BrushTo(ThermalBarFill, Border.BackgroundProperty, thermalBrush);
             Animate.BrushTo(StripTemp, TextBlock.ForegroundProperty, thermalBrush);
-            ThermalFootRight.Foreground = r.Throttling == ThrottlingState.On
+            ThermalFootRight.Foreground = r.Throttling == true
                 ? thermalBrush
                 : (Brush)FindResource("TextFaintBrush");
 
@@ -836,7 +836,7 @@ public partial class DashboardView : UserControl
             // a bar that never leaves its first third communicates nothing.
             SetBar(ThermalBar, (displayC - 30.0) / 70.0 * 100.0);
 
-            StripState.Text = r.Throttling == ThrottlingState.On ? "THROTTLING"
+            StripState.Text = r.Throttling == true ? "THROTTLING"
                 : displayC >= 80 ? "HOT"
                 : _service.IsRunning ? "MANAGED" : "BIOS AUTO";
 
@@ -862,7 +862,7 @@ public partial class DashboardView : UserControl
             // GpuTelemetry never holds a value past a failure, so this cannot stick either.
             if (gpu?.TempC is double gpuC)
             {
-                var gpuBrush = ThermalBrushFor(gpuC, ThrottlingState.Default);
+                var gpuBrush = ThermalBrushFor(gpuC, false);
                 Animate.To(GpuTempText, gpuC, "0");
                 GpuTempUnit.Visibility = Visibility.Visible;
                 Animate.BrushTo(GpuTempText, TextBlock.ForegroundProperty, gpuBrush);

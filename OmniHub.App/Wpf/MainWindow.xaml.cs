@@ -936,7 +936,7 @@ public partial class MainWindow : Window
     // never disagree about what counts as hot.
     private void UpdateRibbonColour(Reading r)
     {
-        var key = r.Throttling == ThrottlingState.On || r.TemperatureC >= 80 ? "DangerColor"
+        var key = r.Throttling == true || r.TemperatureC >= 80 ? "DangerColor"
                 : r.TemperatureC >= 60 ? "WarnColor"
                 : "AccentColor";
 
@@ -991,7 +991,7 @@ public partial class MainWindow : Window
             r.FanLevelsFresh ? r.FanLevel1 : null,
             r.FanLevelsFresh ? r.FanLevel2 : null,
                    _service.IsRunning && _service.HasCommanded ? _service.LastCommandedLevelPercent : -1,
-                   r.Throttling == ThrottlingState.On,
+                   r.Throttling == true,
                    _settings.FanControlMode.ToString(),
                    r.TemperatureSource.ToString(),
 
@@ -1454,7 +1454,7 @@ public partial class MainWindow : Window
 
     private void OnThrottleCheck(Reading r)
     {
-        bool isThrottling = r.Throttling == ThrottlingState.On;
+        bool isThrottling = r.Throttling == true;
         if (isThrottling && !_wasThrottling)
         {
             _trayIcon?.ShowBalloonTip(5000, "OmniHub",

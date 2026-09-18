@@ -298,7 +298,7 @@ public partial class OverlayWindow : Window
         // timer and write their own rows, because a cache miss in GpuTelemetry spawns nvidia-smi
         // and 53 ms of process startup on the UI thread is a visible stutter over a game.
 
-        StateText.Text = r.Throttling == ThrottlingState.On ? "THROTTLING"
+        StateText.Text = r.Throttling == true ? "THROTTLING"
             : r.MaxFanActive ? "MAX FAN"
             : service.IsRunning ? $"CURVE {service.LastCommandedLevelPercent}%"
             : "BIOS AUTO";

@@ -123,7 +123,7 @@ public partial class DiagnosticsView : UserControl
         // Recorded, but GetThrottling documents itself as unverified on this firmware, so the
         // throttle column is a hint rather than the finding.
         bool throttling = false;
-        try { throttling = _ctx.System.GetThrottling() == ThrottlingState.On; } catch { }
+        try { throttling = _ctx.System.IsThrottling() == true; } catch { }
 
         return new LoadSample(elapsed, temp, watts, ghz, rpm, null, throttling, sensor);
     }

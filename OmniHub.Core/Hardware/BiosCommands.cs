@@ -510,4 +510,40 @@ public sealed class SystemController
         }
         catch { return ThrottlingState.Unknown; }
     }
+
+    /// <summary>
+    /// Whether the processor is being thermally throttled: true, false, or null when this machine
+    /// did not say.
+    ///
+    /// The translation from HP's byte to a plain answer happens here, at the boundary, so that
+    /// <see cref="ThrottlingState"/> stops travelling through the poll loop, the Reading record
+    /// and every view that only ever asked "is it throttling?". A vendor byte is meaningful where
+    /// the vendor's commands are; six screens away it is just an enum nobody can act on.
+    ///
+    /// <see cref="GetThrottling"/> stays for <see cref="ThrottlingProbe"/>, which reasons about
+    /// the specific values -- including whether Default is real or an echo of the selector byte
+    /// that was sent. That question is open, and answering it needs the byte, not a bool.
+    ///
+    /// Default maps to false, which is what every caller already did by testing for On. It is
+    /// deliberately not mapped to null despite the echo suspicion: that would be a behaviour
+    /// change dressed up as a refactor, and if the reading does turn out to be an echo the honest
+    /// fix is to stop reporting it at all rather than to quietly widen its meaning here.
+    /// </summary>
+    public bool? IsThrottling() => ThrottlingFrom(GetThrottling());
+
+    /// <summary>
+    /// The mapping itself, static and pure so it can be tested without a laptop -- the same
+    /// reason <see cref="Merge"/> is.
+    ///
+    /// Unknown becomes null rather than false, and that distinction is the point of returning a
+    /// nullable at all. "Not throttling" and "this machine did not answer" are different claims,
+    /// and a tool that collapses the second into the first is asserting something it was not
+    /// told -- which is the one thing this project is built not to do.
+    /// </summary>
+    internal static bool? ThrottlingFrom(ThrottlingState state) => state switch
+    {
+        ThrottlingState.On => true,
+        ThrottlingState.Unknown => null,
+        _ => false,
+    };
 }
