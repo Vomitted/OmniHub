@@ -13,8 +13,9 @@
 # The project is named omnihubapp rather than omnihub because a Pages subdomain is the project
 # name, and omnihub.pages.dev belongs to someone else's project. Cloudflare therefore appended a
 # disambiguating suffix and the address read as omnihub-8bb.pages.dev. Pages cannot rename a
-# project, so the only way to change the address was a second one. The original still exists and
-# still serves; it is simply no longer what this file deploys to.
+# project, so the only way to change the address was a second one. The original project has since
+# been deleted and that address no longer resolves, which is worth knowing if you find it written
+# down somewhere: it is not down, it is gone.
 
 name = "omnihubapp"
 pages_build_output_dir = "docs"
