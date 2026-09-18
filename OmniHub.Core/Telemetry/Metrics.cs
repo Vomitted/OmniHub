@@ -117,6 +117,15 @@ public static class Metrics
 
         new MetricDefinition("mem",     "MEMORY",    "GB",     "0.0", ShortLabel: "MEM",
                              Source: "GlobalMemoryStatusEx, total less available"),
+
+        // What this application costs the machine it is measuring. A tool for finding what drains
+        // a laptop should be willing to say what it draws itself, and on this machine it has been
+        // suspected of both drain and hangs more than once.
+        new MetricDefinition("selfcpu", "OMNIHUB CPU", "%",   "0.0", ShortLabel: "OWN %",
+                             Source: "this process's own processor time, as a share of one core"),
+
+        new MetricDefinition("selfmem", "OMNIHUB RAM", "MB",  "0",   ShortLabel: "OWN MB",
+                             Source: "this process's working set, the figure Task Manager shows"),
     };
 
     public static MetricDefinition? Find(string key)

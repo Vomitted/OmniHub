@@ -28,6 +28,9 @@ public sealed class MetricSource : IDisposable
     private readonly AmdTuning? _tuning;
     private readonly SystemPerfReader _perf = new();
 
+    // Its own sampler, for the reason every other delta in this application now has one.
+    private readonly SelfUsage _self = new();
+
     private readonly Dictionary<string, double?> _values = new();
     private readonly Dictionary<string, Sparkline> _history = new();
 
@@ -111,11 +114,17 @@ public sealed class MetricSource : IDisposable
             SystemPerf? perf = null;
             try { perf = _perf.Read(); } catch { }
 
-            return (power, gpu: GpuTelemetry.Read(), perf);
+            // Cheap: a refresh of this process's own counters, no driver and no WMI. Measured on
+            // this thread with the rest so it reflects the same instant they do.
+            double? selfCpu = null;
+            double? selfMem = null;
+            try { selfCpu = _self.CpuPercent(); selfMem = _self.MemoryMegabytes(); } catch { }
+
+            return (power, gpu: GpuTelemetry.Read(), perf, selfCpu, selfMem);
         }).ContinueWith(t =>
         {
             if (t.IsFaulted) return;
-            var (power, gpu, perf) = t.Result;
+            var (power, gpu, perf, selfCpu, selfMem) = t.Result;
 
             var binding = power?.TightestLimit();
 
@@ -138,6 +147,9 @@ public sealed class MetricSource : IDisposable
                 Set("cpuload", perf?.CpuLoadPercent);
                 Set("cpuclk", perf?.CpuClockGHz);
                 Set("mem", perf?.MemoryUsedGB);
+
+                Set("selfcpu", selfCpu);
+                Set("selfmem", selfMem);
 
                 Updated?.Invoke();
             });

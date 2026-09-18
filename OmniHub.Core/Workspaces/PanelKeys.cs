@@ -78,9 +78,11 @@ public static class WorkspaceTemplates
         }),
 
         // What this application can see at all, which is the first thing to check when something
-        // reads wrong.
+        // reads wrong -- and what it is costing to see it, which is the second.
         new Workspace("Sensors", new[]
         {
+            new PanelPlacement(PanelKeys.Metric("selfcpu"), 6),
+            new PanelPlacement(PanelKeys.Metric("selfmem"), 6),
             new PanelPlacement(PanelKeys.Readings),
         }),
     };
