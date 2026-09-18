@@ -26,7 +26,7 @@ namespace OmniHub.Tests;
 /// </summary>
 public class ContrastTests
 {
-    private const double MinimumRatio = 4.5;
+    private const double MinimumRatio = OmniHub.Core.Theming.Contrast.MinimumRatio;
 
     /// <summary>
     /// The dimmest disabled-state Opacity any style in Styles.xaml actually sets.
@@ -217,23 +217,17 @@ public class ContrastTests
     /// Alpha is ignored. Every colour tested here is opaque, and a translucent one would need
     /// compositing against its actual backdrop rather than a ratio against a nominal one.
     /// </summary>
-    private static double RelativeLuminance(Color c)
-    {
-        static double Channel(byte v)
-        {
-            double s = v / 255.0;
-            return s <= 0.03928 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4);
-        }
+    // The arithmetic moved to Core when the palette editor came to need it too. Kept as thin
+    // wrappers rather than inlined at every call site, so this file still reads in WPF colours --
+    // and, more to the point, so this audit and the editor cannot disagree about whether a palette
+    // is acceptable. Two implementations of one rule is worse than either answer.
+    private static OmniHub.Core.Theming.Rgb ToRgb(Color c) => new(c.R, c.G, c.B);
 
-        return 0.2126 * Channel(c.R) + 0.7152 * Channel(c.G) + 0.0722 * Channel(c.B);
-    }
+    private static double RelativeLuminance(Color c) =>
+        OmniHub.Core.Theming.Contrast.RelativeLuminance(ToRgb(c));
 
-    private static double Contrast(Color a, Color b)
-    {
-        double la = RelativeLuminance(a), lb = RelativeLuminance(b);
-        (double hi, double lo) = la > lb ? (la, lb) : (lb, la);
-        return (hi + 0.05) / (lo + 0.05);
-    }
+    private static double Contrast(Color a, Color b) =>
+        OmniHub.Core.Theming.Contrast.Ratio(ToRgb(a), ToRgb(b));
 
     /// <summary>
     /// The formula itself, checked against the two anchors the standard fixes exactly, so a
