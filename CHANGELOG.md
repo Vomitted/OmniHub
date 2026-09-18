@@ -77,6 +77,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   guaranteed to track the CPU's real-time dynamic (Turbo Boost) frequency", and now comes from
   the per-processor clocks, which do.
 
+### Measured and not built
+
+- **Frame timing.** The statistics are done and tested; the collector is not, and the reason is a
+  measurement rather than an opinion. Reading frame presents means ETW, and the practical route is
+  Microsoft's TraceEvent package. Adding it took the build output from 2,053 KB to 13,313 KB and
+  brought native folders for three architectures, of which about seven megabytes is a debug symbol
+  resolver that reading present events never touches and two of the three cannot run on this
+  machine. The installer copies its source directory whole, so all of it would ship. For a feature
+  that is off by default, in an application whose job is keeping the fans honest, the trade did not
+  hold up. One package reference away for anyone who decides otherwise.
+
 ### Fixed
 
 - **A stopped fan that was never stopped.** The log recorded fan 2 at zero for stretches of up to

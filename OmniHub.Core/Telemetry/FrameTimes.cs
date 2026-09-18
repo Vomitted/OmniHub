@@ -30,6 +30,32 @@ public sealed record FrameStats(
 /// <summary>
 /// The arithmetic over a run of frame intervals.
 ///
+/// THERE IS NO COLLECTOR BEHIND THIS YET, AND THE REASON IS MEASURED
+///
+/// Frame presents come from ETW, and the practical way to read them is Microsoft's TraceEvent
+/// package. It was added, built and measured rather than argued about, and the numbers decided it:
+/// the build output went from 2,053 KB to 13,313 KB, six and a half times, and brought native
+/// folders for amd64, arm64 and x86 plus the Microsoft.Extensions dependency-injection and logging
+/// stack.
+///
+/// Of the eleven megabytes, about seven are msdia140.dll across three architectures -- the debug
+/// symbol resolver, which reading present events never touches -- and KernelTraceControl, which is
+/// for kernel sessions rather than the user-mode providers this would use. Two of the three
+/// architectures cannot run on this machine at all, and the installer copies its source directory
+/// whole, so they would ship.
+///
+/// ExcludeAssets="native" does not remove them: the package copies them through its own targets.
+/// Stripping them after the build would work only if the library never loads them at runtime, and
+/// that cannot be established without driving a live session.
+///
+/// So: eleven megabytes, mostly for architectures this laptop cannot execute, to support a feature
+/// that is off by default, in an application whose job is keeping the fans honest. The statistics
+/// below are the half that can be quietly wrong and they are done; the collector is one package
+/// reference away for anyone who decides the trade is worth it.
+///
+/// Separated from anything that collects frames for that reason, and because collection needs a
+/// live tracing session while this needs a list of numbers.
+///
 /// Separated from anything that collects them, because the collection needs a live tracing session
 /// and this needs a list of numbers -- and this is the half that can be quietly wrong.
 /// </summary>
