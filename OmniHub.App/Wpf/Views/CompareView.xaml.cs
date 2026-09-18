@@ -63,10 +63,114 @@ public partial class CompareView : UserControl, IDisposable
                    i => { _window = Windows[i].Span; Load(); }, selected: 0);
 
         BuildPills(BaselinePills, "CompareBaseline", Baselines.Select(b => b.Label),
-                   i => { _baselineOffset = Baselines[i].Offset; Load(); }, selected: 0);
+                   i =>
+                   {
+                       _baselineOffset = Baselines[i].Offset;
 
-        Loaded += (_, _) => Load();
+                       // A pill and a named run are two answers to one question. Choosing a pill
+                       // means the pill, or picking one would appear to do nothing while the run
+                       // silently kept overriding it.
+                       _baselineSession = null;
+
+                       _suppressSessionPicker = true;
+                       if (SessionPicker.Items.Count > 0) SessionPicker.SelectedIndex = 0;
+                       _suppressSessionPicker = false;
+
+                       Load();
+                   }, selected: 0);
+
+        RefreshSessions();
+
+        Loaded += (_, _) => { RefreshSessions(); Load(); };
         Unloaded += (_, _) => { _loading?.Cancel(); _loading = null; };
+    }
+
+    // ---------- recording a run ----------
+
+    private OmniHub.Core.Telemetry.SessionLog _sessions = OmniHub.Core.Telemetry.SessionLog.Empty;
+    private OmniHub.Core.Telemetry.Session? _baselineSession;
+    private bool _suppressSessionPicker;
+
+    /// <summary>
+    /// Re-reads the sessions and rebuilds everything that shows them.
+    ///
+    /// Read from disk rather than held, because the file is the shared state: a session started
+    /// here, left open through a crash, and closed by the next start has to be seen as it is
+    /// rather than as this screen last remembered it.
+    /// </summary>
+    private void RefreshSessions()
+    {
+        _sessions = OmniHub.Core.Telemetry.SessionLog.Load();
+
+        var open = _sessions.Open;
+
+        SessionBtn.Content = open is null ? "START" : "STOP";
+        SessionNameBox.IsEnabled = open is null;
+
+        SessionStatus.Text = open is null
+            ? "Name a run and start it before making a change, then stop it afterwards. The trace behind a saved run is kept past the usual fourteen days, so it is still there to compare against."
+            : $"Recording \"{open.Name}\", started {open.StartedUtc.ToLocalTime():HH:mm}.";
+
+        _suppressSessionPicker = true;
+        SessionPicker.Items.Clear();
+        SessionPicker.Items.Add("Compare against a named run...");
+
+        // Newest first: the one somebody wants is almost always the one they just recorded.
+        foreach (var session in _sessions.Sessions.Where(x => x.IsClosed).Reverse())
+            SessionPicker.Items.Add($"{session.Name}  ({session.StartedUtc.ToLocalTime():MMM d HH:mm}, {Describe(session.Duration())})");
+
+        SessionPicker.SelectedIndex = 0;
+        SessionPicker.IsEnabled = SessionPicker.Items.Count > 1;
+        _suppressSessionPicker = false;
+    }
+
+    private static string Describe(TimeSpan span) =>
+        span.TotalHours >= 1 ? $"{span.TotalHours:0.#} h" : $"{span.TotalMinutes:0} min";
+
+    private void SessionBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_sessions.Open is not null)
+        {
+            _sessions = _sessions.Stop(DateTime.UtcNow);
+        }
+        else
+        {
+            string name = SessionNameBox.Text.Trim();
+            if (name.Length == 0) { SessionStatus.Text = "Give the run a name first."; return; }
+
+            // The rail and the mode are recorded with it because a comparison across them is not a
+            // comparison: two runs on different power sources differ by the rail before they
+            // differ by anything that was deliberately changed.
+            var settings = AppSettings.Load();
+
+            _sessions = _sessions.Start(new OmniHub.Core.Telemetry.Session(
+                name,
+                DateTime.UtcNow,
+                null,
+                OmniHub.Core.Optimize.PowerSourceWatcher.Read().ToString(),
+                settings.FanControlMode.ToString(),
+                System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? ""));
+
+            SessionNameBox.Text = "";
+        }
+
+        try { _sessions.Save(); }
+        catch (Exception ex) { SessionStatus.Text = $"Could not save the run ({ex.Message})."; return; }
+
+        RefreshSessions();
+    }
+
+    private void SessionPicker_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_suppressSessionPicker) return;
+
+        // Index zero is the prompt, which means "no named baseline" rather than a run called that.
+        int index = SessionPicker.SelectedIndex - 1;
+        var closed = _sessions.Sessions.Where(x => x.IsClosed).Reverse().ToList();
+
+        _baselineSession = index >= 0 && index < closed.Count ? closed[index] : null;
+
+        Load();
     }
 
     /// <summary>Cancels any read in flight. MainWindow disposes whichever views can be.</summary>
@@ -117,8 +221,22 @@ public partial class CompareView : UserControl, IDisposable
         DateTime now = DateTime.UtcNow;
 
         DateTime recentFrom = now - _window;
-        DateTime baselineTo = _baselineOffset == TimeSpan.Zero ? recentFrom : now - _baselineOffset;
-        DateTime baselineFrom = baselineTo - _window;
+
+        // A named run replaces the offset entirely, and brings its own length with it: the whole
+        // point of naming it was that its boundaries are the ones that matter, not a window of
+        // somebody else's choosing laid over the top.
+        DateTime baselineTo, baselineFrom;
+
+        if (_baselineSession is { EndedUtc: { } ended } session)
+        {
+            baselineFrom = session.StartedUtc;
+            baselineTo = ended;
+        }
+        else
+        {
+            baselineTo = _baselineOffset == TimeSpan.Zero ? recentFrom : now - _baselineOffset;
+            baselineFrom = baselineTo - _window;
+        }
 
         Status.Text = "Reading...";
         Verdict.Text = "";

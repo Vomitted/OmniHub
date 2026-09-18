@@ -241,6 +241,12 @@ it stay together rather than ending up two clicks apart.
   Windows Settings > Display > Graphics uses. Apps can be picked by browsing to
   the `.exe` or from the running-app list; it does not guess which apps are
   "games", you choose the preference explicitly.
+- **Diagnostics** -- **Compare** also records *runs*: name a stretch of time,
+  start it before a change and stop it afterwards, then compare against it by
+  name instead of against whatever happened to come before. The power source and
+  fan mode are recorded with it, because a comparison across those is not a
+  comparison. The trace behind a saved run is kept past the usual fourteen days,
+  so an old run still resolves to the data it names rather than to nothing.
 - **Diagnostics** -- **Measure**: the load test, everything the firmware
   reports about this board, per-core clocks, memory and storage, the probe
   report and a support bundle. **History**: the thermal trace read back, with
