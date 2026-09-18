@@ -52,12 +52,30 @@ monitor instead of crashing. The *implementation* was not isolated at all --
 there was no interface anywhere at the hardware boundary, and the HP types were
 the types every consumer named.
 
-Work on that is under way rather than finished. The cooling loop now drives an
-`IFanBackend` (`OmniHub.Core/Vendors/`) instead of HP's controller directly, so
-the one loop whose failure is a hot machine with stopped fans is vendor-neutral
-and, for the first time, testable without an HP laptop. The rest -- temperature
-sources, GPU power, the capability block -- is still HP-shaped, and this section
-will say so until it is not.
+Work on that is under way rather than finished, and worth stating precisely,
+because the honest summary is still "no new laptop is supported yet".
+
+The seam is done: the cooling loop, the fan band, the throttling answer, the
+temperature reader and the optimisation code no longer name an HP type, so the
+one loop whose failure is a hot machine with stopped fans is vendor-neutral and,
+for the first time, testable without an HP laptop.
+
+**Reading is offered broadly; writing waits.** Every backend carries a tier --
+detected, readable, or verified -- and every hardware write goes through one gate
+that refuses below the last. A machine OmniHub can watch but must not command
+reports itself as exactly that, rather than as unsupported.
+
+The reason is specific. Supporting other laptops means driving their embedded
+controllers from per-model register maps, and the published HP Pavilion fan
+register turns a value above `0x5A` into an immediate power-off. A map taken from
+a config file and a map somebody has actually run on the board in front of them
+are not the same thing.
+
+So: the EC transport and its refusal logic exist and are tested; NoteBook
+FanControl configurations can be imported; Intel's package power limit can be
+decoded, lock bit included. None of it is wired to a shipped vendor backend, the
+PawnIO modules it would need are published but deliberately not bundled here, and
+no write path has been exercised on any machine but this one.
 
 ## Installing
 

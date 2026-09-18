@@ -57,6 +57,57 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   The README and the website both claimed this layer was already isolated. It was not, and both
   now say so.
 
+- **Writing to hardware now requires having verified that hardware.** Every backend carries a
+  tier — detected, readable, or verified — and every hardware write goes through one gate that
+  refuses below the last of those. The test for it is a reflection sweep over every write method
+  on every backend, because "the ones I remembered to check" is not the property worth asserting.
+
+  The rule exists because the published HP Pavilion fan register turns a value above `0x5A` into
+  an immediate power-off. A register map taken from a config file and a register map somebody has
+  actually run are not the same thing, and this is where the difference lives.
+
+- **Reading and writing an embedded controller**, which is how every laptop without a vendor
+  command set drives its fans. The refusal logic is established and tested: a register the map
+  does not describe, a register marked read-only, or a value outside the range somebody measured
+  is refused rather than clamped — clamping would leave a caller believing it commanded one thing
+  while the hardware was told another.
+
+  The PawnIO module this needs is published and signed but **not shipped here**, and nothing
+  downloads it. Without it the feature reports itself unavailable, which is the state of every
+  machine today including this one.
+
+- **NoteBook FanControl configurations can be read.** Their corpus covers 320 laptops and is the
+  largest body of measured knowledge about laptop embedded controllers that exists; it is GPL-3.0,
+  which this project now is, which is what the relicence was for.
+
+  The schema was taken from a real file rather than from documentation, which corrected two things
+  that would otherwise have shipped: registers are decimal rather than hex, and the speed bounds
+  are not guaranteed to ascend — some controllers run inverted. The imported range is exactly what
+  the author measured and not one byte wider, because widening it spends somebody else's safety
+  margin on hardware this project has never seen.
+
+- **Intel processors are no longer entirely unsupported.** The package power limit is decoded —
+  both limits, their time windows, their enable bits — and the units are read rather than assumed,
+  because the same bits under a different power unit are a different number of watts.
+
+  Including the part that says no: bit 63 locks that register until the machine resets, and laptop
+  firmware very commonly sets it. A greyed control reading "the firmware locked this register"
+  beats a slider that silently does nothing.
+
+- **"What works on this laptop" is now a question with a real answer**, including the one that had
+  no vocabulary before: readable but not controllable. A machine whose fans OmniHub can watch but
+  must not command is not unsupported, and saying so threw away the half that works.
+
+- **The probe reports what a stranger's machine exposes** — which vendor interfaces answered, and
+  whether the embedded controller can be reached at all. Class names only, never their contents,
+  because those carry serial numbers and the file is meant to be attachable to a public issue.
+
+- **The fans being taken over is written down before it happens.** OmniHub assumed a controller
+  hands them back when nothing is commanding it — true of this HP board, and why fan state was
+  deliberately left out of the restore journal. On a controller that latches, an unclean exit
+  leaves the fan pinned with nothing running to change it. The next launch now finds the note and
+  settles it.
+
 - **The interface is a layout you build.** The sidebar's seven fixed tabs are a list of
   *workspaces*: a name and an ordered set of panels across twelve columns, edited through an
   explicit mode and switched with the number keys. A fresh install ships the same seven screens

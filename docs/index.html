@@ -609,11 +609,14 @@ dotnet build OmniHub.slnx -c Release</pre>
       SHA-256 before running it — the step this page asks a person to take by hand, which its
       own updater skipped. It then installs silently, so the <a href="#install">Updating</a>
       paragraph above describes 1.3.3 and not what follows it.</li>
-    <li><strong>A vendor seam, so support can widen past HP.</strong> The cooling loop drives an
-      interface rather than HP's controller directly — which also means the one loop whose
-      failure is a hot machine with stopped fans can finally be tested without an HP laptop,
-      and now is. Reading on other brands comes first and writing stays locked until a board has
-      actually been verified; nothing here claims to control a Lenovo or a Dell yet.</li>
+    <li><strong>Groundwork for laptops that are not this one.</strong> The cooling loop drives an
+      interface rather than HP's controller directly, which also means the one loop whose failure
+      is a hot machine with stopped fans can finally be tested without an HP laptop. Beyond that:
+      embedded-controller access with a refusal rule that will not write a value nobody measured,
+      NoteBook FanControl configurations readable, Intel's package power limit decoded, and a
+      probe that reports what a stranger's machine actually exposes.
+      <strong>No new laptop is supported yet</strong> — reading comes first, writing stays locked
+      until a board has been verified, and nothing claims to control a Lenovo or a Dell.</li>
     <li><strong>The licence changed.</strong> This download is MIT and stays MIT. Development
       after it is <strong>GPL-3.0-or-later</strong>, because widening support past HP means
       using hardware interfaces other people measured and published, and effectively all of
