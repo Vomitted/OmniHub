@@ -23,7 +23,7 @@ public class SmuTemperatureTests
     [Fact]
     public void AcpiReadingAtTheCeiling_IsFlaggedAsCeilingLimited()
     {
-        var reading = new TemperatureReading(SystemController.SensorCeilingC, TemperatureSource.AcpiThermalZone);
+        var reading = new TemperatureReading(ThermalReader.SensorCeilingC, TemperatureSource.AcpiThermalZone);
         Assert.True(reading.IsCeilingLimited);
     }
 
@@ -35,7 +35,7 @@ public class SmuTemperatureTests
     [Fact]
     public void SaturatedZone_DoesNotOutvoteTctl()
     {
-        var reading = SystemController.Merge(die: 79.1, zone: 86.1);
+        var reading = ThermalReader.Merge(die: 79.1, zone: 86.1);
 
         Assert.Equal(TemperatureSource.SmuDieTctl, reading.Source);
         Assert.Equal(79.1, reading.Celsius, 3);
@@ -50,7 +50,7 @@ public class SmuTemperatureTests
     [Fact]
     public void InRangeZone_StillWinsWhenItIsHotter()
     {
-        var reading = SystemController.Merge(die: 73.25, zone: 82.0);
+        var reading = ThermalReader.Merge(die: 73.25, zone: 82.0);
 
         Assert.Equal(TemperatureSource.AcpiThermalZone, reading.Source);
         Assert.Equal(82.0, reading.Celsius, 3);
@@ -64,7 +64,7 @@ public class SmuTemperatureTests
     [Fact]
     public void SaturatedZone_WithNoTctl_StaysCeilingLimited()
     {
-        var reading = SystemController.Merge(die: null, zone: 86.1);
+        var reading = ThermalReader.Merge(die: null, zone: 86.1);
 
         Assert.Equal(TemperatureSource.AcpiThermalZone, reading.Source);
         Assert.True(reading.IsCeilingLimited);
@@ -76,7 +76,7 @@ public class SmuTemperatureTests
     [Fact]
     public void DieReadingAtTheSameTemperature_IsNotCeilingLimited()
     {
-        var reading = new TemperatureReading(SystemController.SensorCeilingC, TemperatureSource.SmuDieTctl);
+        var reading = new TemperatureReading(ThermalReader.SensorCeilingC, TemperatureSource.SmuDieTctl);
         Assert.False(reading.IsCeilingLimited);
     }
 

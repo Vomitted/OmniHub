@@ -125,7 +125,7 @@ public sealed class MetricSource : IDisposable
         // machine is not a measurement, and showing it beside a threshold colour would make it
         // look like one.
         double displayC = _ctx.CpuTrend.HasEnoughData ? _ctx.CpuTrend.FilteredTempC : tempC;
-        bool ceiling = !fromDie && SystemController.IsAtSensorCeiling(tempC);
+        bool ceiling = !fromDie && ThermalReader.IsAtSensorCeiling(tempC);
 
         Set("cpu", ceiling ? null : displayC);
         Set("fan", r.FanLevel1 is { } f1 ? _ctx.FanBackend.Calibration.RawToRpm(f1) : null);

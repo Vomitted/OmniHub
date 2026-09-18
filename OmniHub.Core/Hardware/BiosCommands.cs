@@ -168,226 +168,38 @@ public readonly record struct TemperatureReading(double Celsius, TemperatureSour
     /// pin the fan to maximum for no reason.
     /// </summary>
     public bool IsCeilingLimited =>
-        Source == TemperatureSource.AcpiThermalZone && SystemController.IsAtSensorCeiling(Celsius);
+        Source == TemperatureSource.AcpiThermalZone && ThermalReader.IsAtSensorCeiling(Celsius);
 }
 
 public sealed class SystemController
 {
     private readonly BiosInterop _bios;
-    private RyzenSmu? _smu;
-
     /// <summary>
-    /// Hands over an SMU that opened after construction.
+    /// The vendor-neutral temperature machinery, which used to be written out inside this class.
     ///
-    /// Exists because PawnIO's service ships as Manual start, so at boot OmniHub is running
-    /// before the driver is, the one open attempt in HardwareContext's constructor fails, and
-    /// there was no second chance -- the whole session then ran on the ACPI zone alone.
-    /// Measured: a 3567-row thermal log with not one fractional temperature in it, meaning
-    /// every reading for that entire session came from the zone, which pins at 85 C and so
-    /// held both fans at 100% from launch to shutdown.
+    /// Exposed as well as delegated to, because a backend that is not HP has no SystemController
+    /// to reach it through, and the ACPI thermal zone is the one sensor every laptop has.
     /// </summary>
-    public void AttachSmu(RyzenSmu smu) => _smu = smu;
+    public ThermalReader Thermal { get; }
+
+    /// <inheritdoc cref="ThermalReader.AttachSmu"/>
+    public void AttachSmu(RyzenSmu smu) => Thermal.AttachSmu(smu);
 
     /// <param name="smu">
-    /// Optional SMU access. When present, its Tctl reading is preferred over the ACPI zone.
-    /// Passing null is a supported configuration rather than a degraded one -- it is simply
-    /// what happens without the PawnIO driver, and the ACPI path below still works.
+    /// Optional SMU access, handed straight to the thermal reader. Passing null is a supported
+    /// configuration rather than a degraded one.
     /// </param>
     public SystemController(BiosInterop bios, RyzenSmu? smu = null)
     {
         _bios = bios;
-        _smu = smu;
+        Thermal = new ThermalReader(smu);
     }
 
-    /// <summary>
-    /// Temperature from the best sensor available, tagged with which one that was.
-    ///
-    /// Tctl is preferred, and the difference is not academic. Measured side by side on this
-    /// machine while the fans ramped: Tctl fell smoothly from 69.75C to 60.38C in 0.125C
-    /// steps, while the ACPI zone jumped 82 -> 77 and then sat at exactly 77.0 for the next
-    /// ten seconds. The zone is quantised, lags badly, and pins at ~85C however much hotter
-    /// the die gets -- which is precisely where a fan curve has to work, and is the direct
-    /// cause of the reported "temp stopped at 82 degrees".
-    ///
-    /// The fallback is not a formality either. ReadDieTemperatureC returns null rather than a
-    /// number whenever the decode looks implausible, so a machine without PawnIO, without the
-    /// RyzenSMU module, or with a firmware this does not understand quietly keeps using the
-    /// ACPI zone instead of reporting something invented.
-    /// </summary>
-    public TemperatureReading ReadTemperature()
-    {
-        double? die = _smu?.ReadDieTemperatureC();
+    /// <inheritdoc cref="ThermalReader.ReadTemperature"/>
+    public TemperatureReading ReadTemperature() => Thermal.ReadTemperature();
 
-        double zone;
-        try
-        {
-            zone = CachedAcpiZoneC();
-        }
-        catch when (die is not null)
-        {
-            // No thermal zones, but the die sensor answered. That is still a real measurement,
-            // so it is reported rather than thrown away.
-            return new TemperatureReading(die.Value, TemperatureSource.SmuDieTctl);
-        }
-
-        return Merge(die, zone);
-    }
-
-    /// <summary>
-    /// Picks which of the two sensors to report.
-    ///
-    /// Static and pure, separate from the hardware read, because this branch decides the
-    /// temperature the fan curve acts on and it has already been wrong once in a way nothing
-    /// could catch without a machine to boot.
-    /// </summary>
-    /// <param name="die">Tctl in C, or null when there is no SMU access.</param>
-    /// <param name="zone">The ACPI thermal zone reading in C.</param>
-    public static TemperatureReading Merge(double? die, double zone)
-    {
-        if (die is not double tctl)
-            return new TemperatureReading(zone, TemperatureSource.AcpiThermalZone);
-
-        // A SATURATED zone reading cannot take part in the comparison below, because it is not
-        // a number. The zone pins at its ceiling and reports that same value however much
-        // hotter the machine gets, so 86.1 there means ">= 85" and nothing more. Letting it
-        // outvote a real Tctl reading handed the control temperature to a sensor that had
-        // stopped measuring, and marked the result ceiling-limited -- which forces 100% fan.
-        //
-        // Measured at every boot, from the thermal log: four consecutive ticks of exactly
-        // 86.1 C with both fans commanded to maximum, until the cached zone value dropped back
-        // into range and Tctl took over at 79.1 C. That was the "high temps and high fan right
-        // after boot" report, and it was entirely this comparison.
-        //
-        // Tctl has no ceiling, so it is the better estimate precisely in the region where the
-        // zone has stopped being one. With no SMU at all the branch above still returns the
-        // zone reading with its ceiling flag intact, so the safety response survives exactly
-        // where it is the only thing available.
-        if (IsAtSensorCeiling(zone))
-            return new TemperatureReading(tctl, TemperatureSource.SmuDieTctl);
-
-        // Otherwise the HIGHER of the two, deliberately, rather than simply preferring Tctl.
-        //
-        // These sensors do not measure the same thing. Tctl is the CPU die alone; the ACPI
-        // reading is the maximum across every zone the platform exposes, which can include
-        // parts of the machine the die sensor knows nothing about. Measured here: Tctl 73.25C
-        // against an ACPI zone reading 82.0C at the same instant.
-        //
-        // Preferring Tctl outright would therefore have made the fan QUIETER at identical
-        // conditions -- roughly 3500 RPM where the curve had been commanding 4200 -- because
-        // it would have stopped seeing whatever the hotter zone was tracking. Taking the max
-        // means the control temperature is never below what the old ACPI-only path would have
-        // produced, while Tctl supplies the resolution and the headroom above 85C.
-        return tctl >= zone
-            ? new TemperatureReading(tctl, TemperatureSource.SmuDieTctl)
-            : new TemperatureReading(zone, TemperatureSource.AcpiThermalZone);
-    }
-
-    /// <summary>
-    /// CPU die temperature (Tctl) alone, at full precision, or null when SMU access is
-    /// unavailable. Separate from <see cref="ReadTemperature"/> because that method returns
-    /// the temperature the fan should act on, which may be a different, hotter component.
-    /// </summary>
-
-    private double _cachedZoneC;
-    private DateTime _cachedZoneAtUtc = DateTime.MinValue;
-
-    /// <summary>How long an ACPI zone reading is reused before the WMI query is repeated.</summary>
-    private static readonly TimeSpan ZoneCacheLife = TimeSpan.FromSeconds(6);
-
-    /// <summary>
-    /// The ACPI zone reading, refreshed at most every few seconds.
-    ///
-    /// A ManagementObjectSearcher round trip is one of the most expensive things this app does
-    /// per tick, and once Tctl is available the zone is no longer the primary sensor -- it is
-    /// there so the control temperature never drops below what the old ACPI-only path would
-    /// have produced, and to catch a component the die sensor cannot see. Neither of those
-    /// jobs needs half-second freshness from a sensor that only moves in 4-6C steps anyway.
-    ///
-    /// Tctl is still read on every call, so the fan curve keeps its full responsiveness on the
-    /// sensor that actually resolves quickly.
-    /// </summary>
-    private double CachedAcpiZoneC()
-    {
-        if (DateTime.UtcNow - _cachedZoneAtUtc < ZoneCacheLife) return _cachedZoneC;
-
-        double zone = ReadAcpiZoneC();
-        _cachedZoneC = zone;
-        _cachedZoneAtUtc = DateTime.UtcNow;
-        return zone;
-    }
-
-    /// <summary>Whole-degree temperature from the best sensor available.</summary>
-    public byte GetTemperatureC() =>
-        (byte)Math.Clamp(Math.Round(ReadTemperature().Celsius), 0, 255);
-
-    /// <summary>
-    /// Highest reading across the standard Windows ACPI thermal zones (root\wmi
-    /// MSAcpi_ThermalZoneTemperature, tenths of Kelvin). This replaces an earlier
-    /// attempt to read temperature via hpqBIntM CommandType 0x23 -- that command
-    /// exists on other Omen/Victus firmware revisions per community documentation,
-    /// but on this exact machine it returns all-zero regardless of input (confirmed
-    /// via direct sweep), so it's not wired up on this BIOS revision. ACPI thermal
-    /// zones are a documented, non-reverse-engineered interface and read real values
-    /// here (confirmed against this hardware: ~63C on the hot zone vs ~20C ambient
-    /// on a second, presumably unrelated zone) -- using the max is the safe choice
-    /// for fan-control purposes even if a given zone's relevance varies by model.
-    /// </summary>
-    private double ReadAcpiZoneC()
-    {
-        double maxCelsius = 0;
-        bool sawAnyZone = false;
-        using var searcher = new ManagementObjectSearcher("root\\wmi", "SELECT * FROM MSAcpi_ThermalZoneTemperature");
-        foreach (ManagementObject mo in searcher.Get())
-        {
-            using var _ = mo;
-            sawAnyZone = true;
-            var raw = (uint)mo["CurrentTemperature"];
-            double celsius = (raw / 10.0) - 273.15;
-            if (celsius > maxCelsius) maxCelsius = celsius;
-        }
-
-        // A WMI query that returns zero rows is not "0C" -- it's a failed read. Reporting
-        // 0C here would feed a false low temperature straight into the fan curve, which
-        // would command a near-silent fan under a reading that was never actually taken:
-        // the same class of bug (fan drops out while the real temperature is unknown/high)
-        // that this whole app exists to fix on the stock BIOS side. Both callers of this
-        // method (HardwareContext's poll loop and FanService's curve loop) already catch
-        // and skip a failed tick rather than propagate bad data, so throwing here is safe.
-        if (!sawAnyZone)
-            throw new InvalidOperationException(
-                "MSAcpi_ThermalZoneTemperature returned no thermal zones -- refusing to report a fabricated 0C reading.");
-
-        // Returned at full precision. Rounding belongs to whoever is displaying it, not here:
-        // the curve evaluates against a double, and throwing away the fraction at the source
-        // is how a sensor that is already coarse gets coarser.
-        return maxCelsius;
-    }
-
-    /// <summary>
-    /// The highest value this platform's ACPI thermal zone will report.
-    ///
-    /// Measured on this machine, not assumed: under sustained 100% load the THRM_0 zone climbs
-    /// 75.1 -> 81.1 -> 85.1C and then holds at exactly 85.05C (raw 3582) indefinitely. It is
-    /// also coarsely quantised, stepping 4-6C at a time.
-    ///
-    /// This matters far more than a display glitch. The zone is blind above ~85C, which is
-    /// precisely where fan control has to work, so a reading sitting on the ceiling means "at
-    /// least this hot, possibly much hotter" and must never be treated as a measurement of
-    /// 85C.
-    ///
-    /// This applies to the ACPI path ONLY, and is now the fallback rather than the norm: the
-    /// true die temperature is read through the SMU when PawnIO is available (see
-    /// <see cref="RyzenSmu.ReadDieTemperatureC"/>), and Tctl has no such ceiling. Check
-    /// <see cref="TemperatureReading.IsCeilingLimited"/> rather than calling this directly,
-    /// so a genuine 85C die reading is not mistaken for a blind sensor.
-    /// </summary>
-    public const double SensorCeilingC = 85.0;
-
-    /// <summary>
-    /// True when the reading has hit the zone's ceiling, so the real temperature is unknown
-    /// but at least this high. Callers must treat it as a worst case, not as a number.
-    /// </summary>
-    public static bool IsAtSensorCeiling(double celsius) => celsius >= SensorCeilingC - 0.5;
+    /// <inheritdoc cref="ThermalReader.GetTemperatureC"/>
+    public byte GetTemperatureC() => Thermal.GetTemperatureC();
 
     /// <summary>
     /// Asks the board what it supports, rather than inferring it from the model name.
