@@ -300,6 +300,59 @@ internal static class Program
     // Run this FIRST on a new model before trusting any curve logic -- it
     // confirms the exact fan count/type/level layout for that specific
     // model instead of assuming the reference implementations' values.
+    /// <summary>
+    /// Which vendor control interfaces this machine exposes, and whether EC access is possible.
+    ///
+    /// The single most useful thing a probe from a machine nobody here owns can report. Everything
+    /// else in this probe assumes HP's interface and degrades quietly without it; this says, in
+    /// one block, what there actually is to work with -- which is what turns a stranger's report
+    /// into the start of support for their laptop rather than a page of blanks.
+    ///
+    /// Class NAMES only. Enumerating what exists in root\wmi says nothing about the person using
+    /// the machine, whereas the contents of those classes can carry serial numbers and asset tags,
+    /// and this file is meant to be attachable to a public issue.
+    /// </summary>
+    static void ReportVendorInterfaces(string manufacturer, string board)
+    {
+        Console.WriteLine("--- Vendor interfaces ---");
+
+        var classes = new List<string>();
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                "root\\wmi", "SELECT * FROM meta_class");
+
+            foreach (var found in searcher.Get())
+            {
+                using var c = found;
+                if (c.ClassPath?.ClassName is { } name) classes.Add(name);
+            }
+
+            Console.WriteLine($"root\\wmi classes: {classes.Count}");
+        }
+        catch (Exception ex)
+        {
+            // Not fatal and not unusual -- enumerating the namespace needs elevation, and the
+            // probe is worth running without it.
+            Console.WriteLine($"root\\wmi could not be enumerated ({ex.GetType().Name}: {ex.Message}).");
+        }
+
+        var present = OmniHub.Core.Vendors.VendorInterfaces.Present(classes);
+        Console.WriteLine(OmniHub.Core.Vendors.VendorInterfaces.Describe(manufacturer, present));
+
+        foreach (var entry in present)
+            Console.WriteLine($"  {entry.WmiNamespace}:{entry.WmiClass}  ({entry.Interface})");
+
+        // Checked against a map with nothing in it, deliberately. This asks only "could the EC be
+        // reached at all on this machine", and doing that with a real register map would mean
+        // reading a register on hardware nobody has established anything about.
+        var empty = new EcRegisterMap(board, Array.Empty<EcRegister>());
+        EcAccess.TryOpen(empty, out string? ecReason);
+        Console.WriteLine($"EC access       : {ecReason ?? "available"}");
+
+        Console.WriteLine();
+    }
+
     static void RunProbe()
     {
         Console.WriteLine("=== OmniHub Hardware Probe ===");
@@ -309,6 +362,8 @@ internal static class Program
         Console.WriteLine($"Product      : {model.Product}");
         Console.WriteLine($"Baseboard    : {model.BaseboardProduct}");
         Console.WriteLine();
+
+        ReportVendorInterfaces(model.Manufacturer, model.BaseboardProduct);
 
         try
         {
