@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Vomitted
 
 using OmniHub.Core.Fan;
+using OmniHub.Core.Hardware;
 using OmniHub.Core.Optimize;
 
 namespace OmniHub.Tests;
@@ -22,7 +23,7 @@ public class FanScaleTests
     [Fact]
     public void ZeroPercent_MapsToTrueOff()
     {
-        Assert.Equal(0, FanService.RawToPercent(0));
+        Assert.Equal(0, FanCalibration.Default.RawToPercent(0));
     }
 
     [Fact]
@@ -31,8 +32,8 @@ public class FanScaleTests
         // 10-56 is the usable raw band, both ends measured by driving the fans directly: the
         // readback tracks the command down to 10 (1000 rpm) and pins at 56 above it. Its ends
         // must map to the ends of the percentage range.
-        Assert.Equal(0, FanService.RawToPercent(10));
-        Assert.Equal(100, FanService.RawToPercent(56));
+        Assert.Equal(0, FanCalibration.Default.RawToPercent(10));
+        Assert.Equal(100, FanCalibration.Default.RawToPercent(56));
     }
 
     [Fact]
@@ -40,15 +41,15 @@ public class FanScaleTests
     {
         // Subtracting MinRawLevel from a smaller raw value would underflow the byte cast.
         // The band now starts at 10, so 9 is the value just below it.
-        Assert.Equal(0, FanService.RawToPercent(5));
-        Assert.Equal(0, FanService.RawToPercent(9));
+        Assert.Equal(0, FanCalibration.Default.RawToPercent(5));
+        Assert.Equal(0, FanCalibration.Default.RawToPercent(9));
     }
 
     [Fact]
     public void RawAboveTheBand_ClampsToOneHundred()
     {
-        Assert.Equal(100, FanService.RawToPercent(60));
-        Assert.Equal(100, FanService.RawToPercent(255));
+        Assert.Equal(100, FanCalibration.Default.RawToPercent(60));
+        Assert.Equal(100, FanCalibration.Default.RawToPercent(255));
     }
 
     /// <summary>
@@ -67,7 +68,7 @@ public class FanScaleTests
     [InlineData((byte)56, 100)]
     public void ObservedHardwareValues_RoundTripWithinRounding(byte raw, int expectedPercentApprox)
     {
-        int actual = FanService.RawToPercent(raw);
+        int actual = FanCalibration.Default.RawToPercent(raw);
         // Within 2 points: raw is a whole number, so the mapping is lossy by construction.
         Assert.InRange(actual, expectedPercentApprox - 2, expectedPercentApprox + 2);
     }
@@ -76,7 +77,7 @@ public class FanScaleTests
     public void RawToPercent_IsMonotonic()
     {
         for (int raw = 0; raw < 255; raw++)
-            Assert.True(FanService.RawToPercent((byte)(raw + 1)) >= FanService.RawToPercent((byte)raw));
+            Assert.True(FanCalibration.Default.RawToPercent((byte)(raw + 1)) >= FanCalibration.Default.RawToPercent((byte)raw));
     }
 
     // ---------- battery ----------

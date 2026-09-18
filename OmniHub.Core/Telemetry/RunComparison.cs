@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Vomitted
 
 using OmniHub.Core.Fan;
+using OmniHub.Core.Hardware;
 
 namespace OmniHub.Core.Telemetry;
 
@@ -73,14 +74,29 @@ public static class RunComparison
     /// </summary>
     public const double MaxCoverageRatio = 2.0;
 
-    /// <summary>Measures one run. Every figure is null where the samples did not supply it.</summary>
-    public static RunMetrics Measure(IReadOnlyList<ThermalSample> samples)
+    /// <summary>
+    /// Measures one run. Every figure is null where the samples did not supply it.
+    ///
+    /// The calibration is required rather than defaulted, and that is the point of it being a
+    /// parameter at all. The log records the raw level the controller was given; turning that
+    /// into a percentage needs the band, and the band used to be read from a process-wide static
+    /// that startup assigned. So a caller measuring last month's run got this month's scale, and
+    /// the moment anybody used the calibration tool every historical row was silently
+    /// reinterpreted -- including the baseline half of an A/B comparison, which is precisely the
+    /// figure somebody is trying to trust.
+    ///
+    /// ponytail: the log still does not record the band it was written under, so passing the
+    /// current one remains an assumption -- just an explicit one made by the caller instead of an
+    /// invisible one made here. Add a band column if per-machine calibration ever becomes common
+    /// enough that runs start crossing it.
+    /// </summary>
+    public static RunMetrics Measure(IReadOnlyList<ThermalSample> samples, FanCalibration calibration)
     {
         var temperatures = samples.Where(s => s.TempC is not null).Select(s => s.TempC!.Value).ToList();
 
         var fanPercents = samples
             .Where(s => s.Fan1Raw is not null)
-            .Select(s => (double)FanService.RawToPercent(s.Fan1Raw!.Value))
+            .Select(s => (double)calibration.RawToPercent(s.Fan1Raw!.Value))
             .ToList();
 
         var stamps = samples.Select(s => s.AtUtc).ToList();
@@ -102,18 +118,18 @@ public static class RunComparison
 
     /// <summary>Compares two runs, and refuses to conclude where a conclusion would mislead.</summary>
     public static RunComparisonResult Compare(
-        IReadOnlyList<ThermalSample> a, IReadOnlyList<ThermalSample> b)
+        IReadOnlyList<ThermalSample> a, IReadOnlyList<ThermalSample> b, FanCalibration calibration)
     {
-        var metricsA = Measure(a);
-        var metricsB = Measure(b);
+        var metricsA = Measure(a, calibration);
+        var metricsB = Measure(b, calibration);
 
         var tempsA = a.Where(s => s.TempC is not null).Select(s => s.TempC!.Value).ToList();
         var tempsB = b.Where(s => s.TempC is not null).Select(s => s.TempC!.Value).ToList();
 
         var fansA = a.Where(s => s.Fan1Raw is not null)
-                     .Select(s => (double)FanService.RawToPercent(s.Fan1Raw!.Value)).ToList();
+                     .Select(s => (double)calibration.RawToPercent(s.Fan1Raw!.Value)).ToList();
         var fansB = b.Where(s => s.Fan1Raw is not null)
-                     .Select(s => (double)FanService.RawToPercent(s.Fan1Raw!.Value)).ToList();
+                     .Select(s => (double)calibration.RawToPercent(s.Fan1Raw!.Value)).ToList();
 
         var temperature = RunDifference.DifferenceOfMeans(tempsA, tempsB);
         var fan = RunDifference.DifferenceOfMeans(fansA, fansB);

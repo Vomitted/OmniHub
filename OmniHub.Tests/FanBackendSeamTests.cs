@@ -29,6 +29,14 @@ public class FanBackendSeamTests
         public readonly List<string> Calls = new();
         public readonly List<(byte Fan1, byte Fan2)> Levels = new();
 
+        /// <summary>
+        /// The measured HP band by default, so the raw levels asserted below are the ones this
+        /// machine would really be sent. Settable because a backend's scale is its own, and a
+        /// test for a board with a different one should be able to say so -- which is the entire
+        /// reason this stopped being a process-wide static.
+        /// </summary>
+        public FanCalibration Calibration { get; set; } = FanCalibration.Default;
+
         /// <summary>When set, every write throws -- a backend whose firmware has gone away.</summary>
         public Exception? FailWith { get; set; }
 

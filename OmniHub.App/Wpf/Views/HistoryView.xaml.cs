@@ -51,8 +51,19 @@ public partial class HistoryView : UserControl, IDisposable
 
     private static readonly TimeSpan Initial = TimeSpan.FromHours(6);
 
-    public HistoryView()
+    /// <summary>
+    /// The fan band that converts a logged raw level into a percentage.
+    ///
+    /// Passed in rather than read from a process-wide static, because this view draws rows that
+    /// were written in the past and the band is a property of the machine that can change under
+    /// it -- calibrate the fans and every historical point would silently be redrawn against a
+    /// different scale.
+    /// </summary>
+    private readonly OmniHub.Core.Hardware.FanCalibration _calibration;
+
+    public HistoryView(OmniHub.Core.Hardware.FanCalibration calibration)
     {
+        _calibration = calibration;
         InitializeComponent();
 
         _temp = _chart.AddSeries(new ChartSeries
@@ -161,7 +172,7 @@ public partial class HistoryView : UserControl, IDisposable
             // Points only where a reading exists. A sample whose sensor failed contributes
             // nothing rather than a zero, which is the rule the writer followed too.
             _chart.SetSeriesData(_temp, Series(thermal, s => s.TempC));
-            _chart.SetSeriesData(_fan, Series(thermal, s => s.Fan1Raw is { } raw ? FanService.RawToPercent(raw) : null));
+            _chart.SetSeriesData(_fan, Series(thermal, s => s.Fan1Raw is { } raw ? _calibration.RawToPercent(raw) : null));
             _chart.SetSeriesData(_commanded, Series(thermal, s => s.CommandedPercent));
 
             _chart.SetMarkers(events.Select(e => (e.AtUtc, $"{e.Source} {e.Event}")));

@@ -193,6 +193,11 @@ internal static class Program
         var sys = new SystemController(bios, smu);
         var fan = new FanController(bios);
 
+        // The band this board actually runs, so the RPM logged below is this machine's and not
+        // the shipped default's. The load test reads only, but a figure written into a CSV that
+        // an A/B comparison later reads back should be right about the scale it was taken on.
+        var calibration = FanProfiles.Load(ModelProfile.Detect()) ?? FanCalibration.Default;
+
         AmdTuning? tuning = null;
         if (smu is not null)
         {
@@ -218,7 +223,7 @@ internal static class Program
             try { ghz = new SystemPerfReader().Read()?.CpuClockGHz; } catch { }   // only the clock is wanted here, and that part is stateless
 
             int? rpm = null;
-            try { var levels = fan.GetFanLevel(); if (levels.Length > 0) rpm = FanService.RawToRpm(levels[0]); } catch { }
+            try { var levels = fan.GetFanLevel(); if (levels.Length > 0) rpm = calibration.RawToRpm(levels[0]); } catch { }
 
             // Recorded, but see SystemController.GetThrottling: this flag documents itself as
             // unverified on this firmware, so a run's throttle column is a hint, not the finding.

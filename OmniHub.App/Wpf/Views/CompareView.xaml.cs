@@ -58,8 +58,18 @@ public partial class CompareView : UserControl, IDisposable
     private TimeSpan _window = Windows[0].Span;
     private TimeSpan _baselineOffset = TimeSpan.Zero;
 
-    public CompareView()
+    /// <summary>
+    /// The fan band both runs are measured against.
+    ///
+    /// The comparison's whole purpose is to say whether a change helped, so a scale that can
+    /// shift between the baseline and the run being judged is not a detail. It is passed in, and
+    /// RunComparison requires it, so the assumption is made once and visibly.
+    /// </summary>
+    private readonly OmniHub.Core.Hardware.FanCalibration _calibration;
+
+    public CompareView(OmniHub.Core.Hardware.FanCalibration calibration)
     {
+        _calibration = calibration;
         InitializeComponent();
 
         BuildPills(WindowPills, "CompareWindow", Windows.Select(w => w.Label),
@@ -279,7 +289,7 @@ public partial class CompareView : UserControl, IDisposable
             var recent = await _history.ReadThermalAsync(recentFrom, now, cts.Token).ConfigureAwait(true);
             if (cts.IsCancellationRequested) return;
 
-            var result = RunComparison.Compare(baseline, recent);
+            var result = RunComparison.Compare(baseline, recent, _calibration);
             _lastResult = result;
 
             Status.Text =

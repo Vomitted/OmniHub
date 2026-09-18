@@ -791,7 +791,7 @@ public partial class DashboardView : UserControl
             StripTemp.Text = ceiling ? "--" : $"{shown}°C";
 
             // Fan levels are an RPM/100 target, so raw*100 is the actual commanded RPM;
-            // see FanService.RawToPercent for why the percentage is not raw/255.
+            // see FanCalibration.RawToPercent for why the percentage is not raw/255.
             // RPM is a tachometer reading and the fans take about six seconds to reach a new
             // level, so the measured percentage trails whatever the curve just asked for.
             // Showing only the measured figure made the app look like it was ignoring its own
@@ -800,10 +800,10 @@ public partial class DashboardView : UserControl
             // A level the board did not report reads as unavailable. It used to read as a fan at
             // 0 RPM, which on a hot machine is indistinguishable from the fault this application
             // was written to catch.
-            int? fanPercent = r.FanLevel1 is { } raw1 ? FanService.RawToPercent(raw1) : null;
+            int? fanPercent = r.FanLevel1 is { } raw1 ? _ctx.FanBackend.Calibration.RawToPercent(raw1) : null;
 
             string fanText = fanPercent is { } pct
-                ? $"FANS {FanService.RpmText(r.FanLevel1)} RPM ({pct}%)"
+                ? $"FANS {_ctx.FanBackend.Calibration.RpmText(r.FanLevel1)} RPM ({pct}%)"
                 : "FANS -- (the board did not report a level)";
 
             if (fanPercent is { } measured && _service.IsRunning && _service.HasCommanded
@@ -907,7 +907,7 @@ public partial class DashboardView : UserControl
             // gap instead of a line dropping to the floor and back -- which is what a plot of
             // "0 because we did not ask successfully" looks like, and it looks alarming.
             if (r.FanLevel1 is { } raw)
-                TrendChart.Append(_trendFan, at, FanService.RawToPercent(raw));
+                TrendChart.Append(_trendFan, at, _ctx.FanBackend.Calibration.RawToPercent(raw));
 
             // -1 is the log's sentinel for "the service has not commanded", and it means the
             // same here: nothing to plot rather than a zero-percent command that never happened.

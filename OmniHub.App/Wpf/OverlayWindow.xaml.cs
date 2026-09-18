@@ -291,8 +291,8 @@ public partial class OverlayWindow : Window
              ceiling ? null : displayC);
         SourceLabel.Text = fromDie ? "OMNIHUB · DIE" : "OMNIHUB · ACPI";
 
-        Show("fan", FanService.RpmText(r.FanLevel1), r.FanLevel1 is { } f1 ? FanService.RawToRpm(f1) : null);
-        Show("fan2", FanService.RpmText(r.FanLevel2), r.FanLevel2 is { } f2 ? FanService.RawToRpm(f2) : null);
+        Show("fan", _ctx.FanBackend.Calibration.RpmText(r.FanLevel1), r.FanLevel1 is { } f1 ? _ctx.FanBackend.Calibration.RawToRpm(f1) : null);
+        Show("fan2", _ctx.FanBackend.Calibration.RpmText(r.FanLevel2), r.FanLevel2 is { } f2 ? _ctx.FanBackend.Calibration.RawToRpm(f2) : null);
 
         // Package power, the GPU and the system figures are not read here. They arrive on the slow
         // timer and write their own rows, because a cache miss in GpuTelemetry spawns nvidia-smi

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Vomitted
 
+using OmniHub.Core.Hardware;
+
 namespace OmniHub.Core.Vendors;
 
 /// <summary>
@@ -22,6 +24,16 @@ namespace OmniHub.Core.Vendors;
 /// </summary>
 public interface IFanBackend
 {
+    /// <summary>
+    /// The raw band this machine's fans actually run, and the arithmetic that interprets it.
+    ///
+    /// Carried by the backend rather than held in one place for the whole process, because it is
+    /// the property of a machine that differs most between them: HP's byte is an RPM/100 target
+    /// clamping at 56 on this chassis, and a board taking a PWM duty cycle shares neither the
+    /// range nor the units. A single band for the process could only ever be right about one.
+    /// </summary>
+    FanCalibration Calibration { get; }
+
     /// <summary>
     /// Takes the fans off the firmware's own curve, so that a level written afterwards is
     /// honoured instead of ignored.

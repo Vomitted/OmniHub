@@ -36,6 +36,71 @@ public sealed record FanCalibration(
     /// and the curve would silently stop working.
     /// </summary>
     public bool IsUsable => MaxRawLevelFan1 > MinRawLevel && MaxRawLevelFan2 > MinRawLevel;
+
+    // The conversions below used to be statics on FanService, reading a static band that startup
+    // assigned once. They live here now because a band and the arithmetic that interprets it are
+    // one thing: a percentage means nothing without the scale it is a percentage of, and holding
+    // the two apart is what let a caller convert last week's log rows with this week's scale.
+
+    /// <summary>
+    /// The raw level a curve percentage maps to, against a given ceiling.
+    ///
+    /// percent == 0 maps to raw 0 rather than to the floor, and that is deliberate: raw is a real
+    /// speed target, so 0 means "stop", and the curve's flat 0% segment through true idle exists
+    /// to be silent. Without the special case every "silent" tick was sent as the floor -- audibly
+    /// running, never silent. The floor remains correct for every percentage above zero.
+    /// </summary>
+    public byte PercentToRaw(byte percent, byte maxRaw) => percent == 0
+        ? (byte)0
+        : (byte)Math.Round(MinRawLevel + percent / 100.0 * (maxRaw - MinRawLevel));
+
+    /// <summary>The raw level for fan 1, which is the ceiling the UI's percentages refer to.</summary>
+    public byte PercentToRawFan1(byte percent) => PercentToRaw(percent, MaxRawLevelFan1);
+
+    /// <summary>The raw level for fan 2. The two fans do not share a ceiling on every chassis.</summary>
+    public byte PercentToRawFan2(byte percent) => PercentToRaw(percent, MaxRawLevelFan2);
+
+    /// <summary>
+    /// Inverse of <see cref="PercentToRawFan1"/>, for showing a level read back from the hardware
+    /// as a percentage.
+    ///
+    /// Shares this record's one definition of the band so both directions cannot drift apart. The
+    /// UI once did its own raw/255*100 conversion -- the 0-255 duty-cycle assumption this scale is
+    /// not -- and under-reported every fan figure on screen by roughly half.
+    /// </summary>
+    public byte RawToPercent(byte raw) => raw == 0
+        ? (byte)0
+        : (byte)Math.Clamp(Math.Round((raw - MinRawLevel) * 100.0 / (MaxRawLevelFan1 - MinRawLevel)), 0, 100);
+
+    /// <summary>
+    /// Approximate RPM for a raw level, for display.
+    ///
+    /// A unit conversion rather than an estimate, but only on hardware whose raw byte is an
+    /// RPM/100 target -- which is HP's encoding and not a universal one. A board taking a PWM duty
+    /// cycle has no RPM to report here at all, which is why this hangs off the calibration rather
+    /// than standing as a free function: the scale that defines the band is what knows what its
+    /// units mean.
+    ///
+    /// It is the target the controller was given, not a tachometer reading, and the two differ
+    /// while a fan is still spinning up.
+    /// </summary>
+    public int RawToRpm(byte raw) => raw * 100;
+
+    /// <summary>
+    /// An RPM figure for display, or the two dashes this application uses for "no reading".
+    ///
+    /// Here rather than in each view because several of them render it, and the alternative is
+    /// several chances to write <c>RawToRpm(raw ?? 0)</c> -- which turns a level the board
+    /// declined to report into a fan reading zero, the exact failure this application exists to
+    /// detect. Unavailable is not stopped.
+    /// </summary>
+    public string RpmText(byte? raw) => raw is { } v ? RawToRpm(v).ToString() : "--";
+
+    /// <summary>Lowest RPM this chassis will actually run the fans at, measured.</summary>
+    public int MinRpm => RawToRpm(MinRawLevel);
+
+    /// <summary>Highest RPM this chassis will actually run fan 1 at, measured.</summary>
+    public int MaxRpm => RawToRpm(MaxRawLevelFan1);
 }
 
 /// <summary>

@@ -128,8 +128,8 @@ public sealed class MetricSource : IDisposable
         bool ceiling = !fromDie && SystemController.IsAtSensorCeiling(tempC);
 
         Set("cpu", ceiling ? null : displayC);
-        Set("fan", r.FanLevel1 is { } f1 ? FanService.RawToRpm(f1) : null);
-        Set("fan2", r.FanLevel2 is { } f2 ? FanService.RawToRpm(f2) : null);
+        Set("fan", r.FanLevel1 is { } f1 ? _ctx.FanBackend.Calibration.RawToRpm(f1) : null);
+        Set("fan2", r.FanLevel2 is { } f2 ? _ctx.FanBackend.Calibration.RawToRpm(f2) : null);
 
         Updated?.Invoke();
     });

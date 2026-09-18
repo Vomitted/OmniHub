@@ -19,7 +19,20 @@ public sealed class HpFanBackend : IFanBackend
 {
     private readonly FanController _fan;
 
-    public HpFanBackend(FanController fan) => _fan = fan;
+    /// <summary>
+    /// The measured band, or a profile for this board where one exists.
+    ///
+    /// Defaulted rather than required, because the default is itself a measurement -- 10 to 56 on
+    /// board 8C2F -- and not a placeholder. A caller with no profile is in exactly the position
+    /// every build so far has been in.
+    /// </summary>
+    public FanCalibration Calibration { get; }
+
+    public HpFanBackend(FanController fan, FanCalibration? calibration = null)
+    {
+        _fan = fan;
+        Calibration = calibration ?? FanCalibration.Default;
+    }
 
     /// <summary>
     /// HP's Performance mode, which is its name for "the EC will honour a level I write".

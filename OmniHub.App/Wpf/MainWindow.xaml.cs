@@ -118,8 +118,8 @@ public partial class MainWindow : Window
         // questions: History is what happened, Compare is whether it differs from last time.
         _viewFactories["diagnostics"] = () => new GroupView(
             ("Measure", () => new DiagnosticsView(_ctx)),
-            ("History", () => new HistoryView()),
-            ("Compare", () => new CompareView()),
+            ("History", () => new HistoryView(_ctx.FanBackend.Calibration)),
+            ("Compare", () => new CompareView(_ctx.FanBackend.Calibration)),
             ("Stability", () => new StabilityView()));
         _viewFactories["settings"] = () => new SettingsView(_settings);
 

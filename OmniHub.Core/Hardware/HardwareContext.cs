@@ -62,6 +62,18 @@ public sealed class HardwareContext : IDisposable
     private SysTimer? _pollTimer;
 
     public FanController Fan { get; }
+
+    /// <summary>
+    /// The fans as the cooling loop sees them: take control, command, hand back, and the band
+    /// those commands are in.
+    ///
+    /// Built here rather than by each caller so that the calibration loaded below reaches the
+    /// loop without passing through a static. Every consumer that needs to convert between a
+    /// percentage and a raw level should ask this for its <see cref="IFanBackend.Calibration"/>
+    /// rather than assume a band.
+    /// </summary>
+    public Vendors.IFanBackend FanBackend { get; }
+
     public GpuController Gpu { get; }
     public PowerController Power { get; }
     public SystemController System { get; }
@@ -178,12 +190,14 @@ public sealed class HardwareContext : IDisposable
         // A per-model fan band, if anyone has measured this board and left a profile for it.
         // Null means no profile, or one that did not make a usable scale, and the measured
         // default stands -- which is the behaviour every build so far has had.
-        if (FanProfiles.Load(Model) is { } calibration)
-        {
-            // Fully qualified: this type's own Fan property would otherwise shadow the namespace.
-            OmniHub.Core.Fan.FanService.Calibration = calibration;
+        var calibration = FanProfiles.Load(Model);
+        if (calibration is not null)
             FanCalibrationSource = $"profile for board {Model.BaseboardProduct}";
-        }
+
+        // Constructed last, because it is the only thing here that needs the calibration, and the
+        // calibration is the last thing startup learns. Passing it in is what replaced a static
+        // that startup assigned and everything else read.
+        FanBackend = new Vendors.HpFanBackend(Fan, calibration);
     }
 
     /// <summary>

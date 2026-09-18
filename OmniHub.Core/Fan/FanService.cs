@@ -270,9 +270,11 @@ public sealed class FanService : IDisposable
                 // so it applies to both fans whatever the second curve would have said.
                 if (SensorCeilingReached) level2Percent = 100;
 
-                // Per-fan maxima: the two fans do not share a ceiling on this chassis.
-                byte raw1 = PercentToRaw(levelPercent, MaxRawLevelFan1);
-                byte raw2 = PercentToRaw(level2Percent, MaxRawLevelFan2);
+                // Per-fan maxima: the two fans do not share a ceiling on this chassis. The band
+                // comes from the backend, so a machine with a different scale is converted with
+                // its own rather than with whatever the process happened to load at startup.
+                byte raw1 = _fan.Calibration.PercentToRawFan1(levelPercent);
+                byte raw2 = _fan.Calibration.PercentToRawFan2(level2Percent);
 
                 // Only write when the level actually changes, plus a slow refresh.
                 //
@@ -387,76 +389,20 @@ public sealed class FanService : IDisposable
     private DateTime _lastFanWriteUtc = DateTime.MinValue;
 
     /// <summary>
-    /// The raw band this chassis runs, set once at startup from a per-model profile where one
-    /// exists and left at the measured default where none does.
+    /// The raw band this service's backend runs, and the arithmetic that interprets it.
     ///
-    /// Static rather than an instance member because the conversions below are static and are
-    /// called from the UI as well as from the loop, and because this describes the machine the
-    /// process is running on, of which there is exactly one. Assigned during startup and not
-    /// afterwards; HardwareContext is the only writer.
+    /// This used to be a static assigned once at startup. It was never wrong about the machine --
+    /// there is one laptop and one band -- but it put the scale somewhere other than the thing
+    /// the scale describes, and two callers then read it for different purposes: the loop, which
+    /// wants the band in force now, and the log reader, which wants the band that was in force
+    /// when the rows were written. Those are the same number until somebody calibrates, and
+    /// silently different afterwards.
     /// </summary>
-    public static FanCalibration Calibration { get; set; } = FanCalibration.Default;
+    public FanCalibration Calibration => _fan.Calibration;
 
-    private static byte MinRawLevel => Calibration.MinRawLevel;
-    private static byte MaxRawLevelFan1 => Calibration.MaxRawLevelFan1;
-    private static byte MaxRawLevelFan2 => Calibration.MaxRawLevelFan2;
-
-    // percent==0 must map to raw 0, not MinRawLevel -- the whole point of the
-    // curve's flat 0% segment through true idle (<=40C, see FanCurve.CreateDefault)
-    // is a silent fan, and raw is a real RPM/100 target elsewhere in this codebase
-    // (see FanController.SetFanLevel), so raw=0 is literally "target 0 RPM," not a
-    // fabricated new meaning. Without this special case every "silent" 0% tick was
-    // actually being sent as raw=20 (~2000 RPM) -- audibly running, never silent.
-    // MinRawLevel/MaxRawLevel remain the correct scale for percent in (0,100].
-    private static byte PercentToRaw(byte percent, byte maxRaw) => percent == 0
-        ? (byte)0
-        : (byte)Math.Round(MinRawLevel + percent / 100.0 * (maxRaw - MinRawLevel));
-
-    /// <summary>
-    /// Inverse of <see cref="PercentToRaw"/>, for displaying a level read back from
-    /// the BIOS (GetFanLevel) as a percentage. Lives here so both directions share the
-    /// one MinRawLevel/MaxRawLevel definition -- the UI previously did its own
-    /// raw/255*100 conversion, which is the 0-255 PWM assumption this whole file
-    /// documents as wrong, and under-reported every readback by roughly half.
-    /// Raw values under MinRawLevel clamp to 0 rather than going negative.
-    /// </summary>
-    public static byte RawToPercent(byte raw) => raw == 0
-        ? (byte)0
-        : (byte)Math.Clamp(Math.Round((raw - MinRawLevel) * 100.0 / (MaxRawLevelFan1 - MinRawLevel)), 0, 100);
-
-    /// <summary>
-    /// Approximate RPM for a raw fan level, for display. The raw byte is an RPM/100 target,
-    /// so this is a unit conversion rather than an estimate -- but it is the target the EC was
-    /// given, not a tachometer reading, and the two differ while a fan is still spinning up.
-    /// </summary>
-    public static int RawToRpm(byte raw) => raw * 100;
-
-    /// <summary>
-    /// An RPM figure for display, or the two dashes this application uses for "no reading".
-    ///
-    /// Here rather than in each view because three of them render this and the alternative is
-    /// three chances to write <c>RawToRpm(raw ?? 0)</c> -- which is the bug this whole change
-    /// exists to remove, reintroduced one call site at a time. A fan whose level the board did
-    /// not report reads as unavailable, not as stopped.
-    /// </summary>
-    public static string RpmText(byte? raw) => raw is { } v ? RawToRpm(v).ToString() : "--";
-
-    /// <summary>A raw level for display, or two dashes. See <see cref="RpmText"/>.</summary>
+    /// <summary>A raw level for display, or the two dashes this application uses for "no reading".
+    /// A fan whose level the board did not report reads as unavailable, not as stopped.</summary>
     public static string RawText(byte? raw) => raw?.ToString() ?? "--";
-
-    /// <summary>
-    /// The raw EC level a curve percentage maps to, and the RPM that implies.
-    ///
-    /// Public counterpart to <see cref="RawToPercent"/> so the UI never has to reimplement the
-    /// mapping -- it did once, using the debunked raw/255 PWM assumption, and under-reported
-    /// every fan figure on screen by roughly half.
-    /// </summary>
-    public static byte PercentToRawLevel(byte percent) => PercentToRaw(percent, MaxRawLevelFan1);
-
-    /// <summary>Lowest and highest RPM this chassis will actually run the fans at, measured.
-    /// Exposed so the UI can tell the user what the percentage scale spans.</summary>
-    public static int MinRpm => RawToRpm(MinRawLevel);
-    public static int MaxRpm => RawToRpm(MaxRawLevelFan1);
 
     public void Stop()
     {

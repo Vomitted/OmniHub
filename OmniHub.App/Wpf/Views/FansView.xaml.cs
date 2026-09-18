@@ -32,7 +32,7 @@ public partial class FansView : UserControl
         // being clipped by a fixed 176px tile.
 
         _rows = new ObservableCollection<CurvePointRow>(
-            settings.CurvePoints.Select(p => new CurvePointRow { TempC = p.TempC, LevelPercent = p.LevelPercent }));
+            settings.CurvePoints.Select(p => new CurvePointRow { TempC = p.TempC, LevelPercent = p.LevelPercent, Calibration = _ctx.FanBackend.Calibration }));
         CurveGrid.ItemsSource = _rows;
 
         FloorTempBox.Text = settings.FloorTempC.ToString("0");
@@ -45,9 +45,9 @@ public partial class FansView : UserControl
         // Says what the percentage scale actually means on this chassis. Without it, "12%"
         // reads as "nearly off" when it is in fact 1500 RPM and clearly audible.
         CurveScaleNote.Text =
-            $"Level is a percentage of this chassis's measured fan band, {FanService.MinRpm}-{FanService.MaxRpm} RPM. "
-            + $"0% stops the fans and hands them back to the BIOS curve; 1% is already {FanService.MinRpm} RPM; "
-            + $"100% is {FanService.MaxRpm} RPM on both fans. Raw is the byte sent to the controller, which is RPM/100 "
+            $"Level is a percentage of this chassis's measured fan band, {_ctx.FanBackend.Calibration.MinRpm}-{_ctx.FanBackend.Calibration.MaxRpm} RPM. "
+            + $"0% stops the fans and hands them back to the BIOS curve; 1% is already {_ctx.FanBackend.Calibration.MinRpm} RPM; "
+            + $"100% is {_ctx.FanBackend.Calibration.MaxRpm} RPM on both fans. Raw is the byte sent to the controller, which is RPM/100 "
             + "and is what the manual calibration below steps through.";
 
         InitialiseBandEditor();
@@ -314,7 +314,7 @@ public partial class FansView : UserControl
 
         _rows.Clear();
         foreach (var p in points)
-            _rows.Add(new CurvePointRow { TempC = p.TempC, LevelPercent = p.LevelPercent });
+            _rows.Add(new CurvePointRow { TempC = p.TempC, LevelPercent = p.LevelPercent, Calibration = _ctx.FanBackend.Calibration });
 
         FloorTempBox.Text = floorTempC.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
         FloorLevelBox.Text = floorLevel.ToString();
@@ -367,8 +367,8 @@ public partial class FansView : UserControl
         }
 
         var go = System.Windows.MessageBox.Show(
-            $"The two fans will be held about {FanService.RawToRpm(SplitProbeHigh)} and "
-            + $"{FanService.RawToRpm(SplitProbeLow)} RPM for {SplitProbeSamples * 2} seconds, then the "
+            $"The two fans will be held about {_ctx.FanBackend.Calibration.RawToRpm(SplitProbeHigh)} and "
+            + $"{_ctx.FanBackend.Calibration.RawToRpm(SplitProbeLow)} RPM for {SplitProbeSamples * 2} seconds, then the "
             + "curve takes over again.\n\nIt is audible and uneven while it runs. Nothing is written "
             + "that the curve does not overwrite immediately afterwards.",
             "Check the fans move separately", MessageBoxButton.OKCancel, MessageBoxImage.Information);
@@ -486,7 +486,7 @@ public partial class FansView : UserControl
     {
         var defaults = FanCurve.CreateDefault().Points;
         _rows.Clear();
-        foreach (var p in defaults) _rows.Add(new CurvePointRow { TempC = p.TempC, LevelPercent = p.LevelPercent });
+        foreach (var p in defaults) _rows.Add(new CurvePointRow { TempC = p.TempC, LevelPercent = p.LevelPercent, Calibration = _ctx.FanBackend.Calibration });
         WriteEditedPoints(defaults.ToList());
         WriteEditedFloor(55.0, 15);
 
@@ -540,9 +540,9 @@ public partial class FansView : UserControl
             if (_settings.FanControlMode != FanControlMode.Auto)
             {
                 // Raw is an RPM/100 target on a ~20-55 usable scale, not a 0-255 PWM duty
-                // cycle -- see FanService.RawToPercent. The old raw/255*100 here was the
+                // cycle -- see FanCalibration.RawToPercent. The old raw/255*100 here was the
                 // debunked PWM assumption and under-reported this tile by roughly half.
-                int? levelPercent = r.FanLevel1 is { } raw1 ? FanService.RawToPercent(raw1) : null;
+                int? levelPercent = r.FanLevel1 is { } raw1 ? _ctx.FanBackend.Calibration.RawToPercent(raw1) : null;
                 LevelValue.Text = levelPercent?.ToString() ?? "--";
 
                 // Both fans: this is a tachometer reading, not an echo of the commanded level,
@@ -553,7 +553,7 @@ public partial class FansView : UserControl
                 // difference matters most on exactly this screen: zero here reads as a stopped
                 // fan, which is the fault the curve exists to prevent.
                 LevelFoot.Text = $"RAW {FanService.RawText(r.FanLevel1)}/{FanService.RawText(r.FanLevel2)} - " +
-                                 $"{FanService.RpmText(r.FanLevel1)}/{FanService.RpmText(r.FanLevel2)} RPM";
+                                 $"{_ctx.FanBackend.Calibration.RpmText(r.FanLevel1)}/{_ctx.FanBackend.Calibration.RpmText(r.FanLevel2)} RPM";
 
                 if (levelPercent is { } plotted)
                     Chart.SetLive(r.TemperatureC, (byte)Math.Clamp(plotted, 0, 100));
@@ -565,11 +565,11 @@ public partial class FansView : UserControl
                 // heading for. The two disagreeing is the fan spinning up -- measured at about
                 // six seconds for a full step -- not a fault, which is exactly why both are
                 // shown rather than just the one that happens to look tidier.
-                string measured = $"{FanService.RpmText(r.FanLevel1)}/{FanService.RpmText(r.FanLevel2)} RPM";
+                string measured = $"{_ctx.FanBackend.Calibration.RpmText(r.FanLevel1)}/{_ctx.FanBackend.Calibration.RpmText(r.FanLevel2)} RPM";
                 if (_service.HasCommanded)
                 {
-                    byte targetRaw = FanService.PercentToRawLevel(_service.LastCommandedLevelPercent);
-                    LevelFoot.Text = $"NOW {measured} - CURVE WANTS {FanService.RawToRpm(targetRaw)} RPM (RAW {targetRaw})";
+                    byte targetRaw = _ctx.FanBackend.Calibration.PercentToRawFan1(_service.LastCommandedLevelPercent);
+                    LevelFoot.Text = $"NOW {measured} - CURVE WANTS {_ctx.FanBackend.Calibration.RawToRpm(targetRaw)} RPM (RAW {targetRaw})";
                 }
                 else
                 {
@@ -695,7 +695,7 @@ public partial class FansView : UserControl
     /// </summary>
     private void InitialiseBandEditor()
     {
-        var band = OmniHub.Core.Fan.FanService.Calibration;
+        var band = _ctx.FanBackend.Calibration;
         BandMinBox.Text = band.MinRawLevel.ToString();
         BandMax1Box.Text = band.MaxRawLevelFan1.ToString();
         BandMax2Box.Text = band.MaxRawLevelFan2.ToString();
@@ -875,10 +875,20 @@ public partial class FansView : UserControl
         /// </summary>
         public string TargetRpm => LevelPercent == 0
             ? "off"
-            : FanService.RawToRpm(FanService.PercentToRawLevel(LevelPercent)).ToString();
+            : Calibration.RawToRpm(Calibration.PercentToRawFan1(LevelPercent)).ToString();
 
         /// <summary>The byte actually sent to the EC, which is RPM/100. Shown because it is
         /// what the manual calibration tool below steps through.</summary>
-        public byte RawLevel => FanService.PercentToRawLevel(LevelPercent);
+        public byte RawLevel => Calibration.PercentToRawFan1(LevelPercent);
+
+        /// <summary>
+        /// The band this row's percentage is a percentage of.
+        ///
+        /// Required rather than defaulted on purpose. A row that quietly assumed the shipped band
+        /// would show the right RPM on this chassis and a confidently wrong one on any machine
+        /// with a profile of its own -- and being confidently wrong about a fan speed is the
+        /// failure this application exists to avoid.
+        /// </summary>
+        public required FanCalibration Calibration { get; init; }
     }
 }

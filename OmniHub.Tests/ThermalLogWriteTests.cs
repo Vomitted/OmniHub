@@ -3,6 +3,7 @@
 
 using System.IO;
 using OmniHub.Core.Fan;
+using OmniHub.Core.Hardware;
 using OmniHub.Core.Telemetry;
 
 namespace OmniHub.Tests;
@@ -127,13 +128,13 @@ public class ThermalLogWriteTests
     [Fact]
     public void TheDisplayHelpersDistinguishUnavailableFromStopped()
     {
-        Assert.Equal("--", FanService.RpmText(null));
+        Assert.Equal("--", FanCalibration.Default.RpmText(null));
         Assert.Equal("--", FanService.RawText(null));
 
-        Assert.Equal("0", FanService.RpmText(0));
+        Assert.Equal("0", FanCalibration.Default.RpmText(0));
         Assert.Equal("0", FanService.RawText(0));
 
-        Assert.Equal("2700", FanService.RpmText(27));
+        Assert.Equal("2700", FanCalibration.Default.RpmText(27));
         Assert.Equal("27", FanService.RawText(27));
     }
 }

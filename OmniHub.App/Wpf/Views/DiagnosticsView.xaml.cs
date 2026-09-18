@@ -118,7 +118,7 @@ public partial class DiagnosticsView : UserControl
         try { ghz = new SystemPerfReader().Read()?.CpuClockGHz; } catch { }   // only the clock is wanted here, and that part is stateless
 
         int? rpm = null;
-        try { var levels = _ctx.Fan.GetFanLevel(); if (levels.Length > 0) rpm = FanService.RawToRpm(levels[0]); } catch { }
+        try { var levels = _ctx.Fan.GetFanLevel(); if (levels.Length > 0) rpm = _ctx.FanBackend.Calibration.RawToRpm(levels[0]); } catch { }
 
         // Recorded, but GetThrottling documents itself as unverified on this firmware, so the
         // throttle column is a hint rather than the finding.
@@ -190,7 +190,7 @@ public partial class DiagnosticsView : UserControl
     private void BuildCapabilityRows()
     {
         var caps = _ctx.Capabilities;
-        var band = FanService.Calibration;
+        var band = _ctx.FanBackend.Calibration;
 
         AddRow(CapabilityRows, "Vendor interface",
             _ctx.VendorSupported ? "present" : _ctx.VendorUnavailableReason ?? "not available");

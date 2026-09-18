@@ -104,7 +104,7 @@ public class SmuTemperatureTests
     [Fact]
     public void MeasuredFanCeiling_MapsToFullScale()
     {
-        Assert.Equal(100, FanService.RawToPercent(56));
+        Assert.Equal(100, FanCalibration.Default.RawToPercent(56));
     }
 
     /// <summary>
@@ -114,14 +114,14 @@ public class SmuTemperatureTests
     [Fact]
     public void OldMistakenCeiling_IsNoLongerFullScale()
     {
-        Assert.True(FanService.RawToPercent(54) < 100);
+        Assert.True(FanCalibration.Default.RawToPercent(54) < 100);
     }
 
     [Fact]
     public void RawToRpm_IsTheDocumentedHundredFoldTarget()
     {
         // Raw is an RPM/100 target, not a 0-255 PWM duty cycle.
-        Assert.Equal(5600, FanService.RawToRpm(56));
-        Assert.Equal(0, FanService.RawToRpm(0));
+        Assert.Equal(5600, FanCalibration.Default.RawToRpm(56));
+        Assert.Equal(0, FanCalibration.Default.RawToRpm(0));
     }
 }
