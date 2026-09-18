@@ -40,10 +40,24 @@ is unavailable and why.
 | Fan curve control, GPU TGP unlock, BIOS power limits | HP laptops exposing `hpqBIntM` |
 
 Other vendors (Lenovo, Dell, ASUS) each expose a completely different ACPI/WMI
-interface and there is no cross-vendor standard. The vendor layer is isolated
-behind one availability check, so a second backend can slot in beside the HP
-one — but none is shipped unverified, because untested code that writes to
-unknown ACPI methods on someone's laptop should not exist.
+interface and there is no cross-vendor standard. None is shipped unverified,
+because untested code that writes to unknown ACPI methods on someone's laptop
+should not exist.
+
+This file used to claim the vendor layer was "isolated behind one availability
+check, so a second backend can slot in beside the HP one". That was half true,
+and the false half was the load-bearing one. What is isolated is the vendor
+*failure*: one honest check, a readiness card, and a machine that degrades to a
+monitor instead of crashing. The *implementation* was not isolated at all --
+there was no interface anywhere at the hardware boundary, and the HP types were
+the types every consumer named.
+
+Work on that is under way rather than finished. The cooling loop now drives an
+`IFanBackend` (`OmniHub.Core/Vendors/`) instead of HP's controller directly, so
+the one loop whose failure is a hot machine with stopped fans is vendor-neutral
+and, for the first time, testable without an HP laptop. The rest -- temperature
+sources, GPU power, the capability block -- is still HP-shaped, and this section
+will say so until it is not.
 
 ## Installing
 
