@@ -500,9 +500,9 @@ public partial class MainWindow : Window
             ("diagnostics", "Diagnostics (measure, history, compare)"),
             ("settings", "Settings"),
 
-            ("limits", "What is limiting the machine"),
-            ("fancurve", "The fan curve in force"),
-            ("readings", "Every reading, with its source"),
+            (OmniHub.Core.Workspaces.PanelKeys.Limits, "What is limiting the machine"),
+            (OmniHub.Core.Workspaces.PanelKeys.FanCurve, "The fan curve in force"),
+            (OmniHub.Core.Workspaces.PanelKeys.Readings, "Every reading, with its source"),
         };
 
         // One entry per reading, from the catalogue in Core, so the picker cannot offer a metric
@@ -605,10 +605,10 @@ public partial class MainWindow : Window
         if (key.StartsWith(ChartPanelPrefix, StringComparison.Ordinal))
             return new Views.ChartPanel(key[ChartPanelPrefix.Length..]);
 
-        if (key == "fancurve") return new Views.FanCurvePanel(_ctx, _service);
-        if (key == "readings") return new Views.ReadingsTablePanel(metrics);
+        if (key == OmniHub.Core.Workspaces.PanelKeys.FanCurve) return new Views.FanCurvePanel(_ctx, _service);
+        if (key == OmniHub.Core.Workspaces.PanelKeys.Readings) return new Views.ReadingsTablePanel(metrics);
 
-        if (key == "limits")
+        if (key == OmniHub.Core.Workspaces.PanelKeys.Limits)
         {
             var strip = new Controls.LimitStrip();
             var host = new UserControl { Focusable = false, Content = strip };
@@ -628,8 +628,10 @@ public partial class MainWindow : Window
         return null;
     }
 
-    private const string MetricPanelPrefix = "metric.";
-    private const string ChartPanelPrefix = "chart.";
+    // The prefixes live in Core, where the templates and the saved layouts also name them. Three
+    // copies of a string that has to match is a string that will one day not.
+    private const string MetricPanelPrefix = OmniHub.Core.Workspaces.PanelKeys.MetricPrefix;
+    private const string ChartPanelPrefix = OmniHub.Core.Workspaces.PanelKeys.ChartPrefix;
 
     /// <summary>Stands in for a tab whose constructor threw, naming what happened.</summary>
     private static UserControl FailedTab(string key, Exception ex) => new()

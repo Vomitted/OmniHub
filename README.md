@@ -267,6 +267,18 @@ makes building one worthwhile:
   every thirty seconds, with gaps drawn as gaps.
 - **What is limiting the machine** -- the same strip the Dashboard carries, of
   all five constraints as percentages of their own limits.
+- **The fan curve in force**, read-only, with the machine's present position
+  marked on it. Beside a temperature and a fan speed it answers the question
+  those two raise: whether this is what the curve asked for.
+- **Every reading, with its source** -- a table of all twelve, their values and
+  the route each takes, because a figure that looks wrong is only actionable
+  once you know whether it came from the SMU, the NVIDIA driver or a kernel
+  counter. A reading that did not answer is dimmed rather than dropped: the
+  absence is the finding.
+
+**EDIT LAYOUT** also offers four workspaces to start from -- Gaming, Noise,
+Power and Sensors. They are starting points rather than shipped defaults, so a
+fresh install still looks exactly like the seven screens above.
 
 A panel from a version you no longer have is kept and drawn as a named
 placeholder rather than dropped, so opening your layout in an older build and

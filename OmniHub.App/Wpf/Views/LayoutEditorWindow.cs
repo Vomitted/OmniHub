@@ -46,6 +46,7 @@ public sealed class LayoutEditorWindow : Window
     private readonly ListBox _panelList = new();
     private readonly ComboBox _panelPicker = new();
     private readonly ComboBox _spanPicker = new();
+    private readonly ComboBox _templatePicker = new() { Width = 200 };
 
     /// <summary>The edited layout. Only meaningful when the dialog returned true.</summary>
     public WorkspaceLayout Result { get; private set; } = WorkspaceLayout.Defaults();
@@ -104,6 +105,12 @@ public sealed class LayoutEditorWindow : Window
         _spanPicker.SelectedIndex = 0;
         _spanPicker.Width = 150;
 
+        // Starting points rather than shipped defaults. A fresh install promises the seven screens
+        // this application always had, and an eighth workspace nobody asked for would break that
+        // to demonstrate a feature. Behind a button it is the same content, taken when wanted.
+        foreach (var template in WorkspaceTemplates.All) _templatePicker.Items.Add(template.Name);
+        if (_templatePicker.Items.Count > 0) _templatePicker.SelectedIndex = 0;
+
         var root = new Grid { Margin = new Thickness(18) };
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -119,6 +126,7 @@ public sealed class LayoutEditorWindow : Window
 
         var workspaceButtons = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
         workspaceButtons.Children.Add(Row(Action("Add", AddWorkspace), Action("Rename", RenameWorkspace)));
+        workspaceButtons.Children.Add(Row(_templatePicker, Action("Add this", AddTemplate)));
         workspaceButtons.Children.Add(Row(Action("Move up", () => MoveWorkspace(-1)), Action("Move down", () => MoveWorkspace(1))));
         workspaceButtons.Children.Add(Row(Action("Remove", RemoveWorkspace)));
         DockPanel.SetDock(workspaceButtons, Dock.Bottom);
@@ -178,6 +186,25 @@ public sealed class LayoutEditorWindow : Window
     private void AddWorkspace()
     {
         _workspaces.Add(new WorkspaceRow { Name = "New workspace", Panels = new ObservableCollection<PanelRow>() });
+        _workspaceList.SelectedIndex = _workspaces.Count - 1;
+    }
+
+    private void AddTemplate()
+    {
+        if (_templatePicker.SelectedItem is not string name) return;
+        if (WorkspaceTemplates.Find(name) is not { } template) return;
+
+        // Named clear of what is already there. The model would do this on save anyway, but doing
+        // it here means the list shows the name the user will end up with rather than renaming it
+        // under them afterwards.
+        string unique = template.Name;
+        for (int n = 2; _workspaces.Any(w => string.Equals(w.Name, unique, StringComparison.OrdinalIgnoreCase)); n++)
+            unique = $"{template.Name} {n}";
+
+        var row = ToRow(template);
+        row.Name = unique;
+
+        _workspaces.Add(row);
         _workspaceList.SelectedIndex = _workspaces.Count - 1;
     }
 
