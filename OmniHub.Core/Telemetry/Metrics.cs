@@ -27,6 +27,22 @@ public sealed record MetricDefinition(
     string Unit,
     string Format,
     string? ShortLabel = null,
+
+    /// <summary>
+    /// Where the number comes from, in the terms somebody debugging would use.
+    ///
+    /// This project's first rule is that a reading names its source, and until now that rule was
+    /// kept by the screens rather than by the readings: the dashboard says which GPU route
+    /// answered, the temperature says which sensor, and a figure dropped into a panel said
+    /// nothing at all. Naming it on the definition means every surface gets it for free and none
+    /// of them can describe the same reading differently.
+    ///
+    /// Written as the route rather than as a component, because the useful question is which
+    /// thing to distrust: "the SMU power table" and "the kernel tick counters" fail in different
+    /// ways and are fixed by different things.
+    /// </summary>
+    string Source = "",
+
     double? WarnAt = null,
     double? HotAt = null)
 {
@@ -63,19 +79,44 @@ public static class Metrics
     /// </summary>
     public static IReadOnlyList<MetricDefinition> All { get; } = new[]
     {
-        new MetricDefinition("cpu",     "CPU",       "°", "0.0", WarnAt: 80, HotAt: 90),
-        new MetricDefinition("gpu",     "GPU",       "°", "0",   WarnAt: 80, HotAt: 87),
-        new MetricDefinition("fan",     "FAN",       " RPM",   "0"),
-        new MetricDefinition("fan2",    "FAN 2",     " RPM",   "0"),
-        new MetricDefinition("pkg",     "PACKAGE",   "W",      "0.0", ShortLabel: "PKG"),
-        new MetricDefinition("gpuw",    "GPU POWER", "W",      "0.0", ShortLabel: "GPU W"),
-        new MetricDefinition("gpuclk",  "GPU CLOCK", "MHz",    "0",   ShortLabel: "GPU MHz"),
-        new MetricDefinition("gpuload", "GPU LOAD",  "%",      "0",   ShortLabel: "GPU %"),
+        new MetricDefinition("cpu",     "CPU",       "°", "0.0",
+                             Source: "SMU die temperature, or the ACPI thermal zone when the SMU is unavailable",
+                             WarnAt: 80, HotAt: 90),
+
+        new MetricDefinition("gpu",     "GPU",       "°", "0",
+                             Source: "NVIDIA driver, through NVML or nvidia-smi",
+                             WarnAt: 80, HotAt: 87),
+
+        new MetricDefinition("fan",     "FAN",       " RPM",   "0",
+                             Source: "vendor BIOS fan readback, scaled from the measured band"),
+
+        new MetricDefinition("fan2",    "FAN 2",     " RPM",   "0",
+                             Source: "vendor BIOS fan readback, scaled from the measured band"),
+
+        new MetricDefinition("pkg",     "PACKAGE",   "W",      "0.0", ShortLabel: "PKG",
+                             Source: "SMU power table, sustained (STAPM) figure"),
+
+        new MetricDefinition("gpuw",    "GPU POWER", "W",      "0.0", ShortLabel: "GPU W",
+                             Source: "NVIDIA driver, refused above the board's own power ceiling"),
+
+        new MetricDefinition("gpuclk",  "GPU CLOCK", "MHz",    "0",   ShortLabel: "GPU MHz",
+                             Source: "NVIDIA driver, shader clock"),
+
+        new MetricDefinition("gpuload", "GPU LOAD",  "%",      "0",   ShortLabel: "GPU %",
+                             Source: "NVIDIA driver, or the Windows performance counters without it"),
+
         new MetricDefinition("limit",   "LIMIT",     "%",      "0",
+                             Source: "SMU power table, the tightest of five constraints as a share of its own limit",
                              WarnAt: LimitHistory.BindingPercent, HotAt: 99),
-        new MetricDefinition("cpuload", "CPU LOAD",  "%",      "0",   ShortLabel: "CPU %"),
-        new MetricDefinition("cpuclk",  "CPU CLOCK", "GHz",    "0.00", ShortLabel: "CPU GHz"),
-        new MetricDefinition("mem",     "MEMORY",    "GB",     "0.0", ShortLabel: "MEM"),
+
+        new MetricDefinition("cpuload", "CPU LOAD",  "%",      "0",   ShortLabel: "CPU %",
+                             Source: "kernel tick counters (GetSystemTimes), since this reader's previous call"),
+
+        new MetricDefinition("cpuclk",  "CPU CLOCK", "GHz",    "0.00", ShortLabel: "CPU GHz",
+                             Source: "per-processor clocks from the power-information call, peak across cores"),
+
+        new MetricDefinition("mem",     "MEMORY",    "GB",     "0.0", ShortLabel: "MEM",
+                             Source: "GlobalMemoryStatusEx, total less available"),
     };
 
     public static MetricDefinition? Find(string key)

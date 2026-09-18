@@ -132,4 +132,26 @@ public class MetricsTests
         foreach (var metric in Metrics.All)
             Assert.NotEqual(metric.Label, metric.ShortLabel);
     }
+
+    [Fact]
+    public void EveryReadingNamesWhereItComesFrom()
+    {
+        // The project's first rule, asserted rather than trusted. A figure whose source is blank
+        // is one a panel will show without saying what to distrust when it looks wrong.
+        foreach (var metric in Metrics.All)
+            Assert.False(string.IsNullOrWhiteSpace(metric.Source), $"{metric.Key} names no source");
+    }
+
+    [Fact]
+    public void ASourceDescribesARouteRatherThanRepeatingTheName()
+    {
+        // "CPU: CPU" is a row that costs a line and says nothing. The useful content is which
+        // thing to distrust, so the source has to be longer and different than the label.
+        foreach (var metric in Metrics.All)
+        {
+            Assert.NotEqual(metric.Label, metric.Source, StringComparer.OrdinalIgnoreCase);
+            Assert.True(metric.Source.Length > metric.Label.Length,
+                        $"{metric.Key}: source \"{metric.Source}\" says no more than its name");
+        }
+    }
 }
