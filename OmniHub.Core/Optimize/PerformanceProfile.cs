@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Vomitted
 
 using OmniHub.Core.Hardware;
+using OmniHub.Core.Vendors;
 
 namespace OmniHub.Core.Optimize;
 
@@ -51,11 +52,11 @@ public static class PerformanceProfile
     // What replaced it is the tuning screen, which writes SMU limits the SMU reports back -- so
     // every one of those is verified by read-back rather than assumed.
 
-    private static GpuPowerLevel GpuFor(PerformanceMode mode) => mode switch
+    private static GpuPowerPreset GpuFor(PerformanceMode mode) => mode switch
     {
-        PerformanceMode.Eco => GpuPowerLevel.Eco,
-        PerformanceMode.Balanced => GpuPowerLevel.Balanced,
-        _ => GpuPowerLevel.Performance,
+        PerformanceMode.Eco => GpuPowerPreset.Economy,
+        PerformanceMode.Balanced => GpuPowerPreset.Balanced,
+        _ => GpuPowerPreset.Maximum,
     };
 
     /// <summary>
@@ -89,12 +90,12 @@ public static class PerformanceProfile
     /// a machine where the BIOS rejects a wattage change still gets the GPU and power plan
     /// applied, and the caller is told exactly which part did not take.
     /// </summary>
-    public static TuningResult Apply(PerformanceMode mode, GpuController gpu)
+    public static TuningResult Apply(PerformanceMode mode, IGpuPowerBackend gpu)
     {
         var applied = new List<string>();
         var failed = new List<string>();
 
-        try { gpu.SetPowerPreset(GpuFor(mode)); applied.Add("GPU"); }
+        try { gpu.SetPreset(GpuFor(mode)); applied.Add("GPU"); }
         catch { failed.Add("GPU"); }
 
         var plan = PlanFor(mode);

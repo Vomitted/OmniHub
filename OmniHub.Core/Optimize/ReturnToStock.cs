@@ -3,6 +3,7 @@
 
 using OmniHub.Core.Fan;
 using OmniHub.Core.Hardware;
+using OmniHub.Core.Vendors;
 
 namespace OmniHub.Core.Optimize;
 
@@ -76,7 +77,7 @@ public static class ReturnToStock
     /// <param name="journal">Cleared for anything restored here, so startup does not redo it.</param>
     public static IReadOnlyList<Step> Run(
         FanService? service,
-        GpuController? gpu,
+        IGpuPowerBackend? gpu,
         bool tuningWasApplied,
         Guid? restorePlan,
         Diagnostics.RestoreJournal? journal = null)
@@ -108,11 +109,11 @@ public static class ReturnToStock
         //    a ceiling the firmware is already holding.
         if (gpu is null)
             steps.Add(new Step("GPU power ceiling", StockState.NotChanged, "No vendor interface on this machine."));
-        else if (!gpu.ForceMaxPower)
+        else if (!gpu.HoldAtMaximum)
             steps.Add(new Step("GPU power ceiling", StockState.NotChanged, "The unlock was not in force."));
         else
         {
-            gpu.ForceMaxPower = false;
+            gpu.HoldAtMaximum = false;
             steps.Add(new Step("GPU power ceiling", StockState.NeedsReboot,
                 "Nothing will re-assert the unlock now, but the ceiling the firmware is already holding "
                 + "stays until the card is re-initialised. A restart clears it."));

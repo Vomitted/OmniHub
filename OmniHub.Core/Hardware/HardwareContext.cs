@@ -84,6 +84,15 @@ public sealed class HardwareContext : IDisposable
     public Vendors.IFanBackend FanBackend { get; }
 
     public GpuController Gpu { get; }
+
+    /// <summary>
+    /// The GPU's power ceiling as the vendor-neutral code sees it: three steps and a latch.
+    ///
+    /// Separate from <see cref="Gpu"/> because the GPU screen legitimately drives HP's own
+    /// controls -- Custom TGP, Dynamic Boost, the graphics-mode switch -- while Optimize/ needs
+    /// only to raise or lower the ceiling and should not have to name a vendor to do it.
+    /// </summary>
+    public Vendors.IGpuPowerBackend GpuBackend { get; }
     public PowerController Power { get; }
     public SystemController System { get; }
     public ModelInfo Model { get; }
@@ -207,6 +216,7 @@ public sealed class HardwareContext : IDisposable
         // calibration is the last thing startup learns. Passing it in is what replaced a static
         // that startup assigned and everything else read.
         FanBackend = new Vendors.HpFanBackend(Fan, calibration);
+        GpuBackend = new Vendors.HpGpuBackend(Gpu);
     }
 
     /// <summary>

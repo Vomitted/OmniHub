@@ -753,7 +753,7 @@ public partial class FansView : UserControl
 
         Task.Run(() => ReturnToStock.Run(
                     _service,
-                    _ctx.VendorSupported ? _ctx.Gpu : null,
+                    _ctx.VendorSupported ? _ctx.GpuBackend : null,
                     tuningWasApplied: _settings.TuningMode != TuningMode.Manual || _settings.StartupProfileName is not null,
                     restorePlan: _settings.AcPlanId,
                     journal: OmniHub.Core.Diagnostics.RestoreJournal.Shared))
