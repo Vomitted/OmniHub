@@ -8,6 +8,7 @@ using OmniHub.Core.Diagnostics;
 using OmniHub.Core.Fan;
 using OmniHub.Core.Hardware;
 using OmniHub.Core.Optimize;
+using OmniHub.Core.Vendors;
 
 namespace OmniHub.App;
 
@@ -415,7 +416,7 @@ internal static class Program
         var sys = new SystemController(bios);
         var settings = AppSettings.Load();
         var curve = settings.BuildCurve();
-        var service = new FanService(fanController, () => sys.ReadTemperature(), curve);
+        var service = new FanService(new HpFanBackend(fanController), () => sys.ReadTemperature(), curve);
 
         Console.WriteLine("Starting headless fan service. Press Ctrl+C to stop and restore automatic control.");
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; service.Stop(); Environment.Exit(0); };

@@ -9,6 +9,7 @@ using UserControl = System.Windows.Controls.UserControl;
 using OmniHub.Core.Apps;
 using OmniHub.Core.Fan;
 using OmniHub.Core.Hardware;
+using OmniHub.Core.Vendors;
 using OmniHub.App.Wpf.Views;
 using WinForms = System.Windows.Forms;
 
@@ -63,7 +64,7 @@ public partial class MainWindow : Window
         // CurrentTemperatureC throws if polling has produced nothing yet or the last reading
         // has gone stale, and FanService already skips a tick whose read failed.
         _service = new FanService(
-            _ctx.Fan,
+            new HpFanBackend(_ctx.Fan),
             () => _ctx.CurrentTemperature(),
             _settings.BuildCurve(OnBattery))
         {

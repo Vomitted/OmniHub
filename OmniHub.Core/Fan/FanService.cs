@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Vomitted
 
 using OmniHub.Core.Hardware;
+using OmniHub.Core.Vendors;
 
 namespace OmniHub.Core.Fan;
 
@@ -13,7 +14,7 @@ namespace OmniHub.Core.Fan;
 /// </summary>
 public sealed class FanService : IDisposable
 {
-    private readonly FanController _fan;
+    private readonly IFanBackend _fan;
     private readonly Func<TemperatureReading> _readTemperature;
     private readonly FanCurve _curve;
     private readonly TimeSpan _interval;
@@ -145,7 +146,7 @@ public sealed class FanService : IDisposable
     /// </summary>
     public Func<double?>? ReadSecondaryTempC { get; set; }
 
-    public FanService(FanController fan, Func<TemperatureReading> readTemperature, FanCurve curve, TimeSpan? interval = null)
+    public FanService(IFanBackend fan, Func<TemperatureReading> readTemperature, FanCurve curve, TimeSpan? interval = null)
     {
         _fan = fan;
         _readTemperature = readTemperature;
@@ -309,11 +310,11 @@ public sealed class FanService : IDisposable
                     // on the same schedule as a write that was already happening.
                     if (!modeTaken || refreshDue)
                     {
-                        _fan.SetFanMode(FanMode.Performance);
+                        _fan.TakeManualControl();
                         modeTaken = true;
                     }
 
-                    _fan.SetFanLevel(raw1, raw2);
+                    _fan.SetLevels(raw1, raw2);
                     _lastRaw1 = raw1;
                     _lastRaw2 = raw2;
                     _lastFanWriteUtc = DateTime.UtcNow;
@@ -467,7 +468,7 @@ public sealed class FanService : IDisposable
         // Guarded for the same reason SetFanMode now is: this is a BIOS call, callers reach it
         // from mode buttons and from shutdown, and a throw here used to escape into whichever
         // of those happened to be running.
-        try { _fan.RestoreAutomaticControl(); }
+        try { _fan.RestoreAutomatic(); }
         catch (Exception ex) { LastError = ex.Message; }
     }
 
