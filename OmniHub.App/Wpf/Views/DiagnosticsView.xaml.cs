@@ -15,6 +15,7 @@ using Panel = System.Windows.Controls.Panel;
 using OmniHub.Core.Diagnostics;
 using OmniHub.Core.Fan;
 using OmniHub.Core.Hardware;
+using OmniHub.Core.Vendors;
 using OmniHub.Core.Optimize;
 
 namespace OmniHub.App.Wpf.Views;
@@ -187,6 +188,37 @@ public partial class DiagnosticsView : UserControl
 
     // ------------------------------------------------------------ capability report
 
+    /// <summary>
+    /// Which of the vendor control interfaces this build knows about actually answered here.
+    ///
+    /// Class names only. Enumerating what exists in root\wmi says nothing about the person using
+    /// the machine, whereas the contents of those classes can carry serial numbers -- and this
+    /// screen's output is what people paste into issues.
+    /// </summary>
+    private string DescribeVendorInterfaces()
+    {
+        var classes = new List<string>();
+
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(
+                "root\\wmi", "SELECT * FROM meta_class");
+
+            foreach (var found in searcher.Get())
+            {
+                using var c = found;
+                if (c.ClassPath?.ClassName is { } name) classes.Add(name);
+            }
+        }
+        catch (Exception ex)
+        {
+            return $"root\\wmi could not be enumerated ({ex.GetType().Name}).";
+        }
+
+        var present = VendorInterfaces.Present(classes);
+        return VendorInterfaces.Describe(_ctx.Model.Manufacturer, present);
+    }
+
     private void BuildCapabilityRows()
     {
         var caps = _ctx.Capabilities;
@@ -194,6 +226,29 @@ public partial class DiagnosticsView : UserControl
 
         AddRow(CapabilityRows, "Vendor interface",
             _ctx.VendorSupported ? "present" : _ctx.VendorUnavailableReason ?? "not available");
+
+        // What this application is permitted to do to this machine, and why.
+        //
+        // Worth its own row rather than being inferred from the one above, because the two answer
+        // different questions. "Present" says an interface responded; this says whether anybody
+        // has established that writing through it is safe on this board. On every laptop that is
+        // not this one, they will differ.
+        AddRow(CapabilityRows, "Write permission", _ctx.FanBackend.Tier switch
+        {
+            VendorTier.Verified => "verified on this board -- fan commands are allowed",
+            VendorTier.Reading => "readable only -- fan commands are refused until this board is verified",
+            _ => "not established -- nothing is read from or written to the controller",
+        });
+
+        AddRow(CapabilityRows, "Known vendor interfaces", DescribeVendorInterfaces());
+
+        // Asked against an empty register map on purpose: this reports whether the embedded
+        // controller COULD be reached, and answering it with a real map would mean reading a
+        // register on a board nobody has established anything about.
+        EcAccess.TryOpen(
+            new EcRegisterMap(_ctx.Model.BaseboardProduct, Array.Empty<EcRegister>()),
+            out string? ecReason);
+        AddRow(CapabilityRows, "Embedded controller", ecReason ?? "reachable");
 
         AddRow(CapabilityRows, "Capability block", caps switch
         {
