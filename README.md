@@ -389,3 +389,23 @@ forgotten your curve.
 
 The startup toggle lives outside both files, as a Windows Task Scheduler
 entry named `OmniHub_AutoStart` (see `OmniHub.App/StartupManager.cs`).
+
+## Licence
+
+**GPL-3.0-or-later.** See [LICENSE](LICENSE), and [NOTICE](NOTICE) for
+attribution and the licence history.
+
+OmniHub was MIT through 1.3.3 and was relicensed during 1.5 development. The
+reason is specific: widening support past HP means using hardware interfaces
+other people measured and published, and effectively all of that work --
+NoteBook FanControl, LenovoLegionLinux, G-Helper, the Linux platform drivers --
+is copyleft. Re-deriving it from scratch to keep a permissive licence would
+have meant pretending not to know things that are freely documented.
+
+A register number is a fact about hardware rather than authorship, and facts
+can be used freely. Code cannot, so where any is reused it keeps its original
+copyright header and is named in `NOTICE`. A licence that permits reuse is not
+a licence to drop provenance.
+
+If you took OmniHub under MIT, you keep MIT rights to that code. The change
+binds what happens from here, not what was already given away.

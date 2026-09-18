@@ -1,0 +1,79 @@
+OmniHub
+Copyright (C) 2026 Vomitted
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+LICENCE HISTORY
+===============
+
+OmniHub was released under the MIT licence through version 1.3.3 and was
+relicensed to GPL-3.0 during the 1.5 development cycle.
+
+The relicence was possible because the repository has a single copyright
+holder; `git log` shows no other author. It was done so that the project could
+draw on the existing body of open-source laptop fan control work, effectively
+all of which is copyleft, rather than re-deriving hardware interfaces other
+people have already measured and published.
+
+Anyone who obtained OmniHub under the MIT licence keeps MIT rights to that
+code. This change binds what happens from here on, not what was already given
+away.
+
+
+THIRD-PARTY COMPONENTS SHIPPED WITH THIS PROGRAM
+================================================
+
+PawnIO modules
+  namazso/PawnIO.Modules -- https://github.com/namazso/PawnIO.Modules
+  LGPL-2.1-or-later.
+
+  Signed bytecode modules distributed under OmniHub.App/Assets/PawnIO/. They
+  are loaded by, not linked into, this program: the PawnIO driver executes them
+  in its own sandbox and OmniHub reaches them only through named ioctls. They
+  are redistributed unmodified, and their licence notice is kept with them.
+
+  The PawnIO driver itself is installed separately, from its own publisher, and
+  is not distributed here.
+
+
+SOURCES THIS PROGRAM DRAWS ON
+=============================
+
+Hardware interfaces are facts about hardware -- a register number is not
+authorship -- but the work of discovering them is real, and the projects that
+did it are named here whether or not any of their code is present.
+
+Nothing in this section is currently incorporated into OmniHub. As that
+changes, the entry gains the files concerned, and the files themselves carry
+the original copyright header. A licence that permits reuse is not a licence to
+drop provenance.
+
+  NoteBook FanControl            GPL-3.0     hirschmann/nbfc
+  nbfc-linux                     GPL-3.0     nbfc-linux/nbfc-linux
+  LenovoLegionLinux              GPL-2.0     johnfanv2/LenovoLegionLinux
+  G-Helper                       GPL-3.0     seerge/g-helper
+  asus-wmi (Linux kernel)        GPL-2.0     drivers/platform/x86/asus-wmi.c
+  dell-smm-hwmon (Linux kernel)  GPL-2.0     drivers/hwmon/dell-smm-hwmon.c
+  i8kutils                       GPL-2.0     vitorafsr/i8kutils
+  msi-ec                         GPL-2.0     BeardOverflow/msi-ec
+
+
+TRADEMARKS
+==========
+
+HP, OMEN, Victus, Pavilion, Lenovo, Legion, IdeaPad, ThinkPad, Dell, Alienware,
+ASUS, ROG, TUF, MSI, Acer, Predator, AMD, Ryzen, Intel, NVIDIA and GeForce are
+trademarks of their respective owners. OmniHub is not affiliated with, endorsed
+by, or supported by any of them. The names appear here only to say which
+hardware a piece of code addresses.

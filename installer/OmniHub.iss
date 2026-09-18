@@ -69,6 +69,10 @@ Name: "pawnio"; Description: "Install the PawnIO driver (needed for CPU tuning o
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+; GPL-3.0 obliges an installed copy to carry its licence and its attribution, not just the
+; repository. NOTICE names the PawnIO modules shipped under Assets\PawnIO and the projects
+; whose published hardware interfaces this program relies on.
+Source: "..\NOTICE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"

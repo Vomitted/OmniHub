@@ -14,6 +14,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+### Licence
+
+- **OmniHub is now GPL-3.0-or-later.** It was MIT through 1.3.3, and the published download
+  is still MIT and always will be — this binds what comes after it, not what was already
+  given away.
+
+  The reason is not ideological. Supporting laptops beyond HP means using interfaces other
+  people measured and published: EC register maps, WMI method identifiers, SMM call numbers.
+  Effectively every project that did that work — NoteBook FanControl, LenovoLegionLinux,
+  G-Helper, the Linux platform drivers — is copyleft. Keeping a permissive licence would have
+  meant re-deriving all of it while pretending not to know things that are freely documented,
+  and re-deriving a register map by trial and error on somebody's laptop is the one method
+  this project should least want to use.
+
+  A register number is a fact about hardware, not authorship, and facts stay free either way.
+  Code is not, so where any is reused it keeps its original copyright header and is named in
+  the new `NOTICE`, which also records the PawnIO modules already shipped under
+  `Assets\PawnIO` (LGPL-2.1-or-later, redistributed unmodified). The installer now carries
+  `NOTICE` beside `LICENSE`, because the obligation follows the installed copy rather than
+  the repository.
+
 ### Added
 
 - **The interface is a layout you build.** The sidebar's seven fixed tabs are a list of
