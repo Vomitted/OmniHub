@@ -76,6 +76,7 @@ public partial class CompareView : UserControl, IDisposable
                        if (SessionPicker.Items.Count > 0) SessionPicker.SelectedIndex = 0;
                        _suppressSessionPicker = false;
 
+                       RefreshWindowPillsEnabled();
                        Load();
                    }, selected: 0);
 
@@ -111,6 +112,8 @@ public partial class CompareView : UserControl, IDisposable
             ? "Name a run and start it before making a change, then stop it afterwards. The trace behind a saved run is kept past the usual fourteen days, so it is still there to compare against."
             : $"Recording \"{open.Name}\", started {open.StartedUtc.ToLocalTime():HH:mm}.";
 
+        RefreshWindowPillsEnabled();
+
         _suppressSessionPicker = true;
         SessionPicker.Items.Clear();
         SessionPicker.Items.Add("Compare against a named run...");
@@ -122,6 +125,21 @@ public partial class CompareView : UserControl, IDisposable
         SessionPicker.SelectedIndex = 0;
         SessionPicker.IsEnabled = SessionPicker.Items.Count > 1;
         _suppressSessionPicker = false;
+    }
+
+    /// <summary>
+    /// The window pills only decide anything when no named run does.
+    ///
+    /// Left visible rather than hidden, so the reason they are inert is on screen: a control that
+    /// disappears when something else is chosen is harder to understand than one that is plainly
+    /// not in charge at the moment.
+    /// </summary>
+    private void RefreshWindowPillsEnabled()
+    {
+        bool named = _baselineSession is not null;
+
+        WindowPills.IsEnabled = !named;
+        WindowPills.Opacity = named ? 0.45 : 1.0;
     }
 
     private static string Describe(TimeSpan span) =>
@@ -170,6 +188,7 @@ public partial class CompareView : UserControl, IDisposable
 
         _baselineSession = index >= 0 && index < closed.Count ? closed[index] : null;
 
+        RefreshWindowPillsEnabled();
         Load();
     }
 
@@ -220,20 +239,26 @@ public partial class CompareView : UserControl, IDisposable
 
         DateTime now = DateTime.UtcNow;
 
-        DateTime recentFrom = now - _window;
-
         // A named run replaces the offset entirely, and brings its own length with it: the whole
         // point of naming it was that its boundaries are the ones that matter, not a window of
         // somebody else's choosing laid over the top.
-        DateTime baselineTo, baselineFrom;
+        //
+        // Both sides then take that length. The comparison refuses two runs whose coverage differs
+        // by more than twice -- correctly, since the verdict would mostly reflect the difference in
+        // length -- so a twenty-minute run picked against the three-hour pill is a refusal that was
+        // certain before either side was read. Matching the window removes it rather than
+        // explaining it afterwards.
+        DateTime recentFrom, baselineTo, baselineFrom;
 
         if (_baselineSession is { EndedUtc: { } ended } session)
         {
             baselineFrom = session.StartedUtc;
             baselineTo = ended;
+            recentFrom = now - session.Duration();
         }
         else
         {
+            recentFrom = now - _window;
             baselineTo = _baselineOffset == TimeSpan.Zero ? recentFrom : now - _baselineOffset;
             baselineFrom = baselineTo - _window;
         }
