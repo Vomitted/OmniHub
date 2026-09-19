@@ -126,6 +126,7 @@ public static class FanProfiles
         [JsonPropertyName("maxRawLevelFan1")] public byte? MaxRawLevelFan1 { get; set; }
         [JsonPropertyName("maxRawLevelFan2")] public byte? MaxRawLevelFan2 { get; set; }
         [JsonPropertyName("zoneCeilingC")] public double? ZoneCeilingC { get; set; }
+        [JsonPropertyName("fanControlVerified")] public bool? FanControlVerified { get; set; }
         [JsonPropertyName("note")] public string? Note { get; set; }
     }
 
@@ -173,9 +174,13 @@ public static class FanProfiles
     /// the field out, which is not the same as writing the default into it: an absent field
     /// says nobody looked, and that is worth being able to tell apart later.
     /// </param>
+    /// <param name="fanControlVerified">
+    /// True only when a commanded change was seen to move this board's fans, on this board.
+    /// Null leaves the field out, which is not the same as false: absent means nobody has tried.
+    /// </param>
     public static (bool Saved, string Detail) Save(
         ModelInfo model, FanCalibration calibration, string? note = null, string? directory = null,
-        double? zoneCeilingC = null)
+        double? zoneCeilingC = null, bool? fanControlVerified = null)
     {
         if (!calibration.IsUsable)
             return (false, $"A ceiling of {calibration.MaxRawLevelFan1}/{calibration.MaxRawLevelFan2} "
@@ -196,6 +201,7 @@ public static class FanProfiles
                 MaxRawLevelFan1 = calibration.MaxRawLevelFan1,
                 MaxRawLevelFan2 = calibration.MaxRawLevelFan2,
                 ZoneCeilingC = zoneCeilingC,
+                FanControlVerified = fanControlVerified,
                 Note = string.IsNullOrWhiteSpace(note)
                     ? $"Measured on this machine {DateTime.UtcNow:yyyy-MM-dd}."
                     : note.Trim(),
@@ -267,6 +273,35 @@ public static class FanProfiles
     /// useful a user could do at startup with a complaint about a file they may not have
     /// written, and the safe landing place is the behaviour every build so far has had.
     /// </summary>
+    /// <summary>
+    /// Whether somebody has demonstrated, on this board, that commanding a fan actually moves it.
+    ///
+    /// The whole difference between the two things this project keeps apart: a control path that
+    /// exists and a control path that works. A PWM file being present says the kernel has a
+    /// driver for the chip; it does not say the driver is wired to the fan in this chassis, that
+    /// the write is honoured rather than swallowed, or that the firmware will not take control
+    /// straight back. Only watching the tachometer move answers that, and only on the machine in
+    /// question.
+    ///
+    /// False when the file says nothing, because the absence of evidence is what it is. This is
+    /// the flag the write gate reads, so defaulting it the other way would unlock every board
+    /// nobody had checked.
+    /// </summary>
+    public static bool LoadFanControlVerified(ModelInfo model, string? directory = null)
+    {
+        if (PathFor(model, directory) is not { } path) return false;
+
+        try
+        {
+            if (!File.Exists(path)) return false;
+            return JsonSerializer.Deserialize<ProfileFile>(File.ReadAllText(path))?.FanControlVerified == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public static double? LoadZoneCeilingC(ModelInfo model, string? directory = null)
     {
         if (PathFor(model, directory) is not { } path) return null;

@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Vomitted
 
+using System.Globalization;
+#if WINDOWS
 using System.Management;
+#endif
 
 namespace OmniHub.Core.Hardware;
 
@@ -20,16 +23,22 @@ namespace OmniHub.Core.Hardware;
 /// </summary>
 public sealed class ThermalReader
 {
-    private RyzenSmu? _smu;
+    private Func<double?>? _die;
 
-    /// <param name="smu">
-    /// Optional SMU access. When present, its Tctl reading is preferred over the ACPI zone.
-    /// Passing null is a supported configuration rather than a degraded one -- it is simply
-    /// what happens without the PawnIO driver, and the ACPI path below still works. It is also
-    /// what every Intel machine will do, which is most of the laptops this project is widening
-    /// towards.
+    /// <param name="dieTemperatureC">
+    /// Optional access to a real die sensor, in Celsius, returning null when it has nothing
+    /// trustworthy to say. When present its reading is preferred over the ACPI zone.
+    ///
+    /// A delegate rather than the SMU type it used to take. Three sensors now fill this slot and
+    /// they have nothing in common but a number: AMD's Tctl through PawnIO on Windows, the same
+    /// Tctl through the k10temp driver on Linux, and Intel's DTS. Naming one of them here made
+    /// the whole cooling loop depend on a Windows kernel driver in order to compile, which is
+    /// the coupling the vendor seam exists to break.
+    ///
+    /// Passing null is a supported configuration rather than a degraded one -- it is what
+    /// happens with no driver at all, and the ACPI path below still works.
     /// </param>
-    public ThermalReader(RyzenSmu? smu = null) => _smu = smu;
+    public ThermalReader(Func<double?>? dieTemperatureC = null) => _die = dieTemperatureC;
 
     /// <summary>
     /// Hands over an SMU that opened after construction.
@@ -41,7 +50,7 @@ public sealed class ThermalReader
     /// every reading for that entire session came from the zone, which pins at 85 C and so
     /// held both fans at 100% from launch to shutdown.
     /// </summary>
-    public void AttachSmu(RyzenSmu smu) => _smu = smu;
+    public void AttachDieSensor(Func<double?> dieTemperatureC) => _die = dieTemperatureC;
 
     /// <summary>
     /// Temperature from the best sensor available, tagged with which one that was.
@@ -60,7 +69,7 @@ public sealed class ThermalReader
     /// </summary>
     public TemperatureReading ReadTemperature()
     {
-        double? die = _smu?.ReadDieTemperatureC();
+        double? die = _die?.Invoke();
 
         double zone;
         try
@@ -178,6 +187,7 @@ public sealed class ThermalReader
     {
         double maxCelsius = 0;
         bool sawAnyZone = false;
+#if WINDOWS
         using var searcher = new ManagementObjectSearcher("root\\wmi", "SELECT * FROM MSAcpi_ThermalZoneTemperature");
         foreach (ManagementObject mo in searcher.Get())
         {
@@ -188,6 +198,34 @@ public sealed class ThermalReader
             if (celsius > maxCelsius) maxCelsius = celsius;
         }
 
+#else
+        // The same ACPI zones, through the kernel's thermal class instead of through WMI.
+        //
+        // /sys/class/thermal/thermal_zone*/temp is millidegrees Celsius rather than tenths of a
+        // Kelvin, and underneath it is the same firmware object: Linux exposes _TMP directly
+        // where Windows wraps it in MSAcpi_ThermalZoneTemperature. The maximum across zones is
+        // taken for the reason given above, not because any one zone has been identified.
+        //
+        // A zone that will not answer is skipped rather than counted as cold. Some platforms
+        // publish a zone whose read returns an error, and treating that as 0 C would be exactly
+        // the fabricated low temperature the branch below exists to refuse.
+        foreach (string dir in Directory.EnumerateDirectories("/sys/class/thermal", "thermal_zone*"))
+        {
+            try
+            {
+                if (!long.TryParse(File.ReadAllText(Path.Combine(dir, "temp")).Trim(),
+                                   NumberStyles.Integer, CultureInfo.InvariantCulture, out long milli))
+                    continue;
+
+                sawAnyZone = true;
+                double celsius = milli / 1000.0;
+                if (celsius > maxCelsius) maxCelsius = celsius;
+            }
+            catch (IOException) { /* not a zone reading 0 C -- a zone that did not read */ }
+            catch (UnauthorizedAccessException) { }
+        }
+#endif
+
         // A WMI query that returns zero rows is not "0C" -- it's a failed read. Reporting
         // 0C here would feed a false low temperature straight into the fan curve, which
         // would command a near-silent fan under a reading that was never actually taken:
@@ -197,7 +235,11 @@ public sealed class ThermalReader
         // and skip a failed tick rather than propagate bad data, so throwing here is safe.
         if (!sawAnyZone)
             throw new InvalidOperationException(
+#if WINDOWS
                 "MSAcpi_ThermalZoneTemperature returned no thermal zones -- refusing to report a fabricated 0C reading.");
+#else
+                "/sys/class/thermal exposed no readable thermal zone -- refusing to report a fabricated 0C reading.");
+#endif
 
         // Returned at full precision. Rounding belongs to whoever is displaying it, not here:
         // the curve evaluates against a double, and throwing away the fraction at the source
@@ -218,8 +260,9 @@ public sealed class ThermalReader
     /// 85C.
     ///
     /// This applies to the ACPI path ONLY, and is now the fallback rather than the norm: the
-    /// true die temperature is read through the SMU when PawnIO is available (see
-    /// <see cref="RyzenSmu.ReadDieTemperatureC"/>), and Tctl has no such ceiling. Check
+    /// true die temperature is read from whatever die sensor is attached -- Tctl through
+    /// PawnIO on Windows, the same Tctl through k10temp on Linux -- and Tctl has no such
+    /// ceiling. Check
     /// <see cref="TemperatureReading.IsCeilingLimited"/> rather than calling this directly,
     /// so a genuine 85C die reading is not mistaken for a blind sensor.
     ///

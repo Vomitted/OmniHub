@@ -2,7 +2,9 @@
 // Copyright (C) 2026 Vomitted
 
 using System.Globalization;
+#if WINDOWS
 using OmniHub.Core.Optimize;
+#endif
 
 namespace OmniHub.Core.Diagnostics;
 
@@ -80,6 +82,7 @@ public static class RestoreReconciler
                     break;
                 }
 
+#if WINDOWS
                 case RestoreJournal.DisplayRefreshHz:
                 {
                     if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int hz) || hz <= 0)
@@ -107,6 +110,7 @@ public static class RestoreReconciler
                         : $"Could not restore the display to {hz} Hz ({result.Detail}). Will try again next launch."));
                     break;
                 }
+#endif
 
                 default:
                     journal.Clear(key);

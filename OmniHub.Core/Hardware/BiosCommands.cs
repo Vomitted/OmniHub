@@ -146,45 +146,6 @@ public sealed class PowerController
             new byte[] { enabled ? (byte)1 : (byte)0, 0, 0, 0 }, 4);
 }
 
-/// <summary>Which sensor a temperature came from. Surfaced, because the two are not equivalent.</summary>
-public enum TemperatureSource
-{
-    /// <summary>An ACPI thermal zone: coarse (measured 4-6C steps), laggy, and blind above ~85C.</summary>
-    AcpiThermalZone,
-
-    /// <summary>The processor's own Tctl sensor via the SMU: 0.125C resolution, no ceiling.</summary>
-    SmuDieTctl,
-}
-
-/// <summary>A temperature together with the sensor that produced it.</summary>
-/// <param name="Celsius">The reading.</param>
-/// <param name="Source">Which sensor produced it.</param>
-/// <param name="ZoneCeilingC">
-/// Where the ACPI zone on the machine this was read from stops measuring.
-///
-/// Carried on the reading rather than looked up, because whether a number is a temperature or
-/// a floor is a fact about the sensor that produced it, and a reading that travelled to a
-/// dashboard should not have to find its way back to the reader to answer that. It defaults to
-/// this chassis's measured figure so that every existing construction site keeps the behaviour
-/// it had; <see cref="ThermalReader.ZoneCeilingC"/> supplies the real one.
-/// </param>
-public readonly record struct TemperatureReading(
-    double Celsius,
-    TemperatureSource Source,
-    double ZoneCeilingC = ThermalReader.DefaultZoneCeilingC)
-{
-    /// <summary>
-    /// True when this reading is sitting on the ACPI zone's ceiling, meaning the real
-    /// temperature is unknown but at least this high.
-    ///
-    /// Never true for a Tctl reading. That sensor has no such ceiling, which is the entire
-    /// reason for preferring it -- and treating a genuine 85C die reading as "blind" would
-    /// pin the fan to maximum for no reason.
-    /// </summary>
-    public bool IsCeilingLimited =>
-        Source == TemperatureSource.AcpiThermalZone && ThermalReader.IsAtCeiling(Celsius, ZoneCeilingC);
-}
-
 public sealed class SystemController
 {
     private readonly BiosInterop _bios;
@@ -196,8 +157,14 @@ public sealed class SystemController
     /// </summary>
     public ThermalReader Thermal { get; }
 
-    /// <inheritdoc cref="ThermalReader.AttachSmu"/>
-    public void AttachSmu(RyzenSmu smu) => Thermal.AttachSmu(smu);
+    /// <summary>
+    /// Hands the thermal reader an SMU that opened after construction.
+    ///
+    /// Kept under this name because it is the HP-side API and every caller is on Windows; the
+    /// reader itself now takes a plain delegate, so that it does not need a Windows kernel
+    /// driver's type in order to compile.
+    /// </summary>
+    public void AttachSmu(RyzenSmu smu) => Thermal.AttachDieSensor(smu.ReadDieTemperatureC);
 
     /// <param name="smu">
     /// Optional SMU access, handed straight to the thermal reader. Passing null is a supported
@@ -206,7 +173,7 @@ public sealed class SystemController
     public SystemController(BiosInterop bios, RyzenSmu? smu = null)
     {
         _bios = bios;
-        Thermal = new ThermalReader(smu);
+        Thermal = new ThermalReader(smu is null ? null : smu.ReadDieTemperatureC);
     }
 
     /// <inheritdoc cref="ThermalReader.ReadTemperature"/>

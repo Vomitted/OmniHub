@@ -5,8 +5,6 @@ using System.Management;
 
 namespace OmniHub.Core.Hardware;
 
-public sealed record ModelInfo(string Manufacturer, string Product, string BaseboardProduct);
-
 /// <summary>
 /// Identifies the running machine so fan-table quirks can eventually be
 /// keyed per-model. For now this just reports identity; per-model overrides

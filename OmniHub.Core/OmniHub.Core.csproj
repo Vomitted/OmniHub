@@ -1,14 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Two targets, one source tree.
+
+       net8.0-windows is what OmniHub.App and OmniHub.Tests build against and is unchanged.
+       net8.0 is the portable half, for the Linux daemon: the fan curve, the tier gate, the
+       calibration, the register map, the NBFC importer, the RAPL decode and the thermal
+       arbitration. That half was already vendor-neutral by the time 1.5 landed; what kept it
+       on Windows was the project file, not the code.
+
+       The Windows-only files are removed from the portable target rather than wrapped in
+       conditional compilation. Six HP WMI commands, a PawnIO driver wrapper and the Windows
+       power plan have no Linux meaning at all, and a file that is entirely inside one #if is
+       harder to read than a file that is simply not compiled.
+
+       NOTE: no double hyphen anywhere in these comments. XML forbids it, and this project has
+       lost time to that rule more than once. -->
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFrameworks>net8.0-windows;net8.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>x64</Platforms>
     <UseWindowsForms>false</UseWindowsForms>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
     <PackageReference Include="System.Management" Version="8.0.0" />
 
     <!-- Needed for EventLogReader, which is the only route to Kernel-Power 41's NAMED event
@@ -17,12 +32,41 @@
          System log rather than seeking, taking tens of seconds, and it flattens the event
          payload into positional insertion strings. SleepInProgress, the field distinguishing
          "died mid-sleep" from "lost power" and the entire reason for reading these, would then
-         be an index into an array whose shape is not contractual.
-
-         NOTE: no double hyphen anywhere in this comment. XML forbids it, and this project has
-         now lost time to that rule three times: once in the generated scheduled-task XML, once
-         across several XAML dictionaries, and once here. -->
+         be an index into an array whose shape is not contractual. -->
     <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- Everything that speaks WMI, P/Invokes into a Windows DLL, reads the registry, or drives
+       a Windows kernel driver. Each of these has either a Linux equivalent that belongs in the
+       Linux backend, or no Linux meaning whatsoever. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <Compile Remove="Apps/GpuAppRouting.cs" />
+    <Compile Remove="Diagnostics/StabilityHistory.cs" />
+    <Compile Remove="Hardware/BatteryInfo.cs" />
+    <Compile Remove="Hardware/BiosCommands.cs" />
+    <Compile Remove="Hardware/BiosInterop.cs" />
+    <Compile Remove="Hardware/BiosWmi.cs" />
+    <Compile Remove="Hardware/EcAccess.cs" />
+    <Compile Remove="Hardware/FanController.cs" />
+    <Compile Remove="Hardware/GpuPowerState.cs" />
+    <Compile Remove="Hardware/GpuTelemetry.cs" />
+    <Compile Remove="Hardware/HardwareContext.cs" />
+    <Compile Remove="Hardware/HpCapabilities.cs" />
+    <Compile Remove="Hardware/ModelProfile.cs" />
+    <Compile Remove="Hardware/Nvml.cs" />
+    <Compile Remove="Hardware/PawnIoAccess.cs" />
+    <Compile Remove="Hardware/PmTableExplorer.cs" />
+    <Compile Remove="Hardware/ProcessorClocks.cs" />
+    <Compile Remove="Hardware/RyzenSmu.cs" />
+    <Compile Remove="Hardware/SelfUsage.cs" />
+    <Compile Remove="Hardware/SystemInventory.cs" />
+    <Compile Remove="Hardware/SystemPerfInfo.cs" />
+    <Compile Remove="Hardware/ThrottlingProbe.cs" />
+    <Compile Remove="Network/**/*.cs" />
+    <Compile Remove="Diagnostics/PowerRequests.cs" />
+    <Compile Remove="Optimize/**/*.cs" />
+    <Compile Remove="Vendors/HpFanBackend.cs" />
+    <Compile Remove="Vendors/HpGpuBackend.cs" />
   </ItemGroup>
 
   <ItemGroup>
