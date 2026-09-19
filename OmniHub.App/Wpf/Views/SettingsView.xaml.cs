@@ -23,8 +23,14 @@ public partial class SettingsView : UserControl
         _settings = settings;
 
         _suppressEvents = true;
-        if (_settings.Interface == InterfaceMode.Instrument) InstrumentUiBtn.IsChecked = true;
-        else WorkspacesUiBtn.IsChecked = true;
+        switch (_settings.Interface)
+        {
+            case InterfaceMode.Instrument: InstrumentUiBtn.IsChecked = true; break;
+            case InterfaceMode.Cockpit: CockpitUiBtn.IsChecked = true; break;
+            case InterfaceMode.Editorial: EditorialUiBtn.IsChecked = true; break;
+            case InterfaceMode.Command: CommandUiBtn.IsChecked = true; break;
+            default: WorkspacesUiBtn.IsChecked = true; break;
+        }
 
         if (_settings.CloseBehavior == CloseBehavior.Exit) ExitCloseBtn.IsChecked = true;
         else TrayCloseBtn.IsChecked = true;
@@ -538,7 +544,9 @@ public partial class SettingsView : UserControl
         if (_suppressEvents) return;
         if (sender is not RadioButton { Tag: string tag }) return;
 
-        var mode = tag == "Instrument" ? InterfaceMode.Instrument : InterfaceMode.Workspaces;
+        // Parsed from the tag rather than matched by hand, so adding a pill cannot silently fall
+        // through to Workspaces because somebody forgot a branch.
+        if (!Enum.TryParse(tag, out InterfaceMode mode)) mode = InterfaceMode.Workspaces;
 
         // The window owns the swap: it is the thing that has a sidebar to hide and a host to
         // fill, and it is also the only place that can dispose the outgoing view's subscription

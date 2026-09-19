@@ -33,6 +33,15 @@ public enum InterfaceMode
     /// each on its own row with its source named and its recent history beside it.
     /// </summary>
     Instrument,
+
+    /// <summary>An instrument cluster. One large arc for the die, two flanking it, figures beneath.</summary>
+    Cockpit,
+
+    /// <summary>The machine written up: a narrow measure, headings, and small multiples.</summary>
+    Editorial,
+
+    /// <summary>One reading, a few bars, and Ctrl+K for everything else.</summary>
+    Command,
 }
 
 /// <summary>Which screen corner the telemetry overlay anchors to.</summary>

@@ -38,14 +38,20 @@
                             BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3"
                             HorizontalAlignment="Left" Margin="0,11,0,0">
                         <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="WorkspacesUiBtn" GroupName="InterfaceMode" Content="WORKSPACES" Width="136" Height="30"
+                            <RadioButton x:Name="WorkspacesUiBtn" GroupName="InterfaceMode" Content="WORKSPACES" Width="118" Height="30"
                                          Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Workspaces"/>
-                            <RadioButton x:Name="InstrumentUiBtn" GroupName="InterfaceMode" Content="INSTRUMENT" Width="136" Height="30" Margin="3,0,0,0"
+                            <RadioButton x:Name="InstrumentUiBtn" GroupName="InterfaceMode" Content="INSTRUMENT" Width="118" Height="30" Margin="3,0,0,0"
                                          Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Instrument"/>
+                            <RadioButton x:Name="CockpitUiBtn" GroupName="InterfaceMode" Content="COCKPIT" Width="104" Height="30" Margin="3,0,0,0"
+                                         Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Cockpit"/>
+                            <RadioButton x:Name="EditorialUiBtn" GroupName="InterfaceMode" Content="EDITORIAL" Width="110" Height="30" Margin="3,0,0,0"
+                                         Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Editorial"/>
+                            <RadioButton x:Name="CommandUiBtn" GroupName="InterfaceMode" Content="COMMAND" Width="110" Height="30" Margin="3,0,0,0"
+                                         Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Command"/>
                         </StackPanel>
                     </Border>
                     <TextBlock Style="{StaticResource SettingNote}"
-                               Text="Workspaces is the sidebar of arrangeable screens, and the default. Instrument drops the sidebar and puts every reading this machine exposes on one screen at once, each with its source named and its recent history beside it. Switching is immediate and changes nothing about the hardware."/>
+                               Text="Workspaces is the sidebar of arrangeable screens, and the default. Instrument puts every reading on one screen at once, each with its source named. Cockpit is an instrument cluster: one large arc for the die temperature with the fan and GPU flanking it. Editorial reads like a written report, narrow measure and small multiples. Command is one number, a few bars, and Ctrl+K for the rest. Switching is immediate and changes nothing about the hardware."/>
                 </StackPanel>
             </Border>
 

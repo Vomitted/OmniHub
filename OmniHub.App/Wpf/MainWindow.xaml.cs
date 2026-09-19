@@ -329,7 +329,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyInterfaceMode()
     {
-        if (_settings.Interface == InterfaceMode.Instrument)
+        if (_settings.Interface != InterfaceMode.Workspaces)
         {
             // No sidebar: the whole argument of that interface is that there is nowhere else to
             // go, so a navigation rail would be 212 pixels promising something that is not there.
@@ -337,8 +337,17 @@ public partial class MainWindow : Window
             SidebarColumn.Width = new GridLength(0);
 
             if (_metrics is { } metrics)
-                ViewHost.Content = new Views.InstrumentWallView(
-                    _ctx, metrics, leave: () => SetInterfaceMode(InterfaceMode.Workspaces));
+            {
+                void Leave() => SetInterfaceMode(InterfaceMode.Workspaces);
+
+                ViewHost.Content = _settings.Interface switch
+                {
+                    InterfaceMode.Cockpit => new Views.CockpitView(_ctx, metrics, Leave),
+                    InterfaceMode.Editorial => new Views.EditorialView(_ctx, metrics, Leave),
+                    InterfaceMode.Command => new Views.CommandView(_ctx, metrics, Leave, SetInterfaceMode),
+                    _ => new Views.InstrumentWallView(_ctx, metrics, Leave),
+                };
+            }
             return;
         }
 
