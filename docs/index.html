@@ -578,7 +578,7 @@ dotnet build OmniHub.slnx -c Release</pre>
 
   <h3>Not in this download</h3>
   <p>
-    <strong><span id="ahead">132</span> commits</strong> have landed on
+    <strong><span id="ahead">136</span> commits</strong> have landed on
     <span class="m">main</span> since 1.3.3 was published on 10 September, and no release has
     been cut from them. The button at the top of this page does not have any of it. It is listed
     here so the download is not credited with work it does not contain.
@@ -621,6 +621,16 @@ dotnet build OmniHub.slnx -c Release</pre>
       rather than being one figure measured on this chassis and applied to every laptop.
       <strong>No new laptop is supported yet</strong> — reading comes first, writing stays locked
       until a board has been verified, and nothing claims to control a Lenovo or a Dell.</li>
+    <li><strong>There is a Linux build.</strong> <span class="m">omnihub</span>, a headless
+      daemon rather than a second copy of this application &mdash; one self-contained binary
+      needing nothing but a kernel and glibc, packaged for Debian, Ubuntu, Fedora, Arch,
+      openSUSE and everything downstream. No window: the program this page is about is WPF, and
+      porting it is a separate job that has not been done. Fan control there refuses to write
+      until <span class="m">omnihub verify</span> has taken the controller, held two duty cycles
+      and watched the tachometer actually move &mdash; on that exact board, because a PWM file
+      existing only means the kernel has a driver for the chip. Flatpak and Snap are deliberately
+      absent: both are sandboxed, neither can write to <span class="m">/sys/class/hwmon</span>,
+      and a package that installs cleanly and then refuses every command is worse than none.</li>
     <li><strong>The licence changed.</strong> This download is MIT and stays MIT. Development
       after it is <strong>GPL-3.0-or-later</strong>, because widening support past HP means
       using hardware interfaces other people measured and published, and effectively all of
