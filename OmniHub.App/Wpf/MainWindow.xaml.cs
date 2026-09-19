@@ -165,8 +165,7 @@ public partial class MainWindow : Window
         // out before swapping. There is no old content at startup, so going through it would show
         // a blank window for the length of the fade -- which is exactly the stall the deferred
         // view construction was introduced to remove.
-        ViewHost.Content = new WorkspaceHost(_layout.Workspaces[0], ResolveView);
-        SelectNavItem(0);
+        ApplyInterfaceMode();
 
         BuildTrayIcon();
 
@@ -314,6 +313,55 @@ public partial class MainWindow : Window
 
     private int _currentWorkspace = -1;
     private MetricSource? _metrics;
+
+    /// <summary>
+    /// Puts the window into whichever interface the user has chosen.
+    ///
+    /// Two shapes share one window rather than one shape being replaced, because the user asked
+    /// for the new one WITHOUT losing the old one, and that is the right instinct: somebody who
+    /// likes the workspaces should not have their application redesigned out from under them by
+    /// an update. Workspaces stays the default and stays byte for byte what it was.
+    ///
+    /// The switch is live rather than requiring a restart. Restarting this application means
+    /// handing the fans back to the BIOS and taking them again, which is a real thermal event on
+    /// a machine whose stock curve idles the fan while it is hot, and not something to spend on a
+    /// preference change.
+    /// </summary>
+    private void ApplyInterfaceMode()
+    {
+        if (_settings.Interface == InterfaceMode.Instrument)
+        {
+            // No sidebar: the whole argument of that interface is that there is nowhere else to
+            // go, so a navigation rail would be 212 pixels promising something that is not there.
+            Sidebar.Visibility = Visibility.Collapsed;
+            SidebarColumn.Width = new GridLength(0);
+
+            if (_metrics is { } metrics)
+                ViewHost.Content = new Views.InstrumentWallView(_ctx, metrics);
+            return;
+        }
+
+        Sidebar.Visibility = Visibility.Visible;
+        SidebarColumn.Width = new GridLength(212);
+
+        ViewHost.Content = new WorkspaceHost(_layout.Workspaces[_currentWorkspace], ResolveView);
+        SelectNavItem(_currentWorkspace);
+    }
+
+    /// <summary>Switches interface and remembers the choice. Called from Settings.</summary>
+    public void SetInterfaceMode(InterfaceMode mode)
+    {
+        if (_settings.Interface == mode) return;
+
+        // Disposed rather than dropped: the wall subscribes to MetricSource.Updated, and an
+        // abandoned subscriber keeps being called for the life of the process.
+        if (ViewHost.Content is IDisposable leaving) { try { leaving.Dispose(); } catch { } }
+
+        _settings.Interface = mode;
+        try { _settings.Save(); } catch { /* a preference that cannot be written is still applied now */ }
+
+        ApplyInterfaceMode();
+    }
 
     /// <summary>Set while the switcher is being brought in line with the layout, not the reverse.</summary>
     private bool _suppressNav;

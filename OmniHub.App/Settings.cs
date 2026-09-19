@@ -11,6 +11,30 @@ namespace OmniHub.App;
 public enum FanControlMode { Auto, BiosDefault, Max }
 public enum CloseBehavior { MinimizeToTray, Exit }
 
+/// <summary>
+/// Which shape the application takes.
+///
+/// Not a theme. A theme changes how the same content is drawn; these change WHAT is on screen
+/// and how much of it, which is the axis the user was actually asking about when a palette pass
+/// and then a type pass both landed as "it still looks the same".
+///
+/// Workspaces is what every build before this one was: a sidebar of user-arranged screens, each
+/// showing a handful of readings at a comfortable size. It stays the default and stays exactly
+/// as it was, because somebody who likes it should not have their application redesigned out
+/// from under them by an update.
+/// </summary>
+public enum InterfaceMode
+{
+    /// <summary>The sidebar of arrangeable workspaces. The original, and the default.</summary>
+    Workspaces,
+
+    /// <summary>
+    /// One screen, everything on it. No paging: every reading this machine actually exposes,
+    /// each on its own row with its source named and its recent history beside it.
+    /// </summary>
+    Instrument,
+}
+
 /// <summary>Which screen corner the telemetry overlay anchors to.</summary>
 public enum OverlayCorner { TopLeft, TopRight, BottomLeft, BottomRight }
 
@@ -129,6 +153,14 @@ public sealed class AppSettings
     /// rather than flattening it. Normal is the palette untouched.
     /// </summary>
     public OmniHub.Core.Optimize.UiDensity Density { get; set; } = OmniHub.Core.Optimize.UiDensity.Normal;
+
+    /// <summary>
+    /// Which interface this user wants. See <see cref="InterfaceMode"/>.
+    ///
+    /// Defaults to Workspaces so that an update never changes the shape of somebody's
+    /// application without them asking for it.
+    /// </summary>
+    public InterfaceMode Interface { get; set; } = InterfaceMode.Workspaces;
 
     /// <summary>
     /// The palette built in the application, as the four colours it is described by.

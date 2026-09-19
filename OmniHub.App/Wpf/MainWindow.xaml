@@ -8,7 +8,7 @@
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="212"/>
+            <ColumnDefinition x:Name="SidebarColumn" Width="212"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
@@ -16,7 +16,7 @@
              here has been removed: it washed a blue haze across the top-left of
              every screen, which fought the live readouts for attention and was the
              main thing making the window look like a skin rather than a tool. -->
-        <Border Grid.Column="0" Background="{StaticResource SidebarGradient}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+        <Border x:Name="Sidebar" Grid.Column="0" Background="{StaticResource SidebarGradient}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
             <DockPanel LastChildFill="False">
                 <StackPanel DockPanel.Dock="Top" Margin="0,22,0,22">
                     <TextBlock Text="OMNIHUB" FontFamily="{StaticResource MonoFont}" FontSize="15" FontWeight="Bold"

@@ -23,6 +23,9 @@ public partial class SettingsView : UserControl
         _settings = settings;
 
         _suppressEvents = true;
+        if (_settings.Interface == InterfaceMode.Instrument) InstrumentUiBtn.IsChecked = true;
+        else WorkspacesUiBtn.IsChecked = true;
+
         if (_settings.CloseBehavior == CloseBehavior.Exit) ExitCloseBtn.IsChecked = true;
         else TrayCloseBtn.IsChecked = true;
 
@@ -520,6 +523,28 @@ public partial class SettingsView : UserControl
     {
         _settings.StartMinimizedToTray = StartMinimizedToggle.IsChecked == true;
         _settings.Save();
+    }
+
+    /// <summary>
+    /// Switches the whole interface, live.
+    ///
+    /// Applied through the window rather than saved and left for the next launch, because
+    /// restarting this application hands the fans back to the BIOS and takes them again, and on a
+    /// machine whose stock curve idles the fan while it is hot that is a real thermal event. Not
+    /// something to spend on a preference change.
+    /// </summary>
+    private void InterfaceMode_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_suppressEvents) return;
+        if (sender is not RadioButton { Tag: string tag }) return;
+
+        var mode = tag == "Instrument" ? InterfaceMode.Instrument : InterfaceMode.Workspaces;
+
+        // The window owns the swap: it is the thing that has a sidebar to hide and a host to
+        // fill, and it is also the only place that can dispose the outgoing view's subscription
+        // to the metric feed.
+        if (Window.GetWindow(this) is MainWindow main) main.SetInterfaceMode(mode);
+        else { _settings.Interface = mode; _settings.Save(); }
     }
 
     private void CloseBehavior_Checked(object sender, RoutedEventArgs e)

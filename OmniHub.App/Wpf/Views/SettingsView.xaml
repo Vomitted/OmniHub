@@ -27,6 +27,29 @@
             </StackPanel>
 
             <StackPanel>
+                <TextBlock Text="Interface" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
+            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
+                <StackPanel Margin="14,12">
+                    <TextBlock Style="{StaticResource BodyText}"
+                               Text="Which shape this application takes. Not a theme: a theme changes how the same readings are drawn, these change how many of them are on screen at once."/>
+                    <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3"
+                            HorizontalAlignment="Left" Margin="0,11,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="WorkspacesUiBtn" GroupName="InterfaceMode" Content="WORKSPACES" Width="136" Height="30"
+                                         Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Workspaces"/>
+                            <RadioButton x:Name="InstrumentUiBtn" GroupName="InterfaceMode" Content="INSTRUMENT" Width="136" Height="30" Margin="3,0,0,0"
+                                         Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Instrument"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Style="{StaticResource SettingNote}"
+                               Text="Workspaces is the sidebar of arrangeable screens, and the default. Instrument drops the sidebar and puts every reading this machine exposes on one screen at once, each with its source named and its recent history beside it. Switching is immediate and changes nothing about the hardware."/>
+                </StackPanel>
+            </Border>
+
+            <StackPanel>
                 <TextBlock Text="Theme" Style="{StaticResource SectionTitle}"/>
                 <Border Style="{StaticResource SectionRule}"/>
             </StackPanel>
