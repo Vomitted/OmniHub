@@ -82,6 +82,11 @@ public abstract class AlternateInterface : UserControl, IDisposable
             ToolTip = "Back to the sidebar interface. Also in Settings, Interface.",
         };
         b.Click += (_, _) => _leave?.Invoke();
+
+        // Hidden when there is nowhere to go. These same views are also offered as panels inside
+        // a workspace, where they are not covering the navigation and so are not trapping anybody;
+        // a button that does nothing would be worse than no button.
+        if (_leave is null) b.Visibility = Visibility.Collapsed;
         return b;
     }
 
@@ -246,7 +251,7 @@ public sealed class CockpitView : AlternateInterface
         return host;
     }
 
-    private static Path ArcPath(double diameter, double fraction, Brush stroke, double thickness) => new()
+    internal static Path ArcPath(double diameter, double fraction, Brush stroke, double thickness) => new()
     {
         Stroke = stroke,
         StrokeThickness = thickness,
@@ -262,7 +267,7 @@ public sealed class CockpitView : AlternateInterface
     /// is decoration. This starts bottom left and sweeps clockwise, the convention every physical
     /// instrument it is imitating already uses.
     /// </summary>
-    private static Geometry ArcGeometry(double diameter, double fraction)
+    internal static Geometry ArcGeometry(double diameter, double fraction)
     {
         const double startDeg = 150, totalDeg = 240;
         double r = (diameter / 2) - 5;
@@ -341,6 +346,132 @@ public sealed class CockpitView : AlternateInterface
         _limit.Text = Metrics.BindingLimitName is { } b
             ? $"Limited by {b}."
             : "Nothing is limiting the processor.";
+    }
+}
+
+/// <summary>
+/// The cockpit's cluster, compacted into a band that sits above the navigation.
+///
+/// This is what makes Cockpit an interface for the whole application rather than one more screen.
+/// The cluster stays pinned across the top while the pages change underneath it, so opening the
+/// fan curve does not mean losing sight of the temperature that sent you there. The first attempt
+/// got this wrong: it made the cluster a destination, which meant choosing it gave up every other
+/// part of the program.
+/// </summary>
+public sealed class CockpitBand : AlternateInterface
+{
+    private readonly Dictionary<string, (Path Arc, TextBlock Value, double Diameter)> _dials = new();
+    private readonly List<(MetricDefinition Metric, TextBlock Value)> _figures = new();
+    private readonly TextBlock _limit = new();
+
+    public CockpitBand(HardwareContext ctx, MetricSource metrics) : base(ctx, metrics, null) => Start();
+
+    protected override UIElement Build()
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
+        row.Children.Add(Dial("cpu", 74, 21));
+        row.Children.Add(Dial("fan", 60, 16));
+        row.Children.Add(Dial("gpu", 60, 16));
+
+        var figures = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0, 0, 0) };
+        foreach (string key in new[] { "pkg", "cpuclk", "cpuload", "mem" })
+            if (Metric(key) is { } m)
+                figures.Children.Add(Figure(m));
+        row.Children.Add(figures);
+
+        _limit.FontFamily = Font("UiFont");
+        _limit.FontSize = 11.5;
+        _limit.Foreground = Brush("TextMutedBrush");
+        _limit.VerticalAlignment = VerticalAlignment.Center;
+        _limit.Margin = new Thickness(20, 0, 0, 0);
+        _limit.TextTrimming = TextTrimming.CharacterEllipsis;
+        row.Children.Add(_limit);
+
+        return row;
+    }
+
+    private UIElement Dial(string key, double diameter, double figureSize)
+    {
+        var m = Metric(key);
+        var host = new Grid { Width = diameter, Height = diameter + 14, Margin = new Thickness(0, 0, 14, 0) };
+
+        var canvas = new Canvas { Width = diameter, Height = diameter, VerticalAlignment = VerticalAlignment.Top };
+        canvas.Children.Add(CockpitView.ArcPath(diameter, 1.0, Brush("TrackBrush"), 5));
+        var arc = CockpitView.ArcPath(diameter, 0.0, Brush("AccentBrush"), 5);
+        canvas.Children.Add(arc);
+        host.Children.Add(canvas);
+
+        var figure = new TextBlock
+        {
+            FontFamily = Font("MonoFont"),
+            FontSize = figureSize,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush("TextPrimaryBrush"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 12),
+        };
+        host.Children.Add(figure);
+
+        host.Children.Add(new TextBlock
+        {
+            Text = m?.ShortLabel ?? m?.Label ?? key,
+            FontFamily = Font("UiFont"),
+            FontSize = 9.5,
+            Foreground = Brush("TextFaintBrush"),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Bottom,
+        });
+
+        if (m is not null) _dials[key] = (arc, figure, diameter);
+        return host;
+    }
+
+    private UIElement Figure(MetricDefinition m)
+    {
+        var stack = new StackPanel { Margin = new Thickness(0, 0, 18, 0), VerticalAlignment = VerticalAlignment.Center };
+
+        var value = new TextBlock
+        {
+            FontFamily = Font("MonoFont"),
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = Brush("TextPrimaryBrush"),
+        };
+        stack.Children.Add(value);
+        stack.Children.Add(new TextBlock
+        {
+            Text = m.ShortLabel ?? m.Label,
+            FontFamily = Font("UiFont"),
+            FontSize = 9.5,
+            Foreground = Brush("TextFaintBrush"),
+        });
+
+        _figures.Add((m, value));
+        return stack;
+    }
+
+    protected override void Tick()
+    {
+        foreach ((string key, (Path arc, TextBlock figure, double diameter)) in _dials)
+        {
+            if (Metric(key) is not { } m) continue;
+
+            double? v = Metrics.Value(key);
+            figure.Text = v?.ToString(m.Format, CultureInfo.InvariantCulture) ?? "--";
+            figure.Foreground = FigureBrush(m);
+            arc.Data = CockpitView.ArcGeometry(diameter, v is null ? 0 : v.Value / (m.HotAt ?? 100));
+        }
+
+        foreach ((MetricDefinition m, TextBlock value) in _figures)
+        {
+            string? shown = Shown(m);
+            value.Text = shown ?? "--";
+            value.Foreground = FigureBrush(m);
+        }
+
+        _limit.Text = Metrics.BindingLimitName is { } b ? $"Limited by {b}" : "Nothing limiting";
     }
 }
 

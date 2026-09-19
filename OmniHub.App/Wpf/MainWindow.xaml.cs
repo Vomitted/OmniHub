@@ -114,6 +114,18 @@ public partial class MainWindow : Window
         // fires an HTTPS request to the GitHub releases API. Neither belongs on the path to
         // showing a window.
         _viewFactories["power"] = () => new PowerView(_ctx);
+
+        // The four standalone readouts, offered as PANELS rather than as whole interfaces.
+        //
+        // They were built as complete interfaces first, which was the wrong shape: choosing one
+        // gave up every other part of the application, because a full-window screen with no
+        // navigation is a screen and not an interface. The layouts themselves were fine, so they
+        // are here instead, where any of them can be dropped into any workspace and therefore
+        // appear inside any of the five interfaces.
+        _viewFactories["wall"] = () => _metrics is { } m ? new InstrumentWallView(_ctx, m) : new UserControl();
+        _viewFactories["cluster"] = () => _metrics is { } m ? new CockpitView(_ctx, m) : new UserControl();
+        _viewFactories["report"] = () => _metrics is { } m ? new EditorialView(_ctx, m) : new UserControl();
+        _viewFactories["focus"] = () => _metrics is { } m ? new CommandView(_ctx, m) : new UserControl();
         // Diagnostics becomes a group so History can sit beside it. Same pattern as Performance
         // and System, and the same reason: the load test, the capability readback and the trace
         // that records what they did are one subject, and splitting them across the sidebar
@@ -329,33 +341,265 @@ public partial class MainWindow : Window
     /// </summary>
     private void ApplyInterfaceMode()
     {
-        if (_settings.Interface != InterfaceMode.Workspaces)
+        bool rail = _settings.Interface == InterfaceMode.Workspaces;
+
+        Sidebar.Visibility = rail ? Visibility.Visible : Visibility.Collapsed;
+        SidebarColumn.Width = new GridLength(rail ? 212 : 0);
+
+        _topNav.Clear();
+        TopChrome.Content = rail ? null : BuildTopChrome();
+        TopChrome.Visibility = rail ? Visibility.Collapsed : Visibility.Visible;
+
+        // The same workspace, the same panels, the same views, in every variation. That is the
+        // whole point of these: they are interfaces for the ENTIRE application rather than four
+        // extra screens, so what differs is where the navigation lives and how a page is dressed,
+        // never which parts of the program can be reached.
+        ShowWorkspace(_currentWorkspace);
+        if (rail) SelectNavItem(_currentWorkspace);
+    }
+
+    private readonly List<System.Windows.Controls.RadioButton> _topNav = new();
+
+    /// <summary>
+    /// The navigation and identity for whichever variation is not the left rail.
+    ///
+    /// Each fills the top row and reaches every workspace. They differ in tone, never in what can
+    /// be got to from them.
+    /// </summary>
+    private UIElement BuildTopChrome() => _settings.Interface switch
+    {
+        InterfaceMode.Cockpit => CockpitChrome(),
+        InterfaceMode.Editorial => EditorialChrome(),
+        InterfaceMode.Command => CommandChrome(),
+        _ => InstrumentChrome(),
+    };
+
+    /// <summary>A horizontal strip over every workspace, shared by the variations that want one.</summary>
+    private UIElement WorkspaceTabs(double fontSize, bool showIcons)
+    {
+        var strip = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+
+        for (int i = 0; i < _layout.Workspaces.Count; i++)
         {
-            // No sidebar: the whole argument of that interface is that there is nowhere else to
-            // go, so a navigation rail would be 212 pixels promising something that is not there.
-            Sidebar.Visibility = Visibility.Collapsed;
-            SidebarColumn.Width = new GridLength(0);
+            var workspace = _layout.Workspaces[i];
+            var row = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
 
-            if (_metrics is { } metrics)
+            // The icon travels with the workspace rather than being dropped because the strip is
+            // horizontal now. A label where an icon was is a different thing occupying the same
+            // pixels, and this application has been told that before.
+            if (showIcons && NavIconFor(workspace) is FrameworkElement icon)
             {
-                void Leave() => SetInterfaceMode(InterfaceMode.Workspaces);
-
-                ViewHost.Content = _settings.Interface switch
-                {
-                    InterfaceMode.Cockpit => new Views.CockpitView(_ctx, metrics, Leave),
-                    InterfaceMode.Editorial => new Views.EditorialView(_ctx, metrics, Leave),
-                    InterfaceMode.Command => new Views.CommandView(_ctx, metrics, Leave, SetInterfaceMode),
-                    _ => new Views.InstrumentWallView(_ctx, metrics, Leave),
-                };
+                icon.Margin = new Thickness(0, 0, 7, 0);
+                row.Children.Add(icon);
             }
-            return;
+
+            row.Children.Add(new TextBlock
+            {
+                Text = workspace.Name,
+                FontSize = fontSize,
+                VerticalAlignment = VerticalAlignment.Center,
+            });
+
+            var tab = new System.Windows.Controls.RadioButton
+            {
+                GroupName = "TopNav",
+                Style = (Style)FindResource("PillRadioStyle"),
+                Content = row,
+                Tag = i,
+                Height = 30,
+                MinWidth = 92,
+                Margin = new Thickness(0, 0, 3, 0),
+                IsChecked = i == _currentWorkspace,
+            };
+            System.Windows.Automation.AutomationProperties.SetName(tab, workspace.Name);
+            tab.Checked += (sender, _) =>
+            {
+                if (sender is System.Windows.Controls.RadioButton { Tag: int index }) ShowWorkspace(index);
+            };
+
+            _topNav.Add(tab);
+            strip.Children.Add(tab);
         }
 
-        Sidebar.Visibility = Visibility.Visible;
-        SidebarColumn.Width = new GridLength(212);
+        return strip;
+    }
 
-        ViewHost.Content = new WorkspaceHost(_layout.Workspaces[_currentWorkspace], ResolveView);
-        SelectNavItem(_currentWorkspace);
+    /// <summary>The way back to the left rail, carried by every variation that hides it.</summary>
+    private System.Windows.Controls.Button ChromeEscape()
+    {
+        var b = new System.Windows.Controls.Button
+        {
+            Content = "WORKSPACES",
+            Height = 28,
+            Padding = new Thickness(11, 0, 11, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Style = (Style)FindResource("FlatButtonStyle"),
+            ToolTip = "Back to the sidebar interface. Also in Settings, Interface.",
+        };
+        b.Click += (_, _) => SetInterfaceMode(InterfaceMode.Workspaces);
+        return b;
+    }
+
+    private Border ChromeShell(UIElement content, Thickness padding) => new()
+    {
+        Background = (Brush)FindResource("PanelAltBrush"),
+        BorderBrush = (Brush)FindResource("BorderBrush"),
+        BorderThickness = new Thickness(0, 0, 0, 1),
+        Padding = padding,
+        Child = content,
+    };
+
+    /// <summary>
+    /// Cockpit: the live cluster pinned above the tabs, so the machine's state is never the thing
+    /// you navigated away from.
+    /// </summary>
+    private UIElement CockpitChrome()
+    {
+        var stack = new StackPanel();
+
+        if (_metrics is { } metrics)
+            stack.Children.Add(new Views.CockpitBand(_ctx, metrics));
+
+        var row = new Grid { Margin = new Thickness(0, 12, 0, 0) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var tabs = WorkspaceTabs(12, showIcons: true);
+        Grid.SetColumn(tabs, 0);
+        row.Children.Add(tabs);
+
+        var esc = ChromeEscape();
+        Grid.SetColumn(esc, 1);
+        row.Children.Add(esc);
+        stack.Children.Add(row);
+
+        return ChromeShell(stack, new Thickness(22, 14, 22, 12));
+    }
+
+    /// <summary>
+    /// Editorial: a masthead. The application's name, the machine under it, and the sections set
+    /// as a contents line rather than as buttons.
+    /// </summary>
+    private UIElement EditorialChrome()
+    {
+        var stack = new StackPanel { MaxWidth = 900, HorizontalAlignment = System.Windows.HorizontalAlignment.Center };
+
+        var head = new Grid();
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var title = new StackPanel();
+        title.Children.Add(new TextBlock
+        {
+            Text = "OmniHub",
+            FontFamily = (FontFamily)FindResource("UiFontSemibold"),
+            FontSize = 23,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("TextPrimaryBrush"),
+        });
+        title.Children.Add(new TextBlock
+        {
+            Text = $"{_ctx.Model.Manufacturer} {_ctx.Model.Product}".Trim(),
+            FontFamily = (FontFamily)FindResource("UiFont"),
+            FontSize = 11.5,
+            Foreground = (Brush)FindResource("TextFaintBrush"),
+            Margin = new Thickness(0, 2, 0, 0),
+        });
+        Grid.SetColumn(title, 0);
+        head.Children.Add(title);
+
+        var esc = ChromeEscape();
+        Grid.SetColumn(esc, 1);
+        head.Children.Add(esc);
+        stack.Children.Add(head);
+
+        stack.Children.Add(new Border
+        {
+            Height = 1,
+            Background = (Brush)FindResource("BorderBrush"),
+            Margin = new Thickness(0, 12, 0, 10),
+        });
+        stack.Children.Add(WorkspaceTabs(12.5, showIcons: false));
+
+        return ChromeShell(stack, new Thickness(26, 18, 26, 14));
+    }
+
+    /// <summary>Instrument: the tabs, tight, over one rule. Nothing decorative.</summary>
+    private UIElement InstrumentChrome()
+    {
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var mark = new TextBlock
+        {
+            Text = "OMNIHUB",
+            FontFamily = (FontFamily)FindResource("MonoFont"),
+            FontSize = 12,
+            FontWeight = FontWeights.Bold,
+            Foreground = (Brush)FindResource("TextPrimaryBrush"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 18, 0),
+        };
+        Grid.SetColumn(mark, 0);
+        row.Children.Add(mark);
+
+        var tabs = WorkspaceTabs(11.5, showIcons: false);
+        Grid.SetColumn(tabs, 1);
+        row.Children.Add(tabs);
+
+        var esc = ChromeEscape();
+        Grid.SetColumn(esc, 2);
+        row.Children.Add(esc);
+
+        return ChromeShell(row, new Thickness(20, 10, 20, 10));
+    }
+
+    /// <summary>
+    /// Command: almost nothing. Where you are, how to go elsewhere, and the way out.
+    ///
+    /// The number keys already switch workspace in every variation, so this states that rather
+    /// than drawing seven tabs nobody asked for. A hint naming a real shortcut is navigation; one
+    /// naming an imaginary shortcut is decoration.
+    /// </summary>
+    private UIElement CommandChrome()
+    {
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var where = new TextBlock
+        {
+            Text = _layout.Workspaces[_currentWorkspace].Name,
+            FontFamily = (FontFamily)FindResource("UiFontSemibold"),
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("TextPrimaryBrush"),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        Grid.SetColumn(where, 0);
+        row.Children.Add(where);
+
+        var hint = new TextBlock
+        {
+            Text = "1 to 9 to switch",
+            FontFamily = (FontFamily)FindResource("MonoFont"),
+            FontSize = 10.5,
+            Foreground = (Brush)FindResource("TextFaintBrush"),
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Margin = new Thickness(0, 0, 14, 0),
+        };
+        Grid.SetColumn(hint, 1);
+        row.Children.Add(hint);
+
+        var esc = ChromeEscape();
+        Grid.SetColumn(esc, 2);
+        row.Children.Add(esc);
+
+        return ChromeShell(row, new Thickness(24, 12, 20, 12));
     }
 
     /// <summary>Switches interface and remembers the choice. Called from Settings.</summary>
@@ -458,6 +702,16 @@ public partial class MainWindow : Window
     {
         if (index < 0 || index >= _layout.Workspaces.Count) return;
         _currentWorkspace = index;
+
+        // Keep whatever is navigating in step. The sidebar has its own travelling indicator; a top
+        // strip has pills; Command has a breadcrumb instead of either.
+        foreach (var tab in _topNav)
+            tab.IsChecked = tab.Tag is int t && t == index;
+
+        if (_settings.Interface == InterfaceMode.Command
+            && TopChrome.Content is Border { Child: Grid bar }
+            && bar.Children.Count > 0 && bar.Children[0] is TextBlock breadcrumb)
+            breadcrumb.Text = _layout.Workspaces[index].Name;
 
         AnimateTo(new WorkspaceHost(_layout.Workspaces[index], ResolveView));
     }
@@ -573,6 +827,12 @@ public partial class MainWindow : Window
             ("system", "System (Windows, network, routing)"),
             ("diagnostics", "Diagnostics (measure, history, compare)"),
             ("settings", "Settings"),
+
+            // Whole-screen readouts, usable as panels in any workspace and so in any interface.
+            ("wall", "Every reading at once"),
+            ("cluster", "Instrument cluster"),
+            ("report", "The machine, written up"),
+            ("focus", "One reading, large"),
 
             (OmniHub.Core.Workspaces.PanelKeys.Limits, "What is limiting the machine"),
             (OmniHub.Core.Workspaces.PanelKeys.FanCurve, "The fan curve in force"),

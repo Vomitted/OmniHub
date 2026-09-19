@@ -67,9 +67,20 @@
             </DockPanel>
         </Border>
 
-        <!-- Content -->
+        <!-- Content.
+             Two rows rather than one. An interface variation that does not use the left rail has
+             to put its navigation somewhere, and the top row is where: the cockpit band and its
+             tab strip, the editorial outline, the command bar all live there. Collapsed and zero
+             height under the sidebar interface, which is unchanged. -->
         <Grid Grid.Column="1" ClipToBounds="True">
-            <ContentControl x:Name="ViewHost" Focusable="False">
+            <Grid.RowDefinitions>
+                <RowDefinition x:Name="TopChromeRow" Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <ContentControl x:Name="TopChrome" Grid.Row="0" Focusable="False" Visibility="Collapsed"/>
+
+            <ContentControl x:Name="ViewHost" Grid.Row="1" Focusable="False">
                 <ContentControl.RenderTransform>
                     <TranslateTransform x:Name="ViewSlideTransform"/>
                 </ContentControl.RenderTransform>
@@ -82,7 +93,7 @@
                  background: a moving field behind live numbers competes with the numbers,
                  and in this UI the readings are supposed to win. The stops are
                  transparent-accent-transparent, so what travels is a highlight, not a wash. -->
-            <Border x:Name="ActivityRibbon" Height="3" VerticalAlignment="Top"
+            <Border x:Name="ActivityRibbon" Grid.Row="0" Grid.RowSpan="2" Height="3" VerticalAlignment="Top"
                     IsHitTestVisible="False" Opacity="0.3">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0.32,0" SpreadMethod="Repeat">
