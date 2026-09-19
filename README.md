@@ -384,10 +384,16 @@ you have to remember.
   complete implementation whose P/Invoke signatures are transcribed from
   `C:\Program Files\PawnIO\PawnIOLib.h`, not inferred -- but without the
   driver present there is no Tctl reading, and the app falls back to the ACPI
-  thermal zone, which is coarse (4-6 C steps) and blind above about 85 C. The
-  log records which sensor produced every row, so a session that ran without
-  Tctl is identifiable afterwards rather than having to be inferred from
-  whether the temperatures had decimal places.
+  thermal zone, which is coarse (4-6 C steps) and blind above about 85 C on
+  this board -- measured, not assumed, and a property of this platform's
+  firmware rather than of thermal zones generally. Above that point a reading
+  is a floor rather than a temperature, and the fan loop answers by commanding
+  full airflow, so the threshold is per-board: `profiles/<baseboard>.json` can
+  carry a `zoneCeilingC` measured on your own laptop, and Diagnostics states
+  the figure in force and whether it was measured here or inherited. The log
+  records which sensor produced every row, so a session that ran without Tctl
+  is identifiable afterwards rather than having to be inferred from whether the
+  temperatures had decimal places.
 - Fan "level" sent to the BIOS is **not** a 0-255 PWM duty cycle -- it's a
   fan-speed target in units of ~100 RPM, confirmed against OmenMon and
   decompiled Omen Gaming Hub source (see `OmniHub.Core/Fan/FanService.cs`).

@@ -370,7 +370,9 @@ footer a{color:var(--muted);border-bottom-color:#333}
     and a machine that degrades to a monitor instead of crashing, which is real and is what the
     table above describes. The <em>implementation</em> was not isolated: there was no interface
     at the hardware boundary anywhere in the code, so a second vendor was a refactor before it
-    was an addition. Correcting that is under way in the repository and is not in this download.
+    was an addition. That correction has since landed in the repository: the cooling loop now
+    drives an interface, and every hardware write goes through a gate that refuses on a board
+    nobody has verified. None of it is in this download.
   </p>
 </div></section>
 
@@ -576,10 +578,10 @@ dotnet build OmniHub.slnx -c Release</pre>
 
   <h3>Not in this download</h3>
   <p>
-    <strong>105 commits</strong> have landed on <span class="m">main</span> since 1.3.3 was
-    published on 10 September, and no release has been cut from them. The button at the top of
-    this page does not have any of it. It is listed here so the download is not credited with
-    work it does not contain.
+    <strong><span id="ahead">129</span> commits</strong> have landed on
+    <span class="m">main</span> since 1.3.3 was published on 10 September, and no release has
+    been cut from them. The button at the top of this page does not have any of it. It is listed
+    here so the download is not credited with work it does not contain.
   </p>
   <ul>
     <li><strong>The sidebar is a list of workspaces, not seven fixed tabs.</strong> A workspace is
@@ -614,7 +616,9 @@ dotnet build OmniHub.slnx -c Release</pre>
       is a hot machine with stopped fans can finally be tested without an HP laptop. Beyond that:
       embedded-controller access with a refusal rule that will not write a value nobody measured,
       NoteBook FanControl configurations readable, Intel's package power limit decoded, and a
-      probe that reports what a stranger's machine actually exposes.
+      probe that reports what a stranger's machine actually exposes. The temperature above
+      which this application stops believing its own sensor is now read from the board's profile
+      rather than being one figure measured on this chassis and applied to every laptop.
       <strong>No new laptop is supported yet</strong> — reading comes first, writing stays locked
       until a board has been verified, and nothing claims to control a Lenovo or a Dell.</li>
     <li><strong>The licence changed.</strong> This download is MIT and stays MIT. Development
@@ -794,6 +798,21 @@ render();
         '<p class="muted">Could not load the release list. It is on ' +
         '<a href="https://github.com/Vomitted/OmniHub/releases">GitHub</a>.</p>';
     });
+
+  /* How far ahead main is, read rather than remembered.
+
+     This number was written by hand and had drifted twice before anybody checked it, on a page
+     whose whole claim is that it states only what was measured. The markup keeps the last known
+     figure so a reader without JavaScript, or with the API rate-limited, still sees a real one;
+     a failure here leaves that standing rather than replacing it with a guess or a zero. */
+  fetch('https://api.github.com/repos/Vomitted/OmniHub/compare/v1.3.3...main')
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (c) {
+      if (c && typeof c.ahead_by === 'number' && c.ahead_by > 0) {
+        document.getElementById('ahead').textContent = c.ahead_by;
+      }
+    })
+    .catch(function () { /* the hard-coded figure stands */ });
 })();
 </script>
 </body>
