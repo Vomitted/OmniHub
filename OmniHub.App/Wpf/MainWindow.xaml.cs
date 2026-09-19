@@ -337,7 +337,8 @@ public partial class MainWindow : Window
             SidebarColumn.Width = new GridLength(0);
 
             if (_metrics is { } metrics)
-                ViewHost.Content = new Views.InstrumentWallView(_ctx, metrics);
+                ViewHost.Content = new Views.InstrumentWallView(
+                    _ctx, metrics, leave: () => SetInterfaceMode(InterfaceMode.Workspaces));
             return;
         }
 

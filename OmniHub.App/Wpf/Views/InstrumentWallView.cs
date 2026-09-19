@@ -14,6 +14,7 @@ using OmniHub.Core.Telemetry;
 // Point and Orientation globally; these are the remaining ones this file needs.
 using Brushes = System.Windows.Media.Brushes;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
+using Button = System.Windows.Controls.Button;
 using UserControl = System.Windows.Controls.UserControl;
 using VerticalAlignment = System.Windows.VerticalAlignment;
 
@@ -49,10 +50,19 @@ public sealed class InstrumentWallView : UserControl, IDisposable
     /// <summary>One metric's row: the parts that change every tick, held so they can be updated.</summary>
     private sealed record Row(MetricDefinition Metric, TextBlock Value, TextBlock Unit, Polyline Trace, TextBlock Range);
 
-    public InstrumentWallView(HardwareContext ctx, MetricSource metrics)
+    private readonly Action? _leave;
+
+    /// <param name="leave">
+    /// How to get out of here. Required in practice even though it is nullable, because this view
+    /// hides the sidebar and the sidebar is the only route to Settings: without it, choosing this
+    /// interface is a one-way door and the only way back is editing settings.json by hand. That
+    /// is exactly what happened the first time it shipped.
+    /// </param>
+    public InstrumentWallView(HardwareContext ctx, MetricSource metrics, Action? leave = null)
     {
         _ctx = ctx;
         _metrics = metrics;
+        _leave = leave;
 
         Content = Build();
 
@@ -113,8 +123,30 @@ public sealed class InstrumentWallView : UserControl, IDisposable
         _state.VerticalAlignment = VerticalAlignment.Center;
         identity.Children.Add(_state);
 
-        Grid.SetRow(identity, 0);
-        page.Children.Add(identity);
+        var identityRow = new Grid();
+        Grid.SetColumn(identity, 0);
+        identityRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        identityRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        identityRow.Children.Add(identity);
+
+        // The way back. Small, and permanently on screen, because this interface has no sidebar
+        // and the sidebar is where Settings lives: without this control, picking this interface
+        // traps you in it.
+        var back = new Button
+        {
+            Content = "WORKSPACES",
+            Height = 26,
+            Padding = new Thickness(11, 0, 11, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Style = TryFindResource("FlatButtonStyle") as Style,
+            ToolTip = "Switch back to the sidebar interface. Also in Settings, Interface.",
+        };
+        back.Click += (_, _) => _leave?.Invoke();
+        Grid.SetColumn(back, 1);
+        identityRow.Children.Add(back);
+
+        Grid.SetRow(identityRow, 0);
+        page.Children.Add(identityRow);
 
         // ---- what is limiting the machine ----------------------------------
         //
