@@ -442,7 +442,7 @@ public partial class MainWindow : Window
 
     private Border ChromeShell(UIElement content, Thickness padding) => new()
     {
-        Background = (Brush)FindResource("PanelAltBrush"),
+        Background = (Brush)FindResource("CardGradientBrush"),
         BorderBrush = (Brush)FindResource("BorderBrush"),
         BorderThickness = new Thickness(0, 0, 0, 1),
         Padding = padding,

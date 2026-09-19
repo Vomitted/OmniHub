@@ -221,7 +221,7 @@ public sealed class CockpitView : AlternateInterface
 
         var canvas = new Canvas { Width = diameter, Height = diameter, VerticalAlignment = VerticalAlignment.Top };
         canvas.Children.Add(ArcPath(diameter, 1.0, Brush("TrackBrush"), 7));   // the full sweep, so the value reads as a proportion
-        var value = ArcPath(diameter, 0.0, Brush("AccentBrush"), 7);
+        var value = ArcPath(diameter, 0.0, Brush("AccentGradientBrush"), 7);
         canvas.Children.Add(value);
         host.Children.Add(canvas);
 
@@ -398,7 +398,7 @@ public sealed class CockpitBand : AlternateInterface
 
         var canvas = new Canvas { Width = diameter, Height = diameter, VerticalAlignment = VerticalAlignment.Top };
         canvas.Children.Add(CockpitView.ArcPath(diameter, 1.0, Brush("TrackBrush"), 5));
-        var arc = CockpitView.ArcPath(diameter, 0.0, Brush("AccentBrush"), 5);
+        var arc = CockpitView.ArcPath(diameter, 0.0, Brush("AccentGradientBrush"), 5);
         canvas.Children.Add(arc);
         host.Children.Add(canvas);
 
@@ -772,7 +772,7 @@ public sealed class CommandView : AlternateInterface
         track.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Star) });
         track.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100, GridUnitType.Star) });
 
-        var fill = new Border { Background = Brush("AccentBrush"), CornerRadius = new CornerRadius(3) };
+        var fill = new Border { Background = Brush("AccentGradientBrush"), CornerRadius = new CornerRadius(3) };
         var rest = new Border { Background = Brush("TrackBrush"), CornerRadius = new CornerRadius(3) };
         Grid.SetColumn(fill, 0);
         Grid.SetColumn(rest, 1);

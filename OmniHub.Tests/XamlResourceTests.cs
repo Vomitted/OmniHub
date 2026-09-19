@@ -114,4 +114,34 @@ public class XamlResourceTests
             Assert.True(ex is null, $"{Path.GetFileName(file)} is not well-formed XML: {ex?.Message}");
         }
     }
+
+    /// <summary>
+    /// A brush called Gradient is a gradient.
+    ///
+    /// Three were not. AppBackgroundGradient, SidebarGradient and CardGradientBrush were each
+    /// declared as a SolidColorBrush, so the window, the sidebar and every card in the application
+    /// filled flat while three tokens described how they were supposed to be lit. CardGradientBrush
+    /// was referenced by nothing at all, which is how it survived: a token that lies and is also
+    /// unused produces no symptom anywhere.
+    ///
+    /// Worth asserting rather than remembering, because the failure is silent in every direction.
+    /// The markup parses, the build is clean, the resource resolves, and the only evidence is a
+    /// surface looking slightly flatter than whoever named it intended.
+    /// </summary>
+    [Fact]
+    public void ABrushNamedGradientIsAGradient()
+    {
+        string theme = File.ReadAllText(
+            Path.Combine(RepoRoot().FullName, "OmniHub.App", "Wpf", "Theme.xaml"));
+
+        var solidsPretendingOtherwise = System.Text.RegularExpressions.Regex
+            .Matches(theme, @"<SolidColorBrush\s+x:Key=""(?<key>[A-Za-z0-9]*Gradient(Brush)?)""")
+            .Select(m => m.Groups["key"].Value)
+            .ToList();
+
+        Assert.True(solidsPretendingOtherwise.Count == 0,
+            "these are declared SolidColorBrush and their names promise a gradient: "
+            + string.Join(", ", solidsPretendingOtherwise)
+            + ". Either declare the gradient or rename the key to say what it is.");
+    }
 }

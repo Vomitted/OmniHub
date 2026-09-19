@@ -351,7 +351,9 @@
          surface catching light from above, which is the difference between a panel and a
          drawn box. One gradient, no extra element per card. -->
     <Style x:Key="CardBorderStyle" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+        <!-- CardGradientBrush was declared and referenced by nothing at all, so every card in the
+             application filled flat while a token describing how they should be lit sat unused. -->
+        <Setter Property="Background" Value="{StaticResource CardGradientBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}"/>

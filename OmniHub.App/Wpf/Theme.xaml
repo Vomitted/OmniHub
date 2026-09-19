@@ -1,4 +1,4 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ============================================================
@@ -52,9 +52,31 @@
          old UI read as cheap, because nothing on screen was ever a calm surface to read
          data against. The sidebar shares the window background and is separated by one
          hairline rather than a fill change. -->
-    <SolidColorBrush x:Key="AppBackgroundGradient" Color="{DynamicResource BackgroundColor}"/>
-    <SolidColorBrush x:Key="SidebarGradient" Color="{DynamicResource BackgroundColor}"/>
-    <SolidColorBrush x:Key="CardGradientBrush" Color="{DynamicResource PanelColor}"/>
+    <!-- Three brushes that said gradient and were flat.
+
+         They had been flattened deliberately at some point, and flat was the right call for what
+         they were then: a wash behind live numbers competes with the numbers. What makes these
+         safe is that both stops of each one are colours the contrast tests already treat as
+         grounds, so depth is added without inventing a surface nothing checks. The ramps are
+         small on purpose. BackgroundColor to PanelColor is seven levels apart; it reads as the
+         window having a top and a bottom, not as a graphic.
+
+         Lit from above, which is the only direction a surface is ever lit: the lighter stop is at
+         offset 0 on the card, so a card looks raised rather than sunken. -->
+    <LinearGradientBrush x:Key="AppBackgroundGradient" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{DynamicResource PanelColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource BackgroundColor}" Offset="0.45"/>
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="SidebarGradient" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{DynamicResource PanelColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource BackgroundColor}" Offset="0.7"/>
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="CardGradientBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{DynamicResource PanelAltColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource PanelColor}" Offset="1"/>
+    </LinearGradientBrush>
 
     <!-- Depth without shadows. On a near-black ground a drop shadow renders as a muddy
          halo, so cards get a top-edge highlight instead: a 1px lighter line reads as
@@ -97,10 +119,14 @@
     <!-- The unfilled part of any progress track. One key, so a track cannot drift.  -->
     <SolidColorBrush x:Key="TrackBrush" Color="{DynamicResource PanelAltColor}"/>
 
-    <!-- Was a blue-to-white gradient painted across every big number. Gradient fills on
-         numerals fight legibility at a glance, which is the one thing a telemetry readout
-         has to do. Solid now; live values recolour themselves from the thermal scale. -->
-    <SolidColorBrush x:Key="AccentTextGradient" Color="{DynamicResource TextPrimaryColor}"/>
+    <!-- NO GRADIENT ON NUMERALS, and this is the note that used to be a brush.
+
+         A blue-to-white ramp was once painted across every big number. Gradient fills on numerals
+         fight legibility at a glance, which is the one thing a telemetry readout has to do, so it
+         was flattened. What survived was a SolidColorBrush still called AccentTextGradient, which
+         nothing referenced: a dead token whose name described the opposite of the decision behind
+         it. Removed. Live values take their colour from the thermal scale instead, and the rule
+         is kept here rather than in a resource nobody uses. -->
 
     <!-- Retained for compatibility; the decorative ambient blob it fed is gone. -->
     <SolidColorBrush x:Key="GlowAccentBrush" Color="Transparent"/>
