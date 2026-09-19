@@ -1,0 +1,43 @@
+[Unit]
+Description=OmniHub fan control
+Documentation=https://github.com/Vomitted/OmniHub
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/omnihub run
+
+# Restarting is a real recovery here rather than optimism. This controller latches: a crashed
+# daemon leaves the fan at whatever duty the curve last commanded, with nothing running to
+# release it. The restarted process reads the journal it wrote before taking control and settles
+# that debt, so coming back is how the fan gets let go.
+Restart=on-failure
+RestartSec=5
+
+# Long enough for the fans to be handed back properly. Stopping sends SIGTERM, which the daemon
+# intercepts in order to restore the controller before exiting; a short timeout would have
+# systemd send SIGKILL part way through that, which is the one shutdown that leaves a fan pinned.
+TimeoutStopSec=30
+
+# Hardening, as far as a program whose job is writing to hardware can be hardened.
+#
+# ProtectSystem=strict makes the whole filesystem read-only except the API filesystems, and
+# ReadWritePaths then opens only the three directories this actually writes to: the fan
+# controller, the board profiles, and the restore journal.
+#
+# ProtectKernelTunables is deliberately NOT set. It would mount /sys read-only, which is the one
+# thing this daemon exists to write to, and the failure would present as a fan curve that runs
+# and silently does nothing.
+ProtectSystem=strict
+ReadWritePaths=/sys/class/hwmon /etc/omnihub /var/lib/omnihub
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=yes
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

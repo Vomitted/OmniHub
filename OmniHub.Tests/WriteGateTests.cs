@@ -5,6 +5,7 @@ using System.Reflection;
 using OmniHub.Core.Fan;
 using OmniHub.Core.Hardware;
 using OmniHub.Core.Vendors;
+using OmniHub.Daemon;
 using Xunit;
 
 namespace OmniHub.Tests;
@@ -33,7 +34,39 @@ public class WriteGateTests
         new ScriptedFanBackend { Tier = VendorTier.Detected, Board = "TEST1" },
         new ScriptedFanBackend { Tier = VendorTier.Reading, Board = "TEST1" },
         new HpFanBackend(new FanController(null!), vendorInterfaceAvailable: false, board: "8C2F"),
+        new HwmonFanBackend(new Hwmon("/nonexistent"),
+                            new HwmonChip("/nonexistent/hwmon0", "test", new[] { 1 }, new[] { 1 }, new[] { 1 }),
+                            board: "TEST1", verified: false),
     };
+
+    /// <summary>
+    /// Every backend that exists is in the list above.
+    ///
+    /// The test below sweeps METHODS by reflection but takes its backends from a list somebody
+    /// has to remember to extend, and the comment on that list claimed a new vendor could not
+    /// forget. It could, and did: the Linux backend was written, shipped its gate correctly, and
+    /// was still invisible to the sweep meant to be checking it. A list nobody is forced to
+    /// update is a list that silently stops describing the code.
+    /// </summary>
+    [Fact]
+    public void NoBackendEscapesTheSweepByNotBeingListed()
+    {
+        var covered = Shut().Select(b => b.GetType()).ToHashSet();
+
+        var all = new[] { typeof(IFanBackend), typeof(HwmonFanBackend), typeof(ScriptedFanBackend) }
+            .Select(t => t.Assembly)
+            .Distinct()
+            .SelectMany(a => a.GetTypes())
+            .Where(t => t.IsClass && !t.IsAbstract && typeof(IFanBackend).IsAssignableFrom(t))
+            .ToList();
+
+        Assert.NotEmpty(all);
+
+        var missed = all.Where(t => !covered.Contains(t)).Select(t => t.Name).ToList();
+        Assert.True(missed.Count == 0,
+                    "these implement IFanBackend but the write-gate sweep never sees them: "
+                    + string.Join(", ", missed));
+    }
 
     /// <summary>The interface's write surface: everything that returns nothing.</summary>
     private static IEnumerable<MethodInfo> Writes() =>

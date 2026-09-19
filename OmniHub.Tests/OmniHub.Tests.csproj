@@ -40,6 +40,7 @@
          declares a clr-namespace from OmniHub.App is therefore checked as text rather than
          parsed; ViewMarkupTests says which files that costs and why. -->
     <ProjectReference Include="..\OmniHub.Core\OmniHub.Core.csproj" />
+    <ProjectReference Include="..\OmniHub.Daemon\OmniHub.Daemon.csproj" />
   </ItemGroup>
 
   <ItemGroup>
