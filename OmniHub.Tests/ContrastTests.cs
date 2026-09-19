@@ -242,4 +242,45 @@ public class ContrastTests
         Assert.Equal(21.0, Contrast(Colors.White, Colors.Black), 2);
         Assert.Equal(1.0, Contrast(Colors.White, Colors.White), 2);
     }
+
+    /// <summary>
+    /// The three text levels are three, not two and a near-duplicate.
+    ///
+    /// Every palette named a primary, a muted and a faint foreground, and in all eight the faint
+    /// one was within 1.13 of the muted one in contrast. Sandstone's were 1.00 apart, which is to
+    /// say identical in luminance. The application had three names for two colours, and the whole
+    /// point of the faint level -- a source line under a reading, a caption under a figure --
+    /// was rendering at the same weight as the label above it.
+    ///
+    /// That is invisible to the WCAG check above, which asks whether text can be read against its
+    /// background and has nothing to say about whether two greys can be told apart from each
+    /// other. It is equally invisible to the compiler, to the markup parser, and to anybody who
+    /// has not put the two swatches side by side.
+    ///
+    /// 1.2 is deliberately a low bar. It is not a claim about how a ramp ought to be spaced, only
+    /// a floor under "these are different colours", which is what was actually violated.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Palettes))]
+    public void TheThreeTextLevelsAreVisiblyThree(string paletteFile)
+    {
+        WpfTestHost.Run(() =>
+        {
+            var palette = WpfTestHost.LoadResources(paletteFile);
+
+            Color Level(string key) => palette[key] is Color c
+                ? c
+                : throw new Xunit.Sdk.XunitException($"{paletteFile} has no {key}");
+
+            double primaryToMuted = Contrast(Level("TextPrimaryColor"), Level("TextMutedColor"));
+            double mutedToFaint = Contrast(Level("TextMutedColor"), Level("TextFaintColor"));
+
+            Assert.True(primaryToMuted >= 1.2,
+                $"{paletteFile}: primary and muted are {primaryToMuted:0.00} apart, which reads as one colour.");
+
+            Assert.True(mutedToFaint >= 1.2,
+                $"{paletteFile}: muted and faint are {mutedToFaint:0.00} apart, which reads as one colour. "
+                + "Three names for two colours gives a caption the same weight as the label above it.");
+        });
+    }
 }
