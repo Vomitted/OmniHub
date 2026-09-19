@@ -157,4 +157,66 @@ public class MetricsTests
                         $"{metric.Key}: source \"{metric.Source}\" says no more than its name");
         }
     }
+
+    /// <summary>
+    /// A fan dial is scaled against the fan, not against the number 100.
+    ///
+    /// The instrument cluster took a metric's full scale as <c>HotAt ?? 100</c>. Only three of the
+    /// fourteen metrics declare a hot point, so everything else silently got a scale of 100 -- and
+    /// fan speed is in RPM. A fan idling at 1100 filled its arc eleven times over, clamped, and
+    /// the dial read maxed out at every speed the fan can physically turn. It was visible in a
+    /// screenshot and in nothing else: no exception, no failing test, no warning.
+    /// </summary>
+    [Fact]
+    public void AFanIsScaledAgainstTheFanRatherThanAgainstOneHundred()
+    {
+        var fan = Metrics.All.Single(m => m.Key == "fan");
+
+        Assert.Equal(5600, Metrics.FullScale(fan, fanTopRpm: 5600));
+
+        // 1100 rpm on a 5600 rpm fan is a fifth of the way round, not a full dial.
+        Assert.Equal(0.196, 1100 / Metrics.FullScale(fan, 5600)!.Value, 3);
+    }
+
+    /// <summary>
+    /// A reading whose full scale nobody knows says so rather than borrowing one.
+    ///
+    /// This is the half that matters. Returning some plausible number for watts or gigahertz would
+    /// draw a proportion of a maximum this project has never measured, which is the same fault as
+    /// inventing the reading itself and harder to notice, because a part-filled arc looks like it
+    /// was measured.
+    /// </summary>
+    [Theory]
+    [InlineData("pkg")]      // watts
+    [InlineData("cpuclk")]   // gigahertz
+    [InlineData("gpuclk")]   // megahertz
+    [InlineData("mem")]      // gigabytes
+    public void AReadingWithNoKnownMaximumHasNoScale(string key)
+    {
+        Assert.Null(Metrics.FullScale(Metrics.All.Single(m => m.Key == key), fanTopRpm: 5600));
+    }
+
+    [Theory]
+    [InlineData("cpu")]      // has a hot point
+    [InlineData("gpu")]
+    [InlineData("cpuload")]  // a percentage
+    [InlineData("gpuload")]
+    public void AReadingWithAKnownMaximumHasOne(string key)
+    {
+        double? scale = Metrics.FullScale(Metrics.All.Single(m => m.Key == key), fanTopRpm: 5600);
+
+        Assert.NotNull(scale);
+        Assert.True(scale > 0, $"{key} reports a full scale of {scale}, which no arc can divide by usefully.");
+    }
+
+    [Fact]
+    public void AMachineWithNoMeasuredFanBandGetsNoFanScale()
+    {
+        // Rather than falling back to something. A board whose band nobody has measured is exactly
+        // the board where a confident-looking dial would be least earned.
+        var fan = Metrics.All.Single(m => m.Key == "fan");
+
+        Assert.Null(Metrics.FullScale(fan, fanTopRpm: null));
+        Assert.Null(Metrics.FullScale(fan, fanTopRpm: 0));
+    }
 }

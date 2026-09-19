@@ -112,6 +112,16 @@ public abstract class AlternateInterface : UserControl, IDisposable
     protected static MetricDefinition? Metric(string key) =>
         OmniHub.Core.Telemetry.Metrics.All.FirstOrDefault(m => m.Key == key);
 
+    /// <summary>
+    /// What counts as full for this reading on this machine.
+    ///
+    /// The rule itself lives in Core, where it can be tested, and where two interfaces needing the
+    /// same answer cannot drift apart. The only per-machine part is the fan's top speed, which
+    /// comes from the board's measured band.
+    /// </summary>
+    protected double? Ceiling(MetricDefinition m) =>
+        OmniHub.Core.Telemetry.Metrics.FullScale(m, Ctx.FanBackend.Calibration.MaxRpm);
+
     public virtual void Dispose() => Metrics.Updated -= Tick;
 }
 
@@ -331,8 +341,9 @@ public sealed class CockpitView : AlternateInterface
             // The fraction is against the metric's OWN hot point where it has one, so a full arc
             // means the same thing on every dial: as bad as this reading gets. A shared scale
             // would make 46% fan and 90 C look equally serious.
-            double ceiling = m.HotAt ?? 100;
-            arc.Data = ArcGeometry(diameter, v is null ? 0 : v.Value / ceiling);
+            arc.Data = v is null || Ceiling(m) is not { } ceiling
+                ? Geometry.Empty
+                : ArcGeometry(diameter, v.Value / ceiling);
         }
 
         foreach ((MetricDefinition m, TextBlock value) in _strip)
@@ -368,25 +379,61 @@ public sealed class CockpitBand : AlternateInterface
 
     protected override UIElement Build()
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        // A grid rather than a horizontal stack. Stacked, everything bunched into the left half of
+        // an eleven-hundred pixel window and the remaining six hundred pixels sat empty with one
+        // sentence floating in them. A band across the top of the screen should use the top of the
+        // screen, and the space it was wasting is exactly where more readings belong.
+        var row = new Grid();
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });            // dials
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // figures
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });            // what is limiting
 
-        row.Children.Add(Dial("cpu", 74, 21));
-        row.Children.Add(Dial("fan", 60, 16));
-        row.Children.Add(Dial("gpu", 60, 16));
+        var dials = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        dials.Children.Add(Dial("cpu", 84, 23));
+        dials.Children.Add(Dial("fan", 68, 17));
+        dials.Children.Add(Dial("gpu", 68, 17));
+        Grid.SetColumn(dials, 0);
+        row.Children.Add(dials);
 
-        var figures = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0, 0, 0) };
-        foreach (string key in new[] { "pkg", "cpuclk", "cpuload", "mem" })
-            if (Metric(key) is { } m)
-                figures.Children.Add(Figure(m));
+        // Six rather than four, spread evenly instead of packed. The two GPU figures were already
+        // being read every tick and were simply not being shown.
+        var figures = new Grid { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(22, 0, 18, 0) };
+        string[] keys = { "pkg", "cpuclk", "cpuload", "mem", "gpuw", "gpuclk" };
+        for (int i = 0; i < keys.Length; i++)
+            figures.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        for (int i = 0; i < keys.Length; i++)
+        {
+            if (Metric(keys[i]) is not { } m) continue;
+            var cell = Figure(m);
+            Grid.SetColumn(cell, i);
+            figures.Children.Add(cell);
+        }
+        Grid.SetColumn(figures, 1);
         row.Children.Add(figures);
 
+        // A chip at the right edge, not a sentence adrift in the middle. It is the one line that
+        // explains the others, so it gets an edge of its own rather than being mistaken for a
+        // caption on whichever figure it happened to land beside.
         _limit.FontFamily = Font("UiFont");
         _limit.FontSize = 11.5;
         _limit.Foreground = Brush("TextMutedBrush");
         _limit.VerticalAlignment = VerticalAlignment.Center;
-        _limit.Margin = new Thickness(20, 0, 0, 0);
         _limit.TextTrimming = TextTrimming.CharacterEllipsis;
-        row.Children.Add(_limit);
+        _limit.MaxWidth = 220;
+
+        var chip = new Border
+        {
+            Background = Brush("PanelBrush"),
+            BorderBrush = Brush("BorderBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(10, 6, 10, 6),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = _limit,
+        };
+        Grid.SetColumn(chip, 2);
+        row.Children.Add(chip);
 
         return row;
     }
@@ -430,7 +477,7 @@ public sealed class CockpitBand : AlternateInterface
 
     private UIElement Figure(MetricDefinition m)
     {
-        var stack = new StackPanel { Margin = new Thickness(0, 0, 18, 0), VerticalAlignment = VerticalAlignment.Center };
+        var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
 
         var value = new TextBlock
         {
@@ -461,7 +508,9 @@ public sealed class CockpitBand : AlternateInterface
             double? v = Metrics.Value(key);
             figure.Text = v?.ToString(m.Format, CultureInfo.InvariantCulture) ?? "--";
             figure.Foreground = FigureBrush(m);
-            arc.Data = CockpitView.ArcGeometry(diameter, v is null ? 0 : v.Value / (m.HotAt ?? 100));
+            arc.Data = v is null || Ceiling(m) is not { } ceiling
+                ? Geometry.Empty
+                : CockpitView.ArcGeometry(diameter, v.Value / ceiling);
         }
 
         foreach ((MetricDefinition m, TextBlock value) in _figures)
@@ -853,8 +902,9 @@ public sealed class CommandView : AlternateInterface
             value.Foreground = FigureBrush(m);
 
             double? v = Metrics.Value(m.Key);
-            double ceiling = m.HotAt ?? 100;
-            double pct = v is null ? 0 : Math.Clamp(v.Value / ceiling * 100, 0, 100);
+            double pct = v is null || Ceiling(m) is not { } ceiling
+                ? 0
+                : Math.Clamp(v.Value / ceiling * 100, 0, 100);
             track.ColumnDefinitions[0].Width = new GridLength(pct, GridUnitType.Star);
             track.ColumnDefinitions[1].Width = new GridLength(100 - pct, GridUnitType.Star);
         }

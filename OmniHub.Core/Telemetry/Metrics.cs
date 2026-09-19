@@ -172,4 +172,42 @@ public static class Metrics
 
         return v >= warn ? MetricLevel.Warn : MetricLevel.Normal;
     }
+
+    /// <summary>
+    /// The value at which a dial, arc or bar for this metric is full, or null when nothing knows.
+    ///
+    /// Null is the important answer, and the reason this is not simply <c>HotAt ?? 100</c>, which
+    /// is what the first instrument cluster used. Only three of these fourteen metrics declare a
+    /// hot point, so that fallback quietly asserted a full scale of 100 for everything else. Fan
+    /// speed is in RPM: a fan idling at 1100 filled its arc eleven times over, clamped, and the
+    /// dial read maxed out at every speed the fan can physically turn.
+    ///
+    /// That is a readout lying about the hardware, and it is worse than an empty dial precisely
+    /// because it looks like a measurement. So a scale is returned only where one is actually
+    /// known, and a caller given null draws no arc and shows the figure alone.
+    ///
+    /// It lives here rather than in the view that draws the arc because "what counts as full for
+    /// this reading" is a property of the reading. Two interfaces already needed the same answer,
+    /// and a third would have invented its own.
+    /// </summary>
+    /// <param name="metric">The reading being drawn.</param>
+    /// <param name="fanTopRpm">
+    /// This board's measured maximum fan speed, from its calibration. Passed in rather than looked
+    /// up, because it is per-machine and this assembly has no machine: the band is measured on the
+    /// chassis, and a fan scale means nothing without it.
+    /// </param>
+    public static double? FullScale(MetricDefinition metric, double? fanTopRpm)
+    {
+        // The only place a real top fan speed exists is the per-board fan band.
+        if (metric.Key is "fan" or "fan2")
+            return fanTopRpm is > 0 ? fanTopRpm : null;
+
+        if (metric.HotAt is { } hot) return hot;
+        if (metric.Unit.Trim() == "%") return 100;
+
+        // Watts, gigahertz, megahertz, gigabytes. Each has a maximum on some particular machine,
+        // none of them is written down anywhere here, and so no proportion of one can be drawn
+        // honestly.
+        return null;
+    }
 }
