@@ -108,6 +108,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   leaves the fan pinned with nothing running to change it. The next launch now finds the note and
   settles it.
 
+- **There is a Linux build.** `omnihub`, a headless daemon: one self-contained binary of 34 MB
+  needing nothing but a kernel and glibc, packaged as `.deb`, `.rpm`, a tarball and a PKGBUILD,
+  which between them cover Debian, Ubuntu, Mint, Pop!_OS, Fedora, RHEL, openSUSE, Arch, Manjaro
+  and everything downstream. No GUI: the application is WPF and porting it is a separate job.
+
+  The hardware layer turned out to be markedly simpler than the Windows one, which was not the
+  expectation. On Windows this project needs a signed kernel driver to read Tctl, a different WMI
+  interface per vendor, and a raw embedded-controller path it refuses to ship because one wrong
+  byte on an HP Pavilion powers the machine off. On Linux the kernel has already done that work:
+  `k10temp` publishes the die temperature as a file, and the fan is `pwm1` with its tachometer at
+  `fan1_input`, written by somebody who had the chip.
+
+  What was Windows-specific was the project file, not the code. 77 of the 102 files in
+  `OmniHub.Core` reference no Windows API at all, and the cooling loop was among them; it simply
+  could not be compiled. Four portable types were being held hostage inside Windows files and had
+  to move, the largest being `ThermalReader`, which took a PawnIO driver type and now takes a
+  delegate — three different sensors fill that slot, and naming one of them made the whole loop
+  need a Windows driver in order to build.
+
+  **`omnihub verify` is the part worth describing.** Every comparable tool will write a duty cycle
+  to `pwm1` on request. This one first takes control, holds two duty cycles for six seconds each,
+  reads the tachometer, and hands the controller back — because a PWM file existing only means the
+  kernel has a driver for the chip, not that the driver is wired to your fan or that firmware will
+  honour the write. Until that passes, `omnihub run` refuses. A prompt could have collected consent
+  instead, but consent from somebody with no way to know the answer is not evidence.
+
+  Flatpak and Snap are deliberately absent. Both are sandboxed and neither grants write access to
+  `/sys/class/hwmon`, so a package for either would install cleanly, start cleanly and refuse every
+  fan command — worse than not existing, because it would look like it worked.
+
+  None of it was written on a Linux machine, and it is tested anyway: sysfs is not an API, it is a
+  directory of text files, so every path hangs off an injectable root and sixteen tests drive the
+  real code against a fake tree. That found a genuine defect before it shipped — handing the
+  controller back would have written a mode to every PWM channel of a board the write gate had just
+  refused to touch.
+
 - **The temperature at which this application stops believing its sensor is now a fact about your
   board.** Above the point where an ACPI thermal zone saturates, a reading is not a temperature but
   a floor, and the only honest response to not knowing how hot a machine is is full airflow. That

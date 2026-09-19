@@ -8,6 +8,54 @@ It runs on any Windows laptop. What it can *drive* depends on the machine, and
 it says which on the dashboard rather than presenting dead controls — see
 [Compatibility](#compatibility).
 
+**There is a Linux build too**, and it is a different shape: a headless daemon
+called `omnihub`, driving fans through the kernel's hardware monitoring class
+rather than through any vendor interface. No GUI — the application above is WPF
+and porting it is a separate job. See [Linux](#linux).
+
+## Linux
+
+`OmniHub.Daemon` builds to a single self-contained binary — 34 MB, carrying its
+own .NET runtime, needing nothing but a kernel and glibc. That is why "which
+distro" barely matters: one build serves Debian, Ubuntu, Mint, Pop!_OS, Fedora,
+RHEL, openSUSE, Arch, Manjaro and everything downstream of them.
+
+```bash
+./packaging/build-packages.sh 1.5.0 x64
+```
+
+produces a `.tar.gz`, a `.deb`, an `.rpm` and a `PKGBUILD` for the AUR. Flatpak
+and Snap are deliberately absent: both are sandboxed and neither grants write
+access to `/sys/class/hwmon`, which is the entire job, so a package for either
+would install cleanly, start cleanly and refuse every fan command.
+
+Four commands, and their order is the point:
+
+| | |
+| --- | --- |
+| `omnihub probe` | what this machine exposes. Reads only, needs no root, and the report is safe to attach to an issue — driver names and channel numbers, never serials. |
+| `omnihub watch` | live temperatures and fan speeds. Reads only. |
+| `omnihub verify` | takes control, holds duty 60 then 200 for six seconds each, reads the tachometer, and hands the controller back whatever happens. |
+| `omnihub run` | the fan curve. Refused until `verify` has passed on this board. |
+
+**`verify` is the part that matters.** Plenty of tools will write a duty cycle
+to `pwm1` on request. This one first establishes that writing it does anything,
+to this fan, in this chassis — because a PWM file existing only means the kernel
+has a driver for the chip, not that the driver is wired to your fan or that
+firmware will honour the write. A prompt could have collected consent instead,
+but consent from somebody with no way to know the answer is not evidence.
+
+Two things differ from the Windows build and both matter. The Linux controller
+**latches**: a hwmon channel in manual mode holds its last duty indefinitely, so
+an unclean exit would leave the fan pinned — which is what the restore journal's
+fan key exists for. And "automatic" is not one number, so the mode found on
+arrival is captured and restored rather than a hard `2` being written over
+whatever you had.
+
+The hardware layer is markedly *simpler* than the Windows one. No PawnIO, no WMI:
+`k10temp` publishes the die temperature as a file and the fan is `pwm1` with its
+tachometer at `fan1_input`, written by somebody who had the chip in front of them.
+
 ## Why this exists
 
 Default/Balanced BIOS fan mode on some HP Omen/Victus laptops has a real bug:
