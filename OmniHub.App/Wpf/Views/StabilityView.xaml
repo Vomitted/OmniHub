@@ -6,8 +6,8 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,20,26,24">
         <StackPanel>
             <StackPanel Margin="0,0,0,16">
-                <TextBlock Text="Stability" Style="{StaticResource HeadingText}" FontSize="24"/>
-                <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,4,0,0" MaxWidth="760" TextWrapping="Wrap"
+                <TextBlock Text="Stability" Style="{StaticResource PageTitle}"/>
+                <TextBlock Style="{StaticResource PageLede}" Margin="0,4,0,0" MaxWidth="760" TextWrapping="Wrap"
                            Text="Every time this machine stopped without shutting down, reconstructed from Windows&apos; own records and from this application&apos;s thermal trace. It reports what happened and when. It does not say why, because nothing here knows why."/>
             </StackPanel>
 
@@ -43,7 +43,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="INCIDENTS" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Incidents" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <StackPanel x:Name="Incidents"/>
         </StackPanel>
     </ScrollViewer>

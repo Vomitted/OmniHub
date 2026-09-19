@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="OmniHub.App.Wpf.Views.NetworkView"
+<UserControl x:Class="OmniHub.App.Wpf.Views.NetworkView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BackgroundBrush}">
@@ -7,12 +7,15 @@
         <StackPanel>
 
             <StackPanel Margin="0,0,0,16">
-                <TextBlock Text="Network" Style="{StaticResource HeadingText}" FontSize="24"/>
-                <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,4,0,0"
+                <TextBlock Text="Network" Style="{StaticResource PageTitle}"/>
+                <TextBlock Style="{StaticResource PageLede}" Margin="0,4,0,0"
                            Text="Measures what your connection actually does. Nothing here routes your traffic or claims to lower your ping."/>
             </StackPanel>
 
-            <TextBlock Text="CONNECTION QUALITY" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Connection quality" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -83,7 +86,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="LATENCY UNDER LOAD" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Latency under load" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -107,7 +113,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="DISTANCE TO SERVER REGIONS" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Distance to server regions" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -142,7 +151,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="ADAPTER SETTINGS WORTH KNOWING ABOUT" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Adapter settings worth knowing about" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -157,7 +169,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="WHAT THIS DELIBERATELY DOES NOT DO" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="What this deliberately does not do" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>

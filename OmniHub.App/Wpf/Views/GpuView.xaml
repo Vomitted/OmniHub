@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="OmniHub.App.Wpf.Views.GpuView"
+<UserControl x:Class="OmniHub.App.Wpf.Views.GpuView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BackgroundBrush}">
@@ -28,8 +28,8 @@
         <StackPanel>
 
             <StackPanel Margin="0,0,0,16">
-                <TextBlock Text="Graphics" Style="{StaticResource HeadingText}" FontSize="24"/>
-                <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,4,0,0"
+                <TextBlock Text="Graphics" Style="{StaticResource PageTitle}"/>
+                <TextBlock Style="{StaticResource PageLede}" Margin="0,4,0,0"
                            Text="GPU power level and the MUX graphics mode. Per-application routing lives on the App GPU Routing tab."/>
             </StackPanel>
 
@@ -104,7 +104,10 @@
                 </Border>
             </Grid>
 
-            <TextBlock Text="POWER UNLOCK" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Power unlock" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -118,7 +121,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="POWER PRESET" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Power preset" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border x:Name="PresetCard" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -143,7 +149,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="MUX / GRAPHICS MODE" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="MUX / graphics mode" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>

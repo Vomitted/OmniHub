@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="OmniHub.App.Wpf.Views.AppRoutingView"
+<UserControl x:Class="OmniHub.App.Wpf.Views.AppRoutingView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BackgroundBrush}">
@@ -10,12 +10,12 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Margin="0,0,16,0" VerticalAlignment="Center">
-                    <TextBlock Text="App GPU Routing" Style="{StaticResource HeadingText}" FontSize="24"/>
+                    <TextBlock Text="App GPU routing" Style="{StaticResource PageTitle}"/>
                     <!-- Says "discrete GPU", not a model name. The previous copy hardcoded
                          "RTX 4060", which this app never detects or verifies: exactly the
                          fabricated-hardware-identity problem called out in the OmniControl
                          teardown, and simply wrong on any other machine. -->
-                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" MaxWidth="620" Margin="0,4,0,0" TextWrapping="Wrap"
+                    <TextBlock Style="{StaticResource PageLede}" Margin="0,4,0,0"
                                Text="Pin individual applications to the discrete GPU or the integrated one. This writes the same Windows setting as Settings &gt; Display &gt; Graphics, so anything set here stays visible and reversible there."/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -26,7 +26,10 @@
                 </StackPanel>
             </Grid>
 
-            <TextBlock Text="ROUTED APPLICATIONS" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Routed applications" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
 
             <!-- Filters the list below rather than searching the disk. The rows are routes that
                  already exist, and the only reason to look for one is to change or remove it. -->

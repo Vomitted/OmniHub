@@ -20,8 +20,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="Fan Control" Style="{StaticResource HeadingText}" FontSize="24"/>
-                    <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,4,0,0"
+                    <TextBlock Text="Fan control" Style="{StaticResource PageTitle}"/>
+                    <TextBlock Style="{StaticResource PageLede}" Margin="0,4,0,0"
                                Text="Curve control with a safety floor, re-applied every two seconds."/>
                 </StackPanel>
                 <Border Grid.Column="1" Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
@@ -104,7 +104,10 @@
                 </Border>
             </Grid>
 
-            <TextBlock Text="CURVE / TEMPERATURE TO FAN LEVEL" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Curve / temperature to fan level" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Height="188" Padding="6" Margin="0,0,0,10">
                 <controls:FanCurveChart x:Name="Chart"/>
             </Border>
@@ -121,7 +124,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="SAFETY FLOOR" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Safety floor" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -140,7 +146,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="CURVE POINTS" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Curve points" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <StackPanel>
                     <!-- Two rails are two different problems: on mains the trade is noise against
@@ -210,7 +219,10 @@
                 </StackPanel>
             </Border>
 
-            <TextBlock Text="MANUAL CALIBRATION" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Manual calibration" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -255,7 +267,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="RETURN TO STOCK" Style="{StaticResource SubHeadingText}" Margin="0,18,0,8"/>
+            <StackPanel>
+                <TextBlock Text="Return to stock" Style="{StaticResource SectionTitle}" Margin="0,18,0,8"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>

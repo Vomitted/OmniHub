@@ -6,8 +6,8 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,20,26,24">
         <StackPanel>
             <StackPanel Margin="0,0,0,16">
-                <TextBlock Text="Compare" Style="{StaticResource HeadingText}" FontSize="24"/>
-                <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,4,0,0" MaxWidth="760" TextWrapping="Wrap"
+                <TextBlock Text="Compare" Style="{StaticResource PageTitle}"/>
+                <TextBlock Style="{StaticResource PageLede}" Margin="0,4,0,0"
                            Text="Two stretches of this machine&apos;s own trace, measured and compared. It runs over history already on disk, so it can answer about changes made before anyone thought to start recording — and it says &quot;indistinguishable&quot; whenever that is the truth, which on a machine compared against itself is most of the time."/>
             </StackPanel>
 
@@ -56,7 +56,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="VERDICT" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Verdict" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -69,7 +72,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="WHAT WAS MEASURED" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="What was measured" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>

@@ -5,15 +5,18 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,26,32,28">
         <StackPanel>
 
-            <TextBlock Text="System" Style="{StaticResource HeadingText}" FontSize="24"/>
-            <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,5,0,22" MaxWidth="640" TextWrapping="Wrap"
+            <TextBlock Text="System" Style="{StaticResource PageTitle}"/>
+            <TextBlock Style="{StaticResource PageLede}" Margin="0,5,0,22" MaxWidth="640" TextWrapping="Wrap"
                        Text="Every action here reports what it measurably did. Where Windows gives nothing back, it says so rather than claiming a win."/>
 
             <!-- PERFORMANCE MODE was here. It set the GPU power level and the Windows power
                  plan: the first duplicating the Dashboard's three presets, the second
                  duplicating the WINDOWS POWER PLAN card at the bottom of this same page. -->
 
-            <TextBlock Text="SCHEDULING" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Scheduling" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -68,7 +71,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="BATTERY" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Battery" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -106,7 +112,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="MEMORY" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Memory" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -124,7 +133,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="WINDOWS GAMING" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Windows gaming" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -137,7 +149,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="PROCESSES" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Processes" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -156,7 +171,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="SHADER CACHE" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Shader cache" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -175,7 +193,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="DISK CLEANUP" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Disk cleanup" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -194,7 +215,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="WINDOWS POWER PLAN" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Windows power plan" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -207,7 +231,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="CREATE A POWER PLAN" Style="{StaticResource SubHeadingText}" Margin="0,18,0,0"/>
+            <StackPanel>
+                <TextBlock Text="Create a power plan" Style="{StaticResource SectionTitle}" Margin="0,18,0,0"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>

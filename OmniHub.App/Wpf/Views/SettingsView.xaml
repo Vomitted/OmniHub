@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="OmniHub.App.Wpf.Views.SettingsView"
+<UserControl x:Class="OmniHub.App.Wpf.Views.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BackgroundBrush}">
@@ -21,12 +21,15 @@
         <StackPanel>
 
             <StackPanel Margin="0,0,0,16">
-                <TextBlock Text="Settings" Style="{StaticResource HeadingText}" FontSize="24"/>
-                <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,4,0,0"
+                <TextBlock Text="Settings" Style="{StaticResource PageTitle}"/>
+                <TextBlock Style="{StaticResource PageLede}" Margin="0,4,0,0"
                            Text="Stored in %AppData%\OmniHub\settings.json. Nothing here is sent anywhere."/>
             </StackPanel>
 
-            <TextBlock Text="THEME" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Theme" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -105,7 +108,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="STARTUP" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Startup" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -151,7 +157,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="OVERLAY" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Overlay" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -211,7 +220,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="CLOSE BEHAVIOR" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Close behavior" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -230,7 +242,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="PREDICTIVE COOLING" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Predictive cooling" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -251,7 +266,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="POWER PLAN" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Power plan" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -308,7 +326,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="UPDATES" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Updates" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -354,7 +375,10 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Text="WHAT CHANGED" Style="{StaticResource SubHeadingText}" Margin="0,18,0,0"/>
+                        <StackPanel>
+                <TextBlock Text="What changed" Style="{StaticResource SectionTitle}" Margin="0,18,0,0"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
                         <TextBlock Style="{StaticResource SettingNote}" Margin="0,0,0,10"
                                    Text="Read from the published releases themselves, so this list and the website cannot disagree about what shipped."/>
                         <!-- No inner ScrollViewer. One nested here inside the page's own
@@ -367,7 +391,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="NETWORK" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Network" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -418,7 +445,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="DIAGNOSTICS" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Diagnostics" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>

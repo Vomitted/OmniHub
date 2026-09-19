@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="OmniHub.App.Wpf.Views.DiagnosticsView"
+<UserControl x:Class="OmniHub.App.Wpf.Views.DiagnosticsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BackgroundBrush}">
@@ -7,12 +7,15 @@
         <StackPanel>
 
             <StackPanel Margin="0,0,0,16">
-                <TextBlock Text="Diagnostics" Style="{StaticResource HeadingText}" FontSize="24"/>
-                <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,4,0,0"
+                <TextBlock Text="Diagnostics" Style="{StaticResource PageTitle}"/>
+                <TextBlock Style="{StaticResource PageLede}" Margin="0,4,0,0"
                            Text="Measure what this machine actually does, and read back what its firmware says it can do."/>
             </StackPanel>
 
-            <TextBlock Text="LOAD TEST" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Load test" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -38,7 +41,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="WHAT THE FIRMWARE REPORTS" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="What the firmware reports" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -51,7 +57,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="PROBE REPORT" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Probe report" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -67,7 +76,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="PM TABLE EXPLORER" Style="{StaticResource SubHeadingText}" Margin="0,18,0,8"/>
+            <StackPanel>
+                <TextBlock Text="PM table explorer" Style="{StaticResource SectionTitle}" Margin="0,18,0,8"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
@@ -91,7 +103,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="SUPPORT BUNDLE" Style="{StaticResource SubHeadingText}" Margin="0,18,0,8"/>
+            <StackPanel>
+                <TextBlock Text="Support bundle" Style="{StaticResource SectionTitle}" Margin="0,18,0,8"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>

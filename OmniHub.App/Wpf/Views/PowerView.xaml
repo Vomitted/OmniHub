@@ -12,12 +12,15 @@
         <StackPanel>
 
             <StackPanel Margin="0,0,0,16">
-                <TextBlock Text="Battery" Style="{StaticResource HeadingText}" FontSize="24"/>
-                <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="0,4,0,0"
+                <TextBlock Text="Battery" Style="{StaticResource PageTitle}"/>
+                <TextBlock Style="{StaticResource PageLede}" Margin="0,4,0,0"
                            Text="Battery health and the firmware idle setting. CPU power limits live on Tuning; the Windows power plan lives on System."/>
             </StackPanel>
 
-            <TextBlock Text="WHERE THE POWER IS GOING" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Where the power is going" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Grid Margin="0,0,0,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -91,7 +94,10 @@
                 </Grid>
             </Border>
 
-            <TextBlock Text="BATTERY HEALTH" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Battery health" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Grid Margin="0,0,0,18">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -139,7 +145,10 @@
                 </Border>
             </Grid>
 
-            <TextBlock Text="IDLE MODE" Style="{StaticResource SubHeadingText}"/>
+            <StackPanel>
+                <TextBlock Text="Idle mode" Style="{StaticResource SectionTitle}"/>
+                <Border Style="{StaticResource SectionRule}"/>
+            </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
                     <Border Style="{StaticResource CardSheenStyle}"/>
