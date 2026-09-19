@@ -71,10 +71,10 @@ public sealed class ThermalReader
         {
             // No thermal zones, but the die sensor answered. That is still a real measurement,
             // so it is reported rather than thrown away.
-            return new TemperatureReading(die.Value, TemperatureSource.SmuDieTctl);
+            return new TemperatureReading(die.Value, TemperatureSource.SmuDieTctl, ZoneCeilingC);
         }
 
-        return Merge(die, zone);
+        return Merge(die, zone, ZoneCeilingC);
     }
 
     /// <summary>
@@ -86,10 +86,11 @@ public sealed class ThermalReader
     /// </summary>
     /// <param name="die">Tctl in C, or null when there is no SMU access.</param>
     /// <param name="zone">The ACPI thermal zone reading in C.</param>
-    public static TemperatureReading Merge(double? die, double zone)
+    /// <param name="zoneCeilingC">Where this machine's zone saturates. See <see cref="ZoneCeilingC"/>.</param>
+    public static TemperatureReading Merge(double? die, double zone, double zoneCeilingC = DefaultZoneCeilingC)
     {
         if (die is not double tctl)
-            return new TemperatureReading(zone, TemperatureSource.AcpiThermalZone);
+            return new TemperatureReading(zone, TemperatureSource.AcpiThermalZone, zoneCeilingC);
 
         // A SATURATED zone reading cannot take part in the comparison below, because it is not
         // a number. The zone pins at its ceiling and reports that same value however much
@@ -106,8 +107,8 @@ public sealed class ThermalReader
         // zone has stopped being one. With no SMU at all the branch above still returns the
         // zone reading with its ceiling flag intact, so the safety response survives exactly
         // where it is the only thing available.
-        if (IsAtSensorCeiling(zone))
-            return new TemperatureReading(tctl, TemperatureSource.SmuDieTctl);
+        if (IsAtCeiling(zone, zoneCeilingC))
+            return new TemperatureReading(tctl, TemperatureSource.SmuDieTctl, zoneCeilingC);
 
         // Otherwise the HIGHER of the two, deliberately, rather than simply preferring Tctl.
         //
@@ -122,8 +123,8 @@ public sealed class ThermalReader
         // means the control temperature is never below what the old ACPI-only path would have
         // produced, while Tctl supplies the resolution and the headroom above 85C.
         return tctl >= zone
-            ? new TemperatureReading(tctl, TemperatureSource.SmuDieTctl)
-            : new TemperatureReading(zone, TemperatureSource.AcpiThermalZone);
+            ? new TemperatureReading(tctl, TemperatureSource.SmuDieTctl, zoneCeilingC)
+            : new TemperatureReading(zone, TemperatureSource.AcpiThermalZone, zoneCeilingC);
     }
 
     private double _cachedZoneC;
@@ -222,16 +223,40 @@ public sealed class ThermalReader
     /// <see cref="TemperatureReading.IsCeilingLimited"/> rather than calling this directly,
     /// so a genuine 85C die reading is not mistaken for a blind sensor.
     ///
-    /// ponytail: measured on one chassis and currently applied to all of them. Where a zone
-    /// saturates is a property of the platform, so this belongs per-backend once there is more
-    /// than one -- it drives the five-tick maximum-fan override, and a ceiling that is wrong for
-    /// a machine makes that safety net fire when it should not, or fail to when it should.
+    /// This is the figure for THIS chassis, and it is only a default. Where a zone saturates is
+    /// a property of the platform's firmware, not of thermal physics, so see
+    /// <see cref="ZoneCeilingC"/> for the value actually in force.
     /// </summary>
-    public const double SensorCeilingC = 85.0;
+    public const double DefaultZoneCeilingC = 85.0;
+
+    /// <summary>
+    /// Where this machine's ACPI zone stops measuring, in Celsius.
+    ///
+    /// It was a constant until support widened past one laptop, and a constant is the wrong
+    /// shape for it in a way that is not cosmetic. This number drives the five-tick
+    /// maximum-fan override: above it, a reading stops being a temperature and becomes "at
+    /// least this hot", and the only safe answer to not knowing is full airflow.
+    ///
+    /// So a ceiling belonging to somebody else's laptop breaks that safety net in both
+    /// directions. Set too low for a machine whose zone reports honestly past it, every
+    /// ordinary 85 C gaming session pins both fans at maximum and never lets them down -- the
+    /// noisy twin of the stopped-fan bug this application exists to fix. Set too high for a
+    /// machine that saturates at 80, the override never fires at all and a blind sensor is
+    /// treated as a measurement.
+    ///
+    /// <see cref="DefaultZoneCeilingC"/> is what stands until somebody measures their own
+    /// board and records it in that board's profile, which is the same per-baseboard file the
+    /// fan band already lives in. Measuring it needs the laptop, which is exactly why this is
+    /// a value a stranger can supply rather than one this project has to guess for them.
+    /// </summary>
+    public double ZoneCeilingC { get; set; } = DefaultZoneCeilingC;
 
     /// <summary>
     /// True when the reading has hit the zone's ceiling, so the real temperature is unknown
     /// but at least this high. Callers must treat it as a worst case, not as a number.
+    ///
+    /// Takes the ceiling rather than reading a constant, so that no caller can accidentally
+    /// ask the question about a machine other than the one in front of it.
     /// </summary>
-    public static bool IsAtSensorCeiling(double celsius) => celsius >= SensorCeilingC - 0.5;
+    public static bool IsAtCeiling(double celsius, double zoneCeilingC) => celsius >= zoneCeilingC - 0.5;
 }

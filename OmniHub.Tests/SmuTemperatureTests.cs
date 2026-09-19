@@ -23,7 +23,7 @@ public class SmuTemperatureTests
     [Fact]
     public void AcpiReadingAtTheCeiling_IsFlaggedAsCeilingLimited()
     {
-        var reading = new TemperatureReading(ThermalReader.SensorCeilingC, TemperatureSource.AcpiThermalZone);
+        var reading = new TemperatureReading(ThermalReader.DefaultZoneCeilingC, TemperatureSource.AcpiThermalZone);
         Assert.True(reading.IsCeilingLimited);
     }
 
@@ -76,7 +76,7 @@ public class SmuTemperatureTests
     [Fact]
     public void DieReadingAtTheSameTemperature_IsNotCeilingLimited()
     {
-        var reading = new TemperatureReading(ThermalReader.SensorCeilingC, TemperatureSource.SmuDieTctl);
+        var reading = new TemperatureReading(ThermalReader.DefaultZoneCeilingC, TemperatureSource.SmuDieTctl);
         Assert.False(reading.IsCeilingLimited);
     }
 

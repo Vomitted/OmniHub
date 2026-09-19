@@ -139,7 +139,7 @@ public partial class DashboardView : UserControl
         if (throttling == true) return (Brush)FindResource("DangerBrush");
         // A saturated reading is at least this hot and possibly far hotter, so it gets the
         // danger colour on its own account rather than by happening to exceed a threshold.
-        if (ThermalReader.IsAtSensorCeiling(tempC)) return (Brush)FindResource("DangerBrush");
+        if (ThermalReader.IsAtCeiling(tempC, _ctx.ZoneCeilingC)) return (Brush)FindResource("DangerBrush");
         if (tempC >= 80) return (Brush)FindResource("DangerBrush");
 
         // No amber tier. It used to start at 60 C, and this machine idles in the 50s to 70s,
@@ -725,7 +725,7 @@ public partial class DashboardView : UserControl
             // reading 85 has run out of range and the die could be anywhere above it; a Tctl
             // reading of 85 is a measured 85. Testing the bare value would put a "+" on every
             // genuine 85C die reading and claim the sensor had failed when it had not.
-            bool ceiling = !fromDie && ThermalReader.IsAtSensorCeiling(tempC);
+            bool ceiling = !fromDie && ThermalReader.IsAtCeiling(tempC, _ctx.ZoneCeilingC);
 
             // Tctl resolves to 0.125C, so a decimal there is real information. The ACPI zone
             // moves in 4-6C steps, so a decimal on it would be precision that does not exist.

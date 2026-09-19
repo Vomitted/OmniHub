@@ -212,6 +212,16 @@ public sealed class HardwareContext : IDisposable
         if (calibration is not null)
             FanCalibrationSource = $"profile for board {Model.BaseboardProduct}";
 
+        // Where this board's thermal zone stops measuring, if anybody has measured it. Applied
+        // here rather than in ThermalReader's constructor for the same reason AttachSmu exists:
+        // SystemController is built before startup has read any per-board file, and this is a
+        // fact about the board rather than about the reader.
+        if (FanProfiles.LoadZoneCeilingC(Model) is { } ceiling)
+        {
+            System.Thermal.ZoneCeilingC = ceiling;
+            ZoneCeilingSource = $"profile for board {Model.BaseboardProduct}";
+        }
+
         // Constructed last, because it is the only thing here that needs the calibration, and the
         // calibration is the last thing startup learns. Passing it in is what replaced a static
         // that startup assigned and everything else read.
@@ -227,6 +237,19 @@ public sealed class HardwareContext : IDisposable
     /// detail to leave implicit.
     /// </summary>
     public string FanCalibrationSource { get; private set; } = "built-in default (board 8C2F)";
+
+    /// <summary>
+    /// Where the ACPI zone on this machine stops measuring, and therefore where a reading stops
+    /// being a temperature and becomes a floor.
+    ///
+    /// Exposed because three surfaces decide whether to show a number or say "at least this hot",
+    /// and all three used to ask a constant. On the machine this was measured on that constant
+    /// was right; on the next one it is a guess about somebody else's firmware.
+    /// </summary>
+    public double ZoneCeilingC => System.Thermal.ZoneCeilingC;
+
+    /// <inheritdoc cref="FanCalibrationSource"/>
+    public string ZoneCeilingSource { get; private set; } = "built-in default (measured on board 8C2F)";
 
     /// <summary>
     /// How many fans the firmware reports, or null when it would not say.

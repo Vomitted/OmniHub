@@ -108,6 +108,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   leaves the fan pinned with nothing running to change it. The next launch now finds the note and
   settles it.
 
+- **The temperature at which this application stops believing its sensor is now a fact about your
+  board.** Above the point where an ACPI thermal zone saturates, a reading is not a temperature but
+  a floor, and the only honest response to not knowing how hot a machine is is full airflow. That
+  threshold was one number measured on one chassis and applied to every laptop.
+
+  Wrong in either direction it breaks the safety net it exists to be. Set below where a machine's
+  zone really stops, every ordinary hot afternoon pins both fans at maximum with no way down --
+  the noisy twin of the stopped-fan fault this application was written to fix. Set above it, a
+  sensor that has genuinely gone blind is read as a measurement and the override never fires.
+
+  It now comes from the same per-board profile the fan band already lives in, and Diagnostics
+  shows both the figure and whether it was measured on your laptop or inherited from this one. A
+  value outside the believable range is refused rather than quietly pulled into it.
+
 - **The interface is a layout you build.** The sidebar's seven fixed tabs are a list of
   *workspaces*: a name and an ordered set of panels across twelve columns, edited through an
   explicit mode and switched with the number keys. A fresh install ships the same seven screens

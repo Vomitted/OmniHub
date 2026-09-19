@@ -284,7 +284,7 @@ public partial class OverlayWindow : Window
         // A saturated zone reading is not a temperature -- same rule as the dashboard. An
         // uninitialised ACPI zone reporting ~86 C on a cold machine is not a measurement, and
         // appending a "+" to it does not make it one.
-        bool ceiling = !fromDie && ThermalReader.IsAtSensorCeiling(tempC);
+        bool ceiling = !fromDie && ThermalReader.IsAtCeiling(tempC, _ctx.ZoneCeilingC);
 
         Show("cpu",
              ceiling ? "--" : fromDie ? $"{displayC:0.0}°" : $"{Math.Round(displayC):0}°",

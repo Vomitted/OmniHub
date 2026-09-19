@@ -125,8 +125,20 @@ public static class FanProfiles
         [JsonPropertyName("minRawLevel")] public byte? MinRawLevel { get; set; }
         [JsonPropertyName("maxRawLevelFan1")] public byte? MaxRawLevelFan1 { get; set; }
         [JsonPropertyName("maxRawLevelFan2")] public byte? MaxRawLevelFan2 { get; set; }
+        [JsonPropertyName("zoneCeilingC")] public double? ZoneCeilingC { get; set; }
         [JsonPropertyName("note")] public string? Note { get; set; }
     }
+
+    /// <summary>
+    /// The lowest zone ceiling worth believing, and the highest.
+    ///
+    /// Not a clamp -- a value outside this is rejected rather than pulled inside it, the same
+    /// rule the embedded-controller map follows. A profile claiming 20 C would mark every warm
+    /// reading blind and hold both fans at maximum forever; one claiming 200 C would switch the
+    /// override off entirely. Both are far more likely to be a typo or a wrong unit than a
+    /// measurement, and quietly correcting either would hide the mistake rather than surface it.
+    /// </summary>
+    private const double MinBelievableCeilingC = 60.0, MaxBelievableCeilingC = 120.0;
 
     /// <summary>Where this board's profile lives, whether or not it exists yet.</summary>
     public static string? PathFor(ModelInfo model, string? directory = null)
@@ -156,8 +168,14 @@ public static class FanProfiles
     /// indistinguishable from a malformed one, which Load treats as "no profile" and falls back
     /// from without saying why.
     /// </summary>
+    /// <param name="zoneCeilingC">
+    /// Where this board's ACPI thermal zone saturates, if anybody has measured it. Null leaves
+    /// the field out, which is not the same as writing the default into it: an absent field
+    /// says nobody looked, and that is worth being able to tell apart later.
+    /// </param>
     public static (bool Saved, string Detail) Save(
-        ModelInfo model, FanCalibration calibration, string? note = null, string? directory = null)
+        ModelInfo model, FanCalibration calibration, string? note = null, string? directory = null,
+        double? zoneCeilingC = null)
     {
         if (!calibration.IsUsable)
             return (false, $"A ceiling of {calibration.MaxRawLevelFan1}/{calibration.MaxRawLevelFan2} "
@@ -177,6 +195,7 @@ public static class FanProfiles
                 MinRawLevel = calibration.MinRawLevel,
                 MaxRawLevelFan1 = calibration.MaxRawLevelFan1,
                 MaxRawLevelFan2 = calibration.MaxRawLevelFan2,
+                ZoneCeilingC = zoneCeilingC,
                 Note = string.IsNullOrWhiteSpace(note)
                     ? $"Measured on this machine {DateTime.UtcNow:yyyy-MM-dd}."
                     : note.Trim(),
@@ -229,6 +248,40 @@ public static class FanProfiles
         {
             // Malformed, unreadable, or locked. A bad profile must never stop the application
             // starting, and the measured default is a safe place to land.
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Where this board's ACPI thermal zone stops measuring, or null when nobody has said.
+    ///
+    /// Read separately from <see cref="Load"/> rather than folded into
+    /// <see cref="FanCalibration"/>, for two reasons. A saturation point is a fact about a
+    /// temperature sensor and a fan band is a fact about a fan controller; they share a file
+    /// only because they share a board. And Load returns null for an unusable band, which would
+    /// throw away a perfectly good ceiling sitting in the same file -- the fan scale failing to
+    /// parse is no reason to start treating this machine's sensor as though it were this one.
+    ///
+    /// A value outside the believable range is refused rather than clamped, and refused
+    /// silently to the caller in the sense that the measured default stands: there is nothing
+    /// useful a user could do at startup with a complaint about a file they may not have
+    /// written, and the safe landing place is the behaviour every build so far has had.
+    /// </summary>
+    public static double? LoadZoneCeilingC(ModelInfo model, string? directory = null)
+    {
+        if (PathFor(model, directory) is not { } path) return null;
+
+        try
+        {
+            if (!File.Exists(path)) return null;
+
+            var parsed = JsonSerializer.Deserialize<ProfileFile>(File.ReadAllText(path));
+            if (parsed?.ZoneCeilingC is not double ceiling) return null;
+
+            return ceiling is >= MinBelievableCeilingC and <= MaxBelievableCeilingC ? ceiling : null;
+        }
+        catch
+        {
             return null;
         }
     }

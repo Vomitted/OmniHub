@@ -305,6 +305,15 @@ public partial class DiagnosticsView : UserControl
             + (band.MaxRawLevelFan2 != band.MaxRawLevelFan1 ? $" / {band.MaxRawLevelFan2} on fan 2" : "")
             + $"  ({_ctx.FanCalibrationSource})");
 
+        // Where the thermal zone stops measuring on this board.
+        //
+        // Worth a row of its own because it is the threshold above which a reading stops being a
+        // temperature and the fan loop answers with maximum airflow. Somebody wondering why their
+        // fans are at full speed on a warm afternoon is owed the number that decided it, and
+        // whether it was measured on their laptop or inherited from the one this was written on.
+        AddRow(CapabilityRows, "Thermal zone ceiling",
+            $"{_ctx.ZoneCeilingC:0.#} °C  ({_ctx.ZoneCeilingSource})");
+
         // Which fan is which.
         //
         // GetFanType has been implemented since the fan controller was written and reached only
