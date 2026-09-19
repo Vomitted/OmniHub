@@ -390,6 +390,19 @@ internal static class Program
                                          : $"  [profile for board {model.BaseboardProduct}]"),
             }}");
             Console.WriteLine($"Temperature     : {sys.GetTemperatureC()} C (via ACPI thermal zones, not hpqBIntM)");
+
+            // Where this board's zone stops measuring, and whether anybody has checked.
+            //
+            // In the report for the same reason the fan band is: above this point a reading is a
+            // floor rather than a temperature and the fan loop answers with full airflow, so two
+            // machines with identical output here would behave differently if their ceilings
+            // differed. It is also the value a stranger is being asked to measure, and a number
+            // nobody can see in their own report is one nobody will ever send back.
+            double? measuredCeiling = FanProfiles.LoadZoneCeilingC(model);
+            Console.WriteLine($"Zone ceiling    : {measuredCeiling ?? ThermalReader.DefaultZoneCeilingC:0.#} C"
+                + (measuredCeiling is null
+                    ? "  [built-in default, measured on board 8C2F -- unverified on this one]"
+                    : $"  [profile for board {model.BaseboardProduct}]"));
             Console.WriteLine($"Max fan active  : {sys.GetMaxFanActive()}");
             Console.WriteLine($"Throttling      : {sys.GetThrottling()}");
             Console.WriteLine($"GPU mode        : {gpu.GetMode()}");
