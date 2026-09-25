@@ -23,6 +23,9 @@ public sealed class FanService : IDisposable
 
     private Task? _loop;
 
+    /// <summary>Sets brief spikes aside before the curve sees the temperature. See SpikeFilter.</summary>
+    private readonly SpikeFilter _spikes = new();
+
     /// <summary>
     /// True only while the curve loop is genuinely alive.
     ///
@@ -99,7 +102,8 @@ public sealed class FanService : IDisposable
         HasCommanded,
         LastCommandedLevelPercent,
         PredictiveLeadSeconds,
-        LastError);
+        LastError,
+        LastFilteredTempC);
 
     /// <summary>
     /// Trend of the CONTROL temperature -- the hotter of CPU and GPU -- which is what the
@@ -119,9 +123,22 @@ public sealed class FanService : IDisposable
     /// </summary>
     public double PredictiveLeadSeconds { get; set; }
 
-    /// <summary>Temperature the curve was actually evaluated against last tick, in C. Equals
-    /// the measured value unless prediction raised it.</summary>
+    /// <summary>Temperature the curve was actually evaluated against last tick, in C: the
+    /// filtered value, raised further only if prediction is on.</summary>
     public double LastEffectiveTempC { get; private set; }
+
+    /// <summary>
+    /// The control temperature after brief spikes were set aside, before any predictive lead, in C.
+    /// Equal to the measured value except while a reading has not yet persisted.
+    /// </summary>
+    public double LastFilteredTempC { get; private set; }
+
+    /// <summary>
+    /// Where the spike filter stops delaying anything: the lower full-speed point of the curves in
+    /// use, so neither fan's top of curve can be held back.
+    /// </summary>
+    private double FullSpeedC() =>
+        Math.Min(_curve.FullSpeedTempC, Curve2?.FullSpeedTempC ?? double.PositiveInfinity);
 
     /// <summary>
     /// True when the last reading sat on the thermal zone's ceiling, meaning the real
@@ -172,6 +189,10 @@ public sealed class FanService : IDisposable
     {
         bool modeTaken = false;
 
+        // Fresh history for each run, and here rather than in Start: Stop does not wait for the
+        // previous loop to finish, so a reset from the caller's thread could race its last tick.
+        _spikes.Reset();
+
         while (!token.IsCancellationRequested)
         {
             try
@@ -200,17 +221,28 @@ public sealed class FanService : IDisposable
                 try { secondary = ReadSecondaryTempC?.Invoke(); } catch { }
                 if (secondary is double gpu && gpu > temp) temp = gpu;
 
-                Trend.Ingest(temp, DateTime.UtcNow);
+                // Brief spikes are set aside before the curve sees the temperature: the median of
+                // the last five readings, with anything at the curve's full-speed point passing
+                // straight through. SpikeFilter carries the measurement behind it. In short, Tctl
+                // jumps for a tick or two with every burst of boost, the curve answered each jump
+                // with up to thirty points of fan and then walked back down, and the fans breathed
+                // all day after heat they could not have reached speed in time to remove.
+                double filtered = _spikes.Next(temp, FullSpeedC());
+                LastFilteredTempC = filtered;
 
-                // Predictive lead: evaluate the curve against whichever is HIGHER, the
-                // measured temperature or the forecast. Taking the max is the whole safety
-                // argument -- the curve is monotonic, so feeding it a higher temperature can
-                // only ever command more airflow, never less. A wrong forecast therefore
-                // costs some fan noise; it can never cause the fan to back off while the
-                // machine is hot, which is the exact failure this app exists to prevent.
-                double effectiveTemp = temp;
+                // The trend follows the same temperature. A spike is not a trend, and a predictive
+                // lead extrapolating one would put the sawtooth straight back.
+                Trend.Ingest(filtered, DateTime.UtcNow);
+
+                // Predictive lead: evaluate the curve against whichever is HIGHER, the filtered
+                // temperature or the forecast. Taking the max is the whole safety argument -- the
+                // curve is monotonic, so feeding it a higher temperature can only ever command
+                // more airflow, never less. A wrong forecast therefore costs some fan noise; it
+                // can never cause the fan to back off while the machine is hot, which is the exact
+                // failure this app exists to prevent.
+                double effectiveTemp = filtered;
                 if (PredictiveLeadSeconds > 0)
-                    effectiveTemp = Math.Max(temp, Trend.ForecastC(PredictiveLeadSeconds));
+                    effectiveTemp = Math.Max(filtered, Trend.ForecastC(PredictiveLeadSeconds));
 
                 byte levelPercent = _curve.Evaluate(effectiveTemp);
 

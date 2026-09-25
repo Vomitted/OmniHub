@@ -20,13 +20,17 @@ namespace OmniHub.Core.Fan;
 /// neither on screen, turning it up or down has been an act of faith.
 /// </summary>
 /// <param name="MeasuredC">What the sensor said.</param>
-/// <param name="EffectiveC">What the curve was evaluated against. Differs only when prediction is on.</param>
+/// <param name="EffectiveC">What the curve was evaluated against: the filtered temperature, raised only by prediction.</param>
 /// <param name="Source">Which sensor answered, or null before the first tick.</param>
 /// <param name="SensorCeilingReached">The reading sat on the ACPI zone's ceiling: at least that hot, exact value unknown.</param>
 /// <param name="HasCommanded">False until a level has genuinely been computed and sent.</param>
 /// <param name="CommandedPercent">The level sent, meaningless unless <paramref name="HasCommanded"/>.</param>
 /// <param name="PredictiveLeadSeconds">How far ahead the curve was allowed to look. 0 disables prediction.</param>
 /// <param name="Error">Why the last tick failed, or null when it succeeded.</param>
+/// <param name="FilteredC">
+/// The control temperature after brief spikes were set aside, before any lead. Null from anything
+/// that predates the spike filter, which is read as equal to <paramref name="MeasuredC"/>.
+/// </param>
 public sealed record FanTick(
     double MeasuredC,
     double EffectiveC,
@@ -35,17 +39,20 @@ public sealed record FanTick(
     bool HasCommanded,
     byte CommandedPercent,
     double PredictiveLeadSeconds,
-    string? Error)
+    string? Error,
+    double? FilteredC = null)
 {
     /// <summary>
-    /// How much hotter the curve treated the machine as being than it measured.
+    /// How much hotter the curve treated the machine as being than the filtered temperature.
     ///
-    /// This is the predictive lead's whole output. Positive means the forecast pushed the fan
-    /// harder than the present temperature warranted; zero means prediction is off, or the die
-    /// is steady and the forecast agrees with the measurement -- which is itself worth seeing,
-    /// because it says the lead is costing nothing right now.
+    /// This is the predictive lead's whole output, and only its output: the spike filter's effect
+    /// is the difference between measured and filtered, and it is described separately rather than
+    /// being credited to a setting the user may have switched off. Positive means the forecast
+    /// pushed the fan harder than the present temperature warranted; zero means prediction is off,
+    /// or the die is steady and the forecast agrees -- which is itself worth seeing, because it
+    /// says the lead is costing nothing right now.
     /// </summary>
-    public double LeadC => EffectiveC - MeasuredC;
+    public double LeadC => EffectiveC - (FilteredC ?? MeasuredC);
 
     /// <summary>
     /// The tick in a sentence.
@@ -75,6 +82,15 @@ public sealed record FanTick(
         if (SensorCeilingReached)
             text += ", which is sitting on its ceiling -- the die is at least that hot and the "
                   + "exact value is unknown, so the fan has been forced to maximum";
+
+        // Only when the filter actually moved the number, in whichever direction it moved it: a
+        // reading that had not persisted was not acted on, or a fall that had not persisted yet
+        // kept the fan where it was. Either way the screen says so, instead of showing a
+        // temperature and a level that the curve, read by hand, would not connect.
+        if (FilteredC is { } filtered && Math.Abs(filtered - MeasuredC) >= 0.05)
+            text += filtered < MeasuredC
+                ? $". That reading had not persisted, so the curve acted on {filtered:0.#} C, the median of the last five"
+                : $". The fall had not persisted yet, so the curve still acted on {filtered:0.#} C, the median of the last five";
 
         // Only mentioned when prediction actually moved the number. Saying "lead 0.0 C" every
         // tick on a machine with prediction switched off would be noise dressed as information.

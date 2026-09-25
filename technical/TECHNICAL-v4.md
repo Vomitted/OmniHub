@@ -122,6 +122,19 @@ W6–W7 next, measured; W8 last, because it is the change most likely to need a 
   page bodies) was not done.
 - Found on the way: ten decoratively coloured labels, now held neutral by
   `NoLabelOrHeadingIsColoured`; the interface switch leaked its chrome band's subscription.
+- **W9, found in the History chart the renderer made visible:** the fan command reversed by ten
+  points or more 44 times an hour. Tctl spikes for a tick or two with each boost burst; the curve
+  rises instantly and falls once the temperature is 4 °C below the reading that raised it, so a
+  one-tick spike both raised the level and set a reference the next ordinary reading was already
+  under. `SpikeFilter` puts the median of the last five readings in front of the curve, passing
+  anything at the curve's full-speed point straight through. Chosen by replaying 98 hours of the
+  thermal log through the real `FanCurve`: median-of-3 cut reversals to 25/h, median-of-5 to 15/h
+  (fan movement −57%, mean level unchanged, sustained heat at most two ticks later), and an
+  exponential average to 10/h while failing, in places, to reach the level real heat asked for at
+  all. `FanTick` gained the filtered temperature so the Fans page can say when a reading was set
+  aside, and the predictive lead is measured from it rather than being credited with the filter's
+  work. `SpikeFilterTests` drives the real loop; with the filter bypassed it fails on
+  `40, 40, 40, 40, 40, 40, 83, 73, 63, 53, 43`.
 
 ## 4. Open: whole-machine stalls, not yet attributed
 

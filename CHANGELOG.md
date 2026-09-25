@@ -320,6 +320,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   running. Each now runs only while it is on screen.
 - **Switching interfaces left the previous one's live band subscribed**, updating a control no
   longer on screen, once per switch.
+- **The fans chased heat that had already gone.** Ryzen's Tctl jumps several degrees for a second
+  or two with every burst of boost. The curve raised the fan at once, as it should, and one such
+  reading also moved the reference it cools down from, so the next ordinary reading let the fan
+  straight back down: 40% to 83% and back to 43% in five ticks, over and over. The log showed the
+  command reversing by ten points or more 44 times an hour — heat the fans, which take about six
+  seconds to spin up, could never have reached in time. The curve now acts on the median of the
+  last five readings. Replayed through the real curve over 98 hours of this machine's log:
+  reversals fell to 15 an hour and total fan movement by 57%, the mean fan level did not change
+  (33.5% against 33.0%), and in sustained heat the fan arrived at most four seconds later. Anything
+  at the curve's full-speed point still goes straight through. An exponential average was tried
+  and rejected because in real heat it sometimes never arrived at all.
 
 ---
 

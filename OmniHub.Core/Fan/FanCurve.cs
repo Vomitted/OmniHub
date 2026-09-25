@@ -73,6 +73,21 @@ public sealed class FanCurve
 
     public IReadOnlyList<CurvePoint> Points => _points;
 
+    /// <summary>
+    /// The lowest temperature at which this curve asks for full speed, or infinity if it never does.
+    /// The spike filter passes readings at or above it straight through, so the top of the curve is
+    /// never delayed by it.
+    /// </summary>
+    public double FullSpeedTempC
+    {
+        get
+        {
+            foreach (var p in _points)
+                if (p.LevelPercent >= 100) return p.TempC;
+            return double.PositiveInfinity;
+        }
+    }
+
     /// <summary>Replaces the lookup table wholesale (e.g. after the user edits it in the Fans tab).</summary>
     public void SetPoints(IEnumerable<CurvePoint> points)
     {

@@ -578,7 +578,7 @@ dotnet build OmniHub.slnx -c Release</pre>
 
   <h3>Not in this download</h3>
   <p>
-    <strong><span id="ahead">152</span> commits</strong> have landed on
+    <strong><span id="ahead">157</span> commits</strong> have landed on
     <span class="m">main</span> since 1.3.3 was published on 10 September, and no release has
     been cut from them. The button at the top of this page does not have any of it. It is listed
     here so the download is not credited with work it does not contain.
@@ -643,6 +643,12 @@ dotnet build OmniHub.slnx -c Release</pre>
       no test had: paragraphs drawn centred, eleven labels in black on a black card, a fan curve
       with its temperature axis cut off, stock white inputs, and a smudge across each card. All
       fixed, and each rule now held by a test.</li>
+    <li><strong>The fans no longer chase a spike.</strong> Ryzen's Tctl jumps for a second or two
+      with every burst of boost, and the curve answered each jump &mdash; 40% to 83% and back in
+      five ticks, 44 reversals an hour in this machine's log. It now acts on the median of the last
+      five readings. Replayed over 98 hours of that log: 15 reversals an hour, 57% less fan
+      movement, the same average fan level, and at most four seconds later in sustained heat. The
+      top of the curve is never delayed.</li>
     <li><strong>Nothing animates while the window is hidden.</strong> Four endless animations ran
       for the whole session in the tray, and one leaked two more each time the Fans page was
       opened. They now run only while they can be seen.</li>
