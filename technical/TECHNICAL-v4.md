@@ -107,7 +107,38 @@ W6–W7 next, measured; W8 last, because it is the change most likely to need a 
 
 ---
 
-## 4. Verification
+### 3.1 What W6–W8 became
+
+- **W6** found more than two timers. Four `RepeatBehavior.Forever` animations ran from launch
+  whether or not the window was shown — the activity ribbon, the Dashboard's LIVE dot, the sidebar's
+  selected rail, and the fan chart's live-point halo, which also leaked: every redraw started a new
+  pair of clocks on a new transform. Each now starts on `IsVisibleChanged(true)` and stops on
+  `false`; `AmbientMotionTests` holds the rule for markup and code and fails naming all four
+  against the previous commit. The chart's redraw timer moved from `Loaded` to visibility.
+- **W8/U3** is `InstrumentBar`: six readings above every workspace page, each with its trace. Drawn,
+  it exposed that every trace in the application scaled to its own window, so 1.5 °C of sensor
+  noise filled the box. `Sparkline` gained a minimum span and `Metrics.TraceSpan` sets it per unit.
+- **W8/U5** is the power table; **U6** reordered the Dashboard around the chart. **U4** (two-column
+  page bodies) was not done.
+- Found on the way: ten decoratively coloured labels, now held neutral by
+  `NoLabelOrHeadingIsColoured`; the interface switch leaked its chrome band's subscription.
+
+## 4. Open: whole-machine stalls, not yet attributed
+
+Measured with a user-mode probe — two threads pinned to cores 2 and 7, spinning on the performance
+counter, recording every gap over 50 µs, and counting a gap as whole-machine only when both cores
+lose the same interval. Over 60 s with OmniHub running: 1,763 simultaneous stalls, 49 over 500 µs,
+13 over 1 ms, largest 2.4 ms, arriving in bursts — the largest 50 stalls in 162 ms, 25.7 ms frozen.
+At 144 Hz a frame is 6.9 ms, so a burst touches most frames it overlaps.
+
+This is the shape System Management Mode produces, and HP's BIOS interface enters it. It is **not
+attributed to OmniHub**: the bursts are irregular rather than on the fan readback's ~10.4 s period,
+they clustered after a build, and the machine was charging — the EC's charger traffic, GPU power
+transitions and the hypervisor are all candidates. Settling it needs an A/B inside the application:
+pause its own BIOS polling for twenty seconds and compare against the twenty before. Nothing is
+changed on the strength of this until that has been run.
+
+## 5. Verification
 
 - `dotnet build -c Release` clean; `dotnet test` green (866 before this change, only grows).
 - Every page, every interface, re-rendered after W1–W5 and compared with the images in §2.1.
