@@ -188,7 +188,7 @@ public partial class OverlayWindow : Window
             grid.Children.Add(value);
 
             _valueCells[key] = value;
-            _history.TryAdd(key, new Sparkline());
+            _history.TryAdd(key, new Sparkline(minSpan: Metrics.Find(key) is { } definition ? Metrics.TraceSpan(definition) : 0));
 
             if (_settings.OverlaySparklines)
             {

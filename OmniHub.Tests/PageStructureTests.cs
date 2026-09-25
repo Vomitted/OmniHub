@@ -195,8 +195,13 @@ public class PageStructureTests
         foreach (var file in Directory.EnumerateFiles(WpfTestHost.WpfDir, "*.cs", SearchOption.AllDirectories))
         {
             string code = File.ReadAllText(file);
-            foreach (Match m in Regex.Matches(code, @"(?<target>[\w.]+\.)?MaxWidth\s*=\s*\d"))
+            // Any value, not only a literal: a cap written as a named constant centres just the same.
+            foreach (Match m in Regex.Matches(code, @"(?<target>[\w.]+\.)?MaxWidth\s*=\s*[\w.]"))
             {
+                // A grid column or row has no alignment of its own; capping one is the fix, not the fault.
+                if (!m.Groups["target"].Success && Regex.IsMatch(code[..m.Index], @"new\s+(Column|Row)Definition\s*\{[^{}]*$"))
+                    continue;
+
                 caps++;
                 string scope = m.Groups["target"].Success
                     ? code

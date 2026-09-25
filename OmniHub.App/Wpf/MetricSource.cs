@@ -75,7 +75,7 @@ public sealed class MetricSource : IDisposable
         _ctx = ctx;
         _dispatcher = Dispatcher.CurrentDispatcher;
 
-        foreach (var metric in Metrics.All) _history[metric.Key] = new Sparkline();
+        foreach (var metric in Metrics.All) _history[metric.Key] = new Sparkline(minSpan: Metrics.TraceSpan(metric));
 
         if (ctx.Smu is { } smu)
         {

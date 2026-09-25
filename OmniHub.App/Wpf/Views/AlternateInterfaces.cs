@@ -525,6 +525,193 @@ public sealed class CockpitBand : AlternateInterface
 }
 
 // =====================================================================================
+//  INSTRUMENT BAR -- above every workspace
+// =====================================================================================
+
+/// <summary>
+/// The machine's state, pinned above every page of the sidebar interface.
+///
+/// The sidebar interface is the one used every day, and it was the only one in which the
+/// machine's condition disappeared the moment you navigated: the live readings lived on the
+/// Dashboard, so opening Fans to change the curve -- usually because of something a temperature
+/// would have explained -- meant looking away from the temperature. This puts it on every page.
+///
+/// Every figure carries its recent history beside it, because a number alone cannot say whether
+/// it is climbing. The trace is scaled to its own window (see Sparkline), so it shows movement and
+/// the figure carries the level. Six readings rather than every one: the window opens at 1100px
+/// with a 212px sidebar, and a bar that only fits on a wide monitor is not on every page.
+/// </summary>
+public sealed class InstrumentBar : AlternateInterface
+{
+    // In the order a person reads the machine: what the fans respond to, what they are doing,
+    // then what is being drawn.
+    private static readonly string[] Keys = { "cpu", "gpu", "fan", "pkg", "gpuw", "cpuload" };
+
+    private const double TraceWidth = 56, TraceHeight = 16, TraceMinWidth = 24;
+
+    private readonly List<(MetricDefinition Metric, TextBlock Value, Border TraceHost, Path Trace)> _cells = new();
+    private readonly TextBlock _limit = new();
+
+    public InstrumentBar(HardwareContext ctx, MetricSource metrics) : base(ctx, metrics, null) => Start();
+
+    protected override UIElement Build()
+    {
+        var row = new Grid();
+
+        foreach (string key in Keys)
+        {
+            if (Metric(key) is not { } m) continue;
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var cell = Cell(m);
+            Grid.SetColumn(cell, row.ColumnDefinitions.Count - 1);
+            row.Children.Add(cell);
+        }
+
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var limit = LimitCell();
+        Grid.SetColumn(limit, row.ColumnDefinitions.Count - 1);
+        row.Children.Add(limit);
+
+        return row;
+    }
+
+    private TextBlock Caption(string text) => new()
+    {
+        Text = text,
+        FontFamily = Font("MonoFont"),
+        FontSize = 9.5,
+        FontWeight = FontWeights.Bold,
+        Foreground = Brush("TextFaintBrush"),
+        Margin = new Thickness(0, 0, 0, 3),
+    };
+
+    private UIElement Cell(MetricDefinition m)
+    {
+        var cell = new Grid { Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
+        cell.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                       // figure
+        cell.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });                       // unit
+        // Capped on the column, not on the trace: a trace that took its width from its own content
+        // had none to take, and a capped Stretch element would be centred in a wide cell.
+        cell.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = TraceWidth });
+        cell.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        cell.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var caption = Caption(m.Compact);
+        Grid.SetColumnSpan(caption, 3);
+        cell.Children.Add(caption);
+
+        var value = new TextBlock
+        {
+            FontFamily = Font("MonoFont"),
+            FontSize = 16,
+            FontWeight = FontWeights.SemiBold,
+            VerticalAlignment = VerticalAlignment.Bottom,
+        };
+        Grid.SetRow(value, 1);
+        cell.Children.Add(value);
+
+        var unit = new TextBlock
+        {
+            Text = m.Unit.Trim(),
+            FontFamily = Font("MonoFont"),
+            FontSize = 10,
+            Foreground = Brush("TextMutedBrush"),
+            Margin = new Thickness(2, 0, 8, 2),
+            VerticalAlignment = VerticalAlignment.Bottom,
+        };
+        Grid.SetRow(unit, 1);
+        Grid.SetColumn(unit, 1);
+        cell.Children.Add(unit);
+
+        var trace = new Path
+        {
+            Stroke = Brush("AccentBrush"),
+            StrokeThickness = 1.25,
+            StrokeLineJoin = PenLineJoin.Round,
+            Height = TraceHeight,
+        };
+        var host = new Border
+        {
+            VerticalAlignment = VerticalAlignment.Center,
+            ClipToBounds = true,
+            Child = trace,
+        };
+        host.SizeChanged += (_, _) => DrawTrace(m, host, trace);
+        Grid.SetRow(host, 1);
+        Grid.SetColumn(host, 2);
+        cell.Children.Add(host);
+
+        _cells.Add((m, value, host, trace));
+        return cell;
+    }
+
+    private UIElement LimitCell()
+    {
+        var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center, MinWidth = 120 };
+        stack.Children.Add(Caption("LIMITED BY"));
+
+        _limit.FontFamily = Font("UiFont");
+        _limit.FontSize = 12.5;
+        _limit.Foreground = Brush("TextPrimaryBrush");
+        _limit.TextTrimming = TextTrimming.CharacterEllipsis;
+        _limit.MaxWidth = 190;
+        _limit.HorizontalAlignment = HorizontalAlignment.Left;
+        stack.Children.Add(_limit);
+
+        return stack;
+    }
+
+    /// <summary>
+    /// The trace at whatever width the cell can spare, down to nothing.
+    ///
+    /// Drawn at the host's real width rather than at a fixed width and clipped: clipping would cut
+    /// off the newest samples, which are the ones that matter. Below a legible width the trace is
+    /// left out and the figure stands alone.
+    /// </summary>
+    private void DrawTrace(MetricDefinition m, Border host, Path trace)
+    {
+        double width = Math.Min(TraceWidth, host.ActualWidth);
+        if (width < TraceMinWidth)
+        {
+            trace.Data = Geometry.Empty;
+            return;
+        }
+
+        var geometry = new StreamGeometry();
+        using (var g = geometry.Open())
+        {
+            foreach (var segment in Metrics.History(m.Key).Segments(width, TraceHeight))
+            {
+                g.BeginFigure(new Point(segment[0].X, segment[0].Y), false, false);
+                g.PolyLineTo(segment.Skip(1).Select(p => new Point(p.X, p.Y)).ToList(), true, true);
+            }
+        }
+        geometry.Freeze();
+
+        trace.Width = width;
+        trace.Data = geometry;
+    }
+
+    protected override void Tick()
+    {
+        foreach (var (m, value, host, trace) in _cells)
+        {
+            value.Text = Shown(m) ?? OmniHub.Core.Telemetry.Metrics.Unavailable;
+            value.Foreground = FigureBrush(m);
+            DrawTrace(m, host, trace);
+        }
+
+        // Null means the SMU did not answer, which is not the same as nothing limiting, so it is
+        // shown as unavailable rather than as reassurance.
+        string? name = Metrics.BindingLimitName;
+        double? share = Metrics.Value("limit");
+        _limit.Text = name is null
+            ? OmniHub.Core.Telemetry.Metrics.Unavailable
+            : share is { } s ? $"{name} {s.ToString("0", CultureInfo.InvariantCulture)}%" : name;
+    }
+}
+
+// =====================================================================================
 //  EDITORIAL
 // =====================================================================================
 

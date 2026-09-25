@@ -25,13 +25,30 @@ public sealed class Sparkline
     private int _next;
     private int _count;
 
-    public Sparkline(int capacity = DefaultCapacity)
+    /// <param name="capacity">How many samples the window holds.</param>
+    /// <param name="minSpan">
+    /// The smallest range the box represents, in the reading's own unit. See <see cref="MinSpan"/>.
+    /// </param>
+    public Sparkline(int capacity = DefaultCapacity, double minSpan = 0)
     {
         if (capacity < 2) throw new ArgumentOutOfRangeException(nameof(capacity), "A sparkline needs room for at least two samples.");
+        if (minSpan < 0 || double.IsNaN(minSpan)) throw new ArgumentOutOfRangeException(nameof(minSpan), "A span cannot be negative.");
         _ring = new double?[capacity];
+        MinSpan = minSpan;
     }
 
     public int Capacity => _ring.Length;
+
+    /// <summary>
+    /// The smallest range the box stands for, so that noise stays small.
+    ///
+    /// Scaling to the window's own minimum and maximum is right for showing movement, and wrong
+    /// when there is none: a die temperature wandering between 67.1 and 68.6 C, which is sensor
+    /// noise, was stretched to the full height of the box and drawn as a jagged series of spikes
+    /// beside a figure that had not really moved. A window narrower than this is centred in a band
+    /// this wide instead, so a ripple reads as a ripple and a genuine swing still fills the box.
+    /// </summary>
+    public double MinSpan { get; }
 
     /// <summary>
     /// Records one sample. Null is an ordinary value here: it means the reading was unavailable at
@@ -84,6 +101,12 @@ public sealed class Sparkline
         // A window that never moved is a real answer -- an idle machine holding one temperature --
         // so it draws down the middle rather than dividing by a zero range or pinning to an edge.
         double span = max - min;
+        if (span < MinSpan)
+        {
+            min = (min + max - MinSpan) / 2;
+            span = MinSpan;
+        }
+
         double Y(double v) => span > 0 ? height - (v - min) / span * height : height / 2;
 
         // Spaced over the capacity, not over the samples taken so far, so a window that is still

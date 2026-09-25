@@ -107,4 +107,50 @@ public class SparklineTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new Sparkline(1));
     }
+
+    private static IReadOnlyList<double> Heights(Sparkline line, params double?[] values)
+    {
+        foreach (var v in values) line.Push(v);
+        return Assert.Single(line.Segments(90, 20)).Select(p => p.Y).ToList();
+    }
+
+    /// <summary>
+    /// Sensor noise stays a ripple.
+    ///
+    /// The instrument bar drew an idle die wandering between 67.1 and 68.6 C as a jagged run of
+    /// full-height spikes, because the box stood for whatever range the window happened to hold.
+    /// With a ten-degree floor, one and a half degrees uses about fifteen per cent of the height.
+    /// </summary>
+    [Fact]
+    public void NoiseSmallerThanTheFloorStaysARipple()
+    {
+        var ys = Heights(new Sparkline(capacity: 4, minSpan: 10), 67.1, 68.6, 67.1, 68.6);
+
+        Assert.True(ys.Max() - ys.Min() <= 20 * 0.16,
+                    $"1.5 of a 10-wide band should use about 15% of a 20px box; it used {ys.Max() - ys.Min():0.0}px");
+    }
+
+    [Fact]
+    public void ASwingLargerThanTheFloorStillFillsTheBox()
+    {
+        // The floor only ever widens the band. A real thirty-degree climb is exactly what the trace
+        // is for, and it keeps the whole height.
+        var ys = Heights(new Sparkline(capacity: 3, minSpan: 10), 50, 65, 80);
+
+        Assert.Equal(20.0, ys.Max(), 6);
+        Assert.Equal(0.0, ys.Min(), 6);
+    }
+
+    [Fact]
+    public void AFlatWindowStillDrawsDownTheMiddleWithAFloor()
+    {
+        var ys = Heights(new Sparkline(capacity: 3, minSpan: 10), 60, 60, 60);
+        Assert.All(ys, y => Assert.Equal(10.0, y, 6));
+    }
+
+    [Fact]
+    public void ANegativeFloorIsRefused()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Sparkline(minSpan: -1));
+    }
 }

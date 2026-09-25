@@ -210,4 +210,26 @@ public static class Metrics
         // honestly.
         return null;
     }
+
+    /// <summary>
+    /// The smallest movement a trend line for this reading should draw at full height.
+    ///
+    /// A trace scaled only to its own window turns noise into drama: 1.5 C of sensor wander on an
+    /// idle die filled the whole box. These are the sizes of change worth a glance in each unit --
+    /// ten degrees, five watts, a thousand RPM -- so anything smaller stays a ripple, and anything
+    /// larger still uses the full height. Keyed on the unit rather than listed per reading, so a
+    /// reading added later in a known unit cannot arrive without one.
+    /// </summary>
+    public static double TraceSpan(MetricDefinition metric) => metric.Unit.Trim() switch
+    {
+        "°" => 10,
+        "RPM" => 1000,
+        "W" => 5,
+        "%" => 20,
+        "GHz" => 1,
+        "MHz" => 500,
+        "GB" => 2,
+        "MB" => 50,
+        _ => 0,
+    };
 }

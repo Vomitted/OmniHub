@@ -219,4 +219,14 @@ public class MetricsTests
         Assert.Null(Metrics.FullScale(fan, fanTopRpm: null));
         Assert.Null(Metrics.FullScale(fan, fanTopRpm: 0));
     }
+
+    [Fact]
+    public void EveryReadingHasANoiseFloorForItsTrace()
+    {
+        // A reading in a unit the table does not know gets a floor of zero, and its trend line goes
+        // back to stretching noise across the whole box -- the thing the floor exists to stop.
+        foreach (var metric in Metrics.All)
+            Assert.True(Metrics.TraceSpan(metric) > 0,
+                        $"{metric.Key} ({metric.Unit.Trim()}) has no noise floor for its trace");
+    }
 }

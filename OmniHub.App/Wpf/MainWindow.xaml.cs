@@ -353,8 +353,14 @@ public partial class MainWindow : Window
         SidebarColumn.Width = new GridLength(rail ? 212 : 0);
 
         _topNav.Clear();
-        TopChrome.Content = rail ? null : BuildTopChrome();
-        TopChrome.Visibility = rail ? Visibility.Collapsed : Visibility.Visible;
+
+        // The previous interface's live band stops listening before its replacement starts. Left
+        // subscribed, it went on updating a detached control for every interface switched away from.
+        _chromeBand?.Dispose();
+        _chromeBand = null;
+
+        TopChrome.Content = rail ? WorkspacesChrome() : BuildTopChrome();
+        TopChrome.Visibility = TopChrome.Content is null ? Visibility.Collapsed : Visibility.Visible;
 
         // The same workspace, the same panels, the same views, in every variation. That is the
         // whole point of these: they are interfaces for the ENTIRE application rather than four
@@ -446,6 +452,21 @@ public partial class MainWindow : Window
         return b;
     }
 
+    /// <summary>The live band in the current chrome, disposed when the interface changes.</summary>
+    private Views.AlternateInterface? _chromeBand;
+
+    /// <summary>
+    /// Workspaces: the instrument bar above every page and nothing else, since the sidebar is the
+    /// navigation. See InstrumentBar for why the machine's state belongs on every page.
+    /// </summary>
+    private UIElement? WorkspacesChrome()
+    {
+        if (_metrics is not { } metrics) return null;
+        var bar = new Views.InstrumentBar(_ctx, metrics);
+        _chromeBand = bar;
+        return ChromeShell(bar, new Thickness(24, 12, 20, 11));
+    }
+
     private Border ChromeShell(UIElement content, Thickness padding) => new()
     {
         Background = (Brush)FindResource("CardGradientBrush"),
@@ -464,7 +485,7 @@ public partial class MainWindow : Window
         var stack = new StackPanel();
 
         if (_metrics is { } metrics)
-            stack.Children.Add(new Views.CockpitBand(_ctx, metrics));
+            stack.Children.Add(_chromeBand = new Views.CockpitBand(_ctx, metrics));
 
         var row = new Grid { Margin = new Thickness(0, 12, 0, 0) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
