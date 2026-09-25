@@ -29,6 +29,7 @@ public partial class FanCurveChart : UserControl
     public FanCurveChart()
     {
         InitializeComponent();
+        IsVisibleChanged += (_, e) => Breathe((bool)e.NewValue);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e) => Redraw(animateEntrance: true);
@@ -178,24 +179,43 @@ public partial class FanCurveChart : UserControl
         Root.Children.Add(_liveHalo);
         Root.Children.Add(_liveDot);
 
-        // Slow breathing halo. Without it the live point is just a fourth dot of a different
-        // colour among the curve's own handles; the motion is what identifies it as "now"
-        // rather than another editable point.
-        if (SystemParameters.ClientAreaAnimation)
+        // One shared transform, breathing only while the chart can be seen -- see Breathe.
+        _liveHalo.RenderTransform = _haloScale;
+
+        UpdateLiveMarker(animate: false);
+    }
+
+    /// <summary>
+    /// The halo's slow breathing, which is what marks the live point as "now" rather than as one
+    /// more editable handle.
+    ///
+    /// It used to start a new pair of Forever animations on a new transform on every redraw, and
+    /// a redraw happens on every load, every resize and every curve edit. The old pair never
+    /// stopped: a Forever clock keeps ticking after its element leaves the tree, so each visit to
+    /// the Fans page added two clocks the UI thread serviced sixty times a second for the rest of
+    /// the session, window visible or not. Now there is one transform, and it moves only while
+    /// the chart is on screen.
+    /// </summary>
+    private readonly ScaleTransform _haloScale = new(1, 1);
+
+    private void Breathe(bool on)
+    {
+        if (on && SystemParameters.ClientAreaAnimation)
         {
-            var scale = new ScaleTransform(1, 1);
-            _liveHalo.RenderTransform = scale;
             var breathe = new DoubleAnimation(1.0, 1.35, TimeSpan.FromMilliseconds(1600))
             {
                 AutoReverse = true,
                 RepeatBehavior = RepeatBehavior.Forever,
                 EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
             };
-            scale.BeginAnimation(ScaleTransform.ScaleXProperty, breathe);
-            scale.BeginAnimation(ScaleTransform.ScaleYProperty, breathe);
+            _haloScale.BeginAnimation(ScaleTransform.ScaleXProperty, breathe);
+            _haloScale.BeginAnimation(ScaleTransform.ScaleYProperty, breathe);
         }
-
-        UpdateLiveMarker(animate: false);
+        else
+        {
+            _haloScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            _haloScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        }
     }
 
     private void UpdateLiveMarker(bool animate)

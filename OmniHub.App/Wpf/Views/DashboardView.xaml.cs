@@ -122,12 +122,12 @@ public partial class DashboardView : UserControl
         };
         Unloaded += (_, _) => ctx.OnReading -= OnReading;
 
-        var pulse = new DoubleAnimation(1.0, 0.35, TimeSpan.FromMilliseconds(900))
-        {
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-        };
-        LiveDot.BeginAnimation(OpacityProperty, pulse);
+        // Pulses only while it can be seen. A Forever animation keeps WPF's clock ticking sixty
+        // times a second whether or not anything is on screen, and this one started with the
+        // dashboard -- at launch, straight into the tray -- and ran for the whole session.
+        LiveDot.IsVisibleChanged += (_, e) => LiveDot.BeginAnimation(OpacityProperty, (bool)e.NewValue
+            ? new DoubleAnimation(1.0, 0.35, TimeSpan.FromMilliseconds(900)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever }
+            : null);
     }
 
     // Thresholds follow the fan curve's own shape (see FanCurve.CreateDefault): the ramp

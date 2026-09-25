@@ -290,11 +290,15 @@ public partial class MainWindow : Window
         // Translating in relative units against a SpreadMethod="Repeat" brush: sliding by
         // exactly one tile width and repeating forever gives a seamless loop with no jump at
         // the wrap point. 9s is slow enough to read as ambient rather than as a progress bar.
-        var slide = new DoubleAnimation(0, 0.32, TimeSpan.FromSeconds(9))
-        {
-            RepeatBehavior = RepeatBehavior.Forever,
-        };
-        RibbonSlide.BeginAnimation(TranslateTransform.XProperty, slide);
+        //
+        // Only while the ribbon is on screen. This started at launch and never stopped, and a
+        // Forever clock is serviced sixty times a second whether or not anything is drawn -- so
+        // an application that spends its life hidden in the tray kept its UI thread waking for
+        // a ribbon nobody could see.
+        // ponytail: a minimised window still counts as visible to WPF, so motion continues
+        // there; gate on WindowState as well if minimising to the taskbar becomes the norm.
+        ActivityRibbon.IsVisibleChanged += (_, e) => RibbonSlide.BeginAnimation(TranslateTransform.XProperty,
+            (bool)e.NewValue ? new DoubleAnimation(0, 0.32, TimeSpan.FromSeconds(9)) { RepeatBehavior = RepeatBehavior.Forever } : null);
     }
 
     /// <summary>
@@ -303,7 +307,9 @@ public partial class MainWindow : Window
     /// </summary>
     private void PulseActivity()
     {
-        if (!SystemParameters.ClientAreaAnimation) return;
+        // Every reading asks for a pulse, so unguarded this kept an animation clock alive more
+        // than half the time with the window hidden.
+        if (!SystemParameters.ClientAreaAnimation || !ActivityRibbon.IsVisible) return;
 
         // Rate-limited: the poll loop fires every 2s and actions can land in bursts, and a
         // ribbon that is permanently mid-pulse conveys nothing.
@@ -1671,7 +1677,7 @@ public partial class MainWindow : Window
     /// startup, silently reverted by firmware, and never re-asserted. Applying it once is not
     /// enough on this platform for anything the EC also has an opinion about.
     ///
-    /// Reads before writing, so the steady state costs one BIOS read per 30s rather than a
+    /// Reads before writing, so the steady state costs one BIOS read every five seconds rather than a
     /// write -- and the read is what tells us it drifted at all.
     /// </summary>
     private int _gpuCheckInFlight;
@@ -1714,14 +1720,14 @@ public partial class MainWindow : Window
     {
         if (!_settings.GpuMaxPower) return;
 
-        // The rail is checked every tick, not every thirty seconds, because a charger moving is
+        // The rail is checked every tick, not on the five-second BIOS check, because a charger moving is
         // the event this cares about most and a cheap P/Invoke is not worth rate-limiting.
         //
         // The TGP unlock is a mains feature, and holding it on battery is actively harmful. The
         // loop exists because the firmware reclaims the unlock after about ninety seconds, so
         // applying it once is not enough -- but unplugged, that reclaim is the firmware doing the
         // right thing and letting the discrete GPU go. Putting the unlock straight back every
-        // thirty seconds overrode that on the one rail where it must not be overridden.
+        // few seconds overrode that on the one rail where it must not be overridden.
         //
         // Measured here: nvidia-smi reported P4 at 0% utilisation while unplugged -- awake and
         // idling rather than in D3cold -- against a 43 W discharge rate. A discrete GPU that
@@ -1744,7 +1750,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Plugging back in re-asserts at once instead of up to thirty seconds later, so the
+        // Plugging back in re-asserts at once instead of up to five seconds later, so the
         // ceiling is there by the time anything is asked of the card.
         if (railChanged) _nextGpuCheckUtc = DateTime.MinValue;
 

@@ -108,8 +108,17 @@ public partial class TimeSeriesChart : UserControl, IDisposable
         _crosshair.SetResourceReference(Shape.StrokeProperty, "BorderStrongBrush");
 
         SizeChanged += (_, _) => Invalidate();
-        Loaded += (_, _) => { _redraw.Start(); Invalidate(); };
-        Unloaded += (_, _) => _redraw.Stop();
+
+        // Runs while the chart is on screen, not while it is merely loaded. Hiding a window does
+        // not unload it, and start-minimised hides the window after Loaded has fired, so the
+        // dashboard's chart ticked ten times a second -- and re-rendered on every reading -- for
+        // sessions spent entirely in the tray. IsVisible is false both once the chart leaves the
+        // tree and while its window is hidden, so it covers what Unloaded did and what it missed.
+        IsVisibleChanged += (_, e) =>
+        {
+            if ((bool)e.NewValue) { _redraw.Start(); Invalidate(); }
+            else _redraw.Stop();
+        };
 
         _redraw.Tick += (_, _) =>
         {

@@ -312,7 +312,17 @@
                             <Setter Property="FontWeight" Value="SemiBold"/>
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentSoftBrush}"/>
                             <Setter TargetName="Rail" Property="Opacity" Value="1"/>
-                            <Trigger.EnterActions>
+                        </Trigger>
+                        <!-- The drift runs while the item is selected AND on screen. Selected alone
+                             kept it going for the life of the process, including every hour the
+                             window spent hidden in the tray, where a Forever clock still wakes the
+                             UI thread sixty times a second. -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="True"/>
+                                <Condition Property="IsVisible" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
                                 <BeginStoryboard x:Name="RailSweep">
                                     <Storyboard>
                                         <!-- Y travels exactly one tile (EndPoint 0,0.5), so the
@@ -327,14 +337,14 @@
                                             RepeatBehavior="Forever"/>
                                     </Storyboard>
                                 </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <!-- Stopped explicitly on deselect. A Forever storyboard left
-                                     running on every tab visited would accumulate one animation
-                                     clock per item for the life of the process. -->
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <!-- Stopped explicitly. A Forever storyboard left running on every
+                                     tab visited would accumulate one clock per item for the life of
+                                     the process. -->
                                 <StopStoryboard BeginStoryboardName="RailSweep"/>
-                            </Trigger.ExitActions>
-                        </Trigger>
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                         </Trigger>
