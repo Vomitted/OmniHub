@@ -219,6 +219,37 @@ public class PageStructureTests
             + string.Join(Environment.NewLine, offenders));
     }
 
+    /// <summary>
+    /// Labels and headings are not coloured.
+    ///
+    /// The owner's standing rule, stated twice after two separate complaints: colour belongs in
+    /// marks, bars, gauges and chart lines, and on a figure crossing a threshold -- never on the
+    /// words. Ten tile labels broke it: CHARGE green, HEALTH orange, CYCLE COUNT yellow, and HEALTH,
+    /// FAN LEVEL and POWER STATE all in the processor's series colour, meaning nothing at all. A
+    /// label that is permanently coloured is decoration pretending to be a signal. These styles
+    /// may carry the three text colours and nothing else.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Views))]
+    public void NoLabelOrHeadingIsColoured(string file)
+    {
+        string[] labelStyles = { "TileLabel", "DataLabelText", "CardTagText", "SubHeadingText", "SectionHeadingText",
+                                 "SectionTitle", "PageTitle", "MetricTitle", "SubLabel" };
+        string[] textColours = { "TextPrimaryBrush", "TextMutedBrush", "TextFaintBrush" };
+
+        var coloured = Regex.Matches(Read(file), @"<TextBlock\b(?:\s+[\w:.]+\s*=\s*""[^""]*"")*\s*/?>")
+            .Select(m => m.Value)
+            .Where(t => Regex.Match(t, @"Style=""\{(?:Static|Dynamic)Resource (\w+)\}""") is { Success: true } s
+                        && labelStyles.Contains(s.Groups[1].Value))
+            .Where(t => Regex.Match(t, @"Foreground=""\{(?:Static|Dynamic)Resource (\w+)\}""") is { Success: true } f
+                        && !textColours.Contains(f.Groups[1].Value))
+            .Select(t => TextOf(t) ?? t)
+            .ToList();
+
+        Assert.True(coloured.Count == 0,
+            $"{file} colours these labels: {string.Join(", ", coloured)}. Put the colour in a mark beside the words, not in them.");
+    }
+
     /// <summary>The object initializer containing <paramref name="at"/>: from its unmatched '{' to the matching '}'.</summary>
     private static string Enclosing(string code, int at)
     {

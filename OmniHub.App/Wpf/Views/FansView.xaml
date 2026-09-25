@@ -41,7 +41,7 @@
                 <Grid>
                     <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource WarnBrush}" CornerRadius="5,0,0,5"/>
                     <StackPanel Margin="17,13,14,13">
-                        <TextBlock Text="KNOWN HP ISSUE" Style="{StaticResource TileLabel}" Foreground="{StaticResource WarnBrush}" Margin="0,0,0,5"/>
+                        <TextBlock Text="KNOWN HP ISSUE" Style="{StaticResource TileLabel}" Margin="0,0,0,5"/>
                         <TextBlock HorizontalAlignment="Left" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap" MaxWidth="700"
                                    Text="On Default/Balanced BIOS mode the fan table can hit a 0% idle entry while the laptop is still genuinely hot. Auto (Curve) fixes this with a safety floor, so the fan is never allowed to fully stop once you are past the floor temperature."/>
                     </StackPanel>
@@ -72,7 +72,7 @@
                 <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0">
                     <Grid>
                         <StackPanel>
-                            <TextBlock Text="FAN LEVEL" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricCpuBrush}"/>
+                            <TextBlock Text="FAN LEVEL" Style="{StaticResource TileLabel}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock x:Name="LevelValue" Style="{StaticResource TileValue}" Text="--"/>
                                 <TextBlock Text="%" Style="{StaticResource TileUnit}"/>
@@ -90,7 +90,7 @@
                 <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0,0,0">
                     <Grid>
                         <StackPanel>
-                            <TextBlock Text="MODE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricMemBrush}"/>
+                            <TextBlock Text="MODE" Style="{StaticResource TileLabel}"/>
                             <!-- Smaller than the numeric tiles: this value is a word, and
                                  "BIOS Default" at 34px is exactly what clipped in the old
                                  fixed-width StatTile. -->

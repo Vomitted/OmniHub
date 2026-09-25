@@ -42,7 +42,7 @@
                 <Grid>
                     <StackPanel>
                         <Grid>
-                            <TextBlock Text="LIVE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricGpuBrush}"/>
+                            <TextBlock Text="LIVE" Style="{StaticResource TileLabel}"/>
                             <TextBlock x:Name="GpuSourceText" Style="{StaticResource TileFoot}" Margin="0"
                                        HorizontalAlignment="Right" VerticalAlignment="Top"/>
                         </Grid>
@@ -83,7 +83,7 @@
                 <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,7,0">
                     <Grid>
                         <StackPanel>
-                            <TextBlock Text="GRAPHICS MODE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricGpuBrush}"/>
+                            <TextBlock Text="GRAPHICS MODE" Style="{StaticResource TileLabel}"/>
                             <TextBlock x:Name="ModeText" Style="{StaticResource TileValue}" Text="--" Margin="0,4,0,0" TextWrapping="Wrap"/>
                             <TextBlock x:Name="ModeFoot" Style="{StaticResource TileFoot}" Text="READING..."/>
                         </StackPanel>
@@ -93,7 +93,7 @@
                 <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0,0,0">
                     <Grid>
                         <StackPanel>
-                            <TextBlock Text="POWER STATE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricCpuBrush}"/>
+                            <TextBlock Text="POWER STATE" Style="{StaticResource TileLabel}"/>
                             <TextBlock x:Name="PowerText" Style="{StaticResource TileValue}" FontSize="22" Text="--" Margin="0,7,0,0" TextWrapping="Wrap"/>
                             <TextBlock x:Name="PowerFoot" Style="{StaticResource TileFoot}"/>
                         </StackPanel>

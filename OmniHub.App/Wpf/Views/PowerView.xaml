@@ -121,7 +121,7 @@
                 <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,7,0">
                     <Grid>
                         <StackPanel>
-                            <TextBlock Text="CHARGE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricMemBrush}"/>
+                            <TextBlock Text="CHARGE" Style="{StaticResource TileLabel}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock x:Name="ChargeValue" Style="{StaticResource TileValue}" Text="--"/>
                                 <TextBlock Text="%" Style="{StaticResource TileUnit}"/>
@@ -134,7 +134,7 @@
                 <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0">
                     <Grid>
                         <StackPanel>
-                            <TextBlock Text="HEALTH" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricCpuBrush}"/>
+                            <TextBlock Text="HEALTH" Style="{StaticResource TileLabel}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock x:Name="HealthValue" Style="{StaticResource TileValue}" Text="--"/>
                                 <TextBlock x:Name="HealthUnit" Text="%" Style="{StaticResource TileUnit}"/>
@@ -147,7 +147,7 @@
                 <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0,0,0">
                     <Grid>
                         <StackPanel>
-                            <TextBlock Text="CYCLE COUNT" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricGpuBrush}"/>
+                            <TextBlock Text="CYCLE COUNT" Style="{StaticResource TileLabel}"/>
                             <TextBlock x:Name="CyclesValue" Style="{StaticResource TileValue}" Text="--" Margin="0,4,0,0"/>
                             <TextBlock x:Name="CyclesFoot" Style="{StaticResource TileFoot}"/>
                         </StackPanel>
@@ -185,8 +185,7 @@
             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
                     BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}">
                 <StackPanel Margin="17,13,14,13">
-                    <TextBlock Text="LOOKING FOR CPU POWER LIMITS?" Style="{StaticResource TileLabel}"
-                               Foreground="{StaticResource MetricCpuBrush}" Margin="0,0,0,5"/>
+                    <TextBlock Text="LOOKING FOR CPU POWER LIMITS?" Style="{StaticResource TileLabel}" Margin="0,0,0,5"/>
                     <TextBlock HorizontalAlignment="Left" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap" MaxWidth="700"
                                Text="Sustained and boost wattage now live on the Tuning tab, together with the thermal limit and the adaptive controller, so there is one place that decides what the processor is allowed to draw."/>
                 </StackPanel>
