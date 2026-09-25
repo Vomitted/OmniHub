@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A development tool, deliberately not in OmniHub.slnx: nothing in a normal build or test run
+       should pay for it, and it compiles against a private copy of the App (bin\app), never
+       against the installed one, which the running application holds locked. run.ps1 builds that
+       copy first. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <AppDir>$(MSBuildThisFileDirectory)bin\app</AppDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="OmniHub"><HintPath>$(AppDir)\OmniHub.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OmniHub.Core"><HintPath>$(AppDir)\OmniHub.Core.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="System.Management"><HintPath>$(AppDir)\System.Management.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+</Project>
