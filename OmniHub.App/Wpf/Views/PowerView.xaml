@@ -50,7 +50,7 @@
                                    HorizontalAlignment="Right" Margin="0,0,0,6"/>
                         <TextBlock Grid.Row="0" Grid.Column="4" Text="READ FROM" Style="{StaticResource DataLabelText}" Margin="24,0,0,6"/>
 
-                        <Border Grid.Row="1" Grid.Column="0" Width="3" Height="16" CornerRadius="1.5" Margin="0,0,12,0"
+                        <Border Grid.Row="1" Grid.Column="0" Width="3" Height="16" Margin="0,0,12,0"
                                 VerticalAlignment="Center" Background="{StaticResource MetricCpuBrush}"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="Processor package" Style="{StaticResource BodyText}"
                                    VerticalAlignment="Center"/>
@@ -62,7 +62,7 @@
                         <TextBlock Grid.Row="1" Grid.Column="4" x:Name="DrawPackageFoot" Text="PACKAGE, FROM THE SMU" Style="{StaticResource TileFoot}"
                                    VerticalAlignment="Center" Margin="24,2,0,0"/>
 
-                        <Border Grid.Row="2" Grid.Column="0" Width="3" Height="16" CornerRadius="1.5" Margin="0,0,12,0"
+                        <Border Grid.Row="2" Grid.Column="0" Width="3" Height="16" Margin="0,0,12,0"
                                 VerticalAlignment="Center" Background="{StaticResource MetricGpuBrush}"/>
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="Discrete GPU" Style="{StaticResource BodyText}"
                                    VerticalAlignment="Center"/>
@@ -74,7 +74,7 @@
                         <TextBlock Grid.Row="2" Grid.Column="4" x:Name="DrawGpuFoot" Style="{StaticResource TileFoot}"
                                    VerticalAlignment="Center" Margin="24,2,0,0"/>
 
-                        <Border Grid.Row="3" Grid.Column="0" Width="3" Height="16" CornerRadius="1.5" Margin="0,0,12,0"
+                        <Border Grid.Row="3" Grid.Column="0" Width="3" Height="16" Margin="0,0,12,0"
                                 VerticalAlignment="Center" Background="{StaticResource AccentBrush}"/>
                         <TextBlock Grid.Row="3" Grid.Column="1" Text="Everything else" Style="{StaticResource BodyText}"
                                    VerticalAlignment="Center"/>
@@ -89,7 +89,7 @@
                         <Border Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="4" Height="1" Margin="0,4,0,4"
                                 Background="{StaticResource BorderStrongBrush}"/>
 
-                        <Border Grid.Row="5" Grid.Column="0" Width="3" Height="16" CornerRadius="1.5" Margin="0,0,12,0"
+                        <Border Grid.Row="5" Grid.Column="0" Width="3" Height="16" Margin="0,0,12,0"
                                 VerticalAlignment="Center" Background="{StaticResource MetricMemBrush}"/>
                         <TextBlock Grid.Row="5" Grid.Column="1" Text="Whole machine" Style="{StaticResource BodyText}" FontWeight="SemiBold"
                                    VerticalAlignment="Center"/>
