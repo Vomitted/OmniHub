@@ -15,3 +15,7 @@ dist/
 # moment anyone edits a file. The technical documents under technical/ are the part written
 # by hand and are committed.
 graphify-out/
+
+# Obsidian: the repository root is used as a vault. Its window layout changes every time it is
+# opened, so it is never worth committing even if the rest of the vault settings ever are.
+**/.obsidian/workspace*.json
