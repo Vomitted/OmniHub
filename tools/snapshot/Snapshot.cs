@@ -197,6 +197,26 @@ internal static class Snapshot
         if (metrics.GetType().GetField("Updated", Any)?.GetValue(metrics) is Action updated) updated();
     }
 
+    /// <summary>Checks the tab of a grouped page (Performance, System, Diagnostics) whose caption matches.</summary>
+    static bool SelectTab(Window win, string caption)
+    {
+        static IEnumerable<DependencyObject> Walk(DependencyObject d)
+        {
+            yield return d;
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(d); i++)
+                foreach (var c in Walk(VisualTreeHelper.GetChild(d, i))) yield return c;
+        }
+
+        foreach (var toggle in Walk((DependencyObject)Field(win, "ViewHost")!).OfType<System.Windows.Controls.Primitives.ToggleButton>())
+        {
+            string? text = toggle.Content as string ?? (toggle.Content as System.Windows.Controls.TextBlock)?.Text;
+            if (!string.Equals(text?.Trim(), caption, StringComparison.OrdinalIgnoreCase)) continue;
+            toggle.IsChecked = true;
+            return true;
+        }
+        return false;
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     static int Render(string outDir, string plan)
     {
@@ -249,17 +269,21 @@ internal static class Snapshot
         string theme = settings.ThemeName ?? "theme";
         string iface = settings.Interface.ToString();
 
-        void Capture(int i)
+        void Capture(int i, string? tab = null)
         {
             Show(win, i);
             Pump(900);
+            if (tab is not null && !SelectTab(win, tab)) Say($"no tab named {tab} on workspace {i}");
+            if (tab is not null) Pump(900);
             if (replay is { Length: > 0 }) { Replay(win, replay); Pump(300); }
             string name = new(layout.Workspaces[i].Name.Where(char.IsLetterOrDigit).ToArray());
-            SavePng(win, Path.Combine(outDir, $"{iface}-{theme}-{i}-{name}.png"));
+            string suffix = tab is null ? "" : "-" + new string(tab.Where(char.IsLetterOrDigit).ToArray());
+            SavePng(win, Path.Combine(outDir, $"{iface}-{theme}-{i}-{name}{suffix}.png"));
         }
 
-        // Steps, comma separated: "ws" for every workspace, a number for one, "theme=Midnight",
-        // "iface=Cockpit". Order matters: a step applies to everything after it.
+        // Steps, comma separated: "ws" for every workspace, a number for one, "5/History" for a tab
+        // inside a grouped page, "theme=Midnight", "iface=Cockpit". Order matters: a step applies
+        // to everything after it.
         foreach (string step in plan.Split(','))
         {
             if (step.StartsWith("theme=")) { theme = step[6..]; OmniHub.App.Wpf.ThemeManager.Apply(theme); Pump(500); }
@@ -271,6 +295,7 @@ internal static class Snapshot
                 Pump(700);
             }
             else if (step == "ws") for (int i = 0; i < layout.Workspaces.Count; i++) Capture(i);
+            else if (step.Split('/') is [var ws, var tab] && int.TryParse(ws, out int w)) Capture(w, tab);
             else if (int.TryParse(step, out int only)) Capture(only);
         }
 

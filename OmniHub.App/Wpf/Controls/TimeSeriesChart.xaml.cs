@@ -264,7 +264,11 @@ public partial class TimeSeriesChart : UserControl, IDisposable
 
         foreach (var (state, segments) in built)
         {
-            var (lo, hi) = RangeFor(state, segments);
+            // Widened to round steps, so every gridline the axis labels sits on the value its label
+            // names. See ValueAxis; the name is qualified because this control's axis canvas has it.
+            var (dataLo, dataHi) = RangeFor(state, segments);
+            var scale = OmniHub.Core.Telemetry.ValueAxis.Nice(dataLo, dataHi);
+            double lo = scale.Lo, hi = scale.Hi;
 
             var geometry = new PathGeometry();
             var area = new PathGeometry();
@@ -301,7 +305,8 @@ public partial class TimeSeriesChart : UserControl, IDisposable
             state.Line.Data = geometry;
             state.Area.Data = area;
 
-            if (state.Definition.IsPrimary || _series.Count == 1) DrawValueAxis(lo, hi, state, height);
+            if (state.Definition.IsPrimary || _series.Count == 1)
+                DrawValueAxis(segments.Any(s => s.Count > 0) ? scale : null, height);
         }
     }
 
@@ -376,18 +381,25 @@ public partial class TimeSeriesChart : UserControl, IDisposable
         }
     }
 
-    private void DrawValueAxis(double lo, double hi, SeriesState state, double height)
+    /// <summary>
+    /// The value labels, one per round tick, each written with exactly the decimals its step needs.
+    ///
+    /// Nothing is drawn for a series with no data. An empty chart used to label a 0-to-1 axis beside
+    /// "No data in this range" -- numbers for data that did not exist, two of them rounded wrong.
+    /// </summary>
+    private void DrawValueAxis(OmniHub.Core.Telemetry.ValueAxis.Scale? scale, double height)
     {
         ValueAxis.Children.Clear();
+        if (scale is not { } s) return;
 
-        for (int i = 0; i <= 4; i++)
+        string format = "F" + s.Decimals;
+        foreach (double value in s.Ticks())
         {
-            double value = lo + (hi - lo) * i / 4.0;
-            double y = height - height * i / 4.0;
+            double y = height - (value - s.Lo) / Math.Max(1e-9, s.Hi - s.Lo) * height;
 
             var label = new TextBlock
             {
-                Text = value.ToString(state.Definition.Format),
+                Text = value.ToString(format, System.Globalization.CultureInfo.InvariantCulture),
                 FontSize = 9.5,
                 TextAlignment = TextAlignment.Right,
                 Width = 38,

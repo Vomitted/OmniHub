@@ -39,4 +39,5 @@ On top of those, every automation setting is switched off in memory before any p
   recorded ones, and a replayed image shows how a screen lays out, **never** what was measured.
 - It drives `MainWindow` by reflection (`ShowWorkspace`, `SelectNavItem`, `_settings`, `_layout`,
   `_metrics`). Renaming one breaks this tool, not the application.
-- Only the first section of a grouped page (Performance, System, Diagnostics) is rendered.
+- A grouped page (Performance, System, Diagnostics) renders its first tab unless the step names one:
+  `5/History` is the History tab of the sixth workspace.
