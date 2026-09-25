@@ -28,7 +28,6 @@ public partial class DashboardView : UserControl
         InitializeComponent();
         _ctx = ctx; _service = service; _settings = settings;
 
-        ModelText.Text = $"{ctx.Model.Manufacturer} {ctx.Model.Product}".Trim();
         LoadBatteryFooter();
         StartPowerDrawTimer();
 
@@ -516,7 +515,6 @@ public partial class DashboardView : UserControl
                 {
                     CpuClockText.Text = "--";
                     CpuLoadText.Text = "--";
-                    StripLoad.Text = "--";
                     MemText.Text = "--";
                     MemSubText.Text = "UNAVAILABLE";
                     MemFootRight.Text = "--";
@@ -533,7 +531,6 @@ public partial class DashboardView : UserControl
                 CpuClockText.Text = perf.CpuClockGHz is { } ghz ? $"{ghz:0.0}" : "--";
                 CpuLoadText.Text = perf.CpuLoadPercent is { } load ? $"{load:0}%" : "--";
                 CpuFootLeft.Text = $"{Environment.ProcessorCount} LOGICAL CORES";
-                StripLoad.Text = CpuLoadText.Text;
 
                 MemText.Text = $"{perf.MemoryUsedGB:0.0}";
                 double memPercent = perf.MemoryTotalGB > 0 ? perf.MemoryUsedGB / perf.MemoryTotalGB * 100.0 : 0;
@@ -764,7 +761,6 @@ public partial class DashboardView : UserControl
             // screen reads as a measurement whatever is appended to it. There is no reading
             // here, so there is no number. The fan curve is untouched by this and still treats
             // a blind sensor as worst case, so no safety behaviour depends on this text.
-            string shown = fromDie ? displayC.ToString("0.0") : ((int)Math.Round(displayC)).ToString();
 
             // Eased rather than assigned. The gauge beside this already sweeps its arc; the
             // number jumping while the arc glided was the two disagreeing about how finished
@@ -772,7 +768,6 @@ public partial class DashboardView : UserControl
             if (ceiling) Animate.Clear(ThermalText);
             else Animate.To(ThermalText, displayC, fromDie ? "0.0" : "0");
 
-            StripTemp.Text = ceiling ? "--" : $"{shown}°C";
 
             // Fan levels are an RPM/100 target, so raw*100 is the actual commanded RPM;
             // see FanCalibration.RawToPercent for why the percentage is not raw/255.
@@ -811,7 +806,6 @@ public partial class DashboardView : UserControl
             Animate.BrushTo(ThermalText, TextBlock.ForegroundProperty, thermalBrush);
             Animate.BrushTo(ThermalUnit, TextBlock.ForegroundProperty, thermalBrush);
             Animate.BrushTo(ThermalBarFill, Border.BackgroundProperty, thermalBrush);
-            Animate.BrushTo(StripTemp, TextBlock.ForegroundProperty, thermalBrush);
             ThermalFootRight.Foreground = r.Throttling == true
                 ? thermalBrush
                 : (Brush)FindResource("TextFaintBrush");

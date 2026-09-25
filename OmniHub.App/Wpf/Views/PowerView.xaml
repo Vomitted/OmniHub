@@ -21,72 +21,90 @@
                 <TextBlock Text="Where the power is going" Style="{StaticResource SectionTitle}"/>
                 <Border Style="{StaticResource SectionRule}"/>
             </StackPanel>
-            <Grid Margin="0,0,0,10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,7,0">
-                    <Grid>
-                        <StackPanel>
-                            <TextBlock Text="WHOLE MACHINE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricMemBrush}"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock x:Name="DrawTotalValue" Style="{StaticResource TileValue}" Text="--"/>
-                                <TextBlock Text="W" Style="{StaticResource TileUnit}"/>
-                            </StackPanel>
-                            <TextBlock x:Name="DrawTotalFoot" Style="{StaticResource TileFoot}" Text="AT THE BATTERY"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0">
-                    <Grid>
-                        <StackPanel>
-                            <TextBlock Text="PROCESSOR" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricCpuBrush}"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock x:Name="DrawPackageValue" Style="{StaticResource TileValue}" Text="--"/>
-                                <TextBlock Text="W" Style="{StaticResource TileUnit}"/>
-                            </StackPanel>
-                            <TextBlock x:Name="DrawPackageFoot" Style="{StaticResource TileFoot}" Text="PACKAGE, FROM THE SMU"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0">
-                    <Grid>
-                        <StackPanel>
-                            <TextBlock Text="DISCRETE GPU" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricGpuBrush}"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock x:Name="DrawGpuValue" Style="{StaticResource TileValue}" Text="--"/>
-                                <TextBlock x:Name="DrawGpuUnit" Text="W" Style="{StaticResource TileUnit}"/>
-                            </StackPanel>
-                            <TextBlock x:Name="DrawGpuFoot" Style="{StaticResource TileFoot}"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <Border Grid.Column="3" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0,0,0">
-                    <Grid>
-                        <StackPanel>
-                            <TextBlock Text="EVERYTHING ELSE" Style="{StaticResource TileLabel}" Foreground="{StaticResource AccentBrush}"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock x:Name="DrawRestValue" Style="{StaticResource TileValue}" Text="--"/>
-                                <TextBlock x:Name="DrawRestUnit" Text="W" Style="{StaticResource TileUnit}"/>
-                            </StackPanel>
-                            <TextBlock x:Name="DrawRestFoot" Style="{StaticResource TileFoot}" Text="A SUBTRACTION"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-            </Grid>
-
+            <!-- One subtraction, set as one. This was four equal cards, which gave the remainder the
+                 same weight as the measurement it is derived from and hid that three of the figures add
+                 up to the fourth. As a table the arithmetic is on the page: the parts, a rule, and the
+                 whole they come from, each beside the instrument that read it. The series colours are
+                 marks at the start of each row rather than coloured words. -->
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="Auto" MinWidth="64"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="PART" Style="{StaticResource DataLabelText}" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Row="0" Grid.Column="2" Grid.ColumnSpan="2" Text="DRAW" Style="{StaticResource DataLabelText}"
+                                   HorizontalAlignment="Right" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Row="0" Grid.Column="4" Text="READ FROM" Style="{StaticResource DataLabelText}" Margin="24,0,0,6"/>
+
+                        <Border Grid.Row="1" Grid.Column="0" Width="3" Height="16" CornerRadius="1.5" Margin="0,0,12,0"
+                                VerticalAlignment="Center" Background="{StaticResource MetricCpuBrush}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="Processor package" Style="{StaticResource BodyText}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="1" Grid.Column="2" x:Name="DrawPackageValue" Text="--" FontFamily="{StaticResource MonoFont}"
+                                   FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,6,0,6"/>
+                        <TextBlock Grid.Row="1" Grid.Column="3" Text="W" FontFamily="{StaticResource MonoFont}" FontSize="10"
+                                   Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,3,0,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="4" x:Name="DrawPackageFoot" Text="PACKAGE, FROM THE SMU" Style="{StaticResource TileFoot}"
+                                   VerticalAlignment="Center" Margin="24,2,0,0"/>
+
+                        <Border Grid.Row="2" Grid.Column="0" Width="3" Height="16" CornerRadius="1.5" Margin="0,0,12,0"
+                                VerticalAlignment="Center" Background="{StaticResource MetricGpuBrush}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="Discrete GPU" Style="{StaticResource BodyText}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" x:Name="DrawGpuValue" Text="--" FontFamily="{StaticResource MonoFont}"
+                                   FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,6,0,6"/>
+                        <TextBlock Grid.Row="2" Grid.Column="3" x:Name="DrawGpuUnit" Text="W" FontFamily="{StaticResource MonoFont}" FontSize="10"
+                                   Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,3,0,0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="4" x:Name="DrawGpuFoot" Style="{StaticResource TileFoot}"
+                                   VerticalAlignment="Center" Margin="24,2,0,0"/>
+
+                        <Border Grid.Row="3" Grid.Column="0" Width="3" Height="16" CornerRadius="1.5" Margin="0,0,12,0"
+                                VerticalAlignment="Center" Background="{StaticResource AccentBrush}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="Everything else" Style="{StaticResource BodyText}"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="3" Grid.Column="2" x:Name="DrawRestValue" Text="--" FontFamily="{StaticResource MonoFont}"
+                                   FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,6,0,6"/>
+                        <TextBlock Grid.Row="3" Grid.Column="3" x:Name="DrawRestUnit" Text="W" FontFamily="{StaticResource MonoFont}" FontSize="10"
+                                   Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,3,0,0"/>
+                        <TextBlock Grid.Row="3" Grid.Column="4" x:Name="DrawRestFoot" Text="A SUBTRACTION" Style="{StaticResource TileFoot}"
+                                   VerticalAlignment="Center" Margin="24,2,0,0"/>
+
+                        <Border Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="4" Height="1" Margin="0,4,0,4"
+                                Background="{StaticResource BorderStrongBrush}"/>
+
+                        <Border Grid.Row="5" Grid.Column="0" Width="3" Height="16" CornerRadius="1.5" Margin="0,0,12,0"
+                                VerticalAlignment="Center" Background="{StaticResource MetricMemBrush}"/>
+                        <TextBlock Grid.Row="5" Grid.Column="1" Text="Whole machine" Style="{StaticResource BodyText}" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock Grid.Row="5" Grid.Column="2" x:Name="DrawTotalValue" Text="--" FontFamily="{StaticResource MonoFont}"
+                                   FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,6,0,6"/>
+                        <TextBlock Grid.Row="5" Grid.Column="3" Text="W" FontFamily="{StaticResource MonoFont}" FontSize="10"
+                                   Foreground="{StaticResource TextMutedBrush}" VerticalAlignment="Center" Margin="4,3,0,0"/>
+                        <TextBlock Grid.Row="5" Grid.Column="4" x:Name="DrawTotalFoot" Text="AT THE BATTERY" Style="{StaticResource TileFoot}"
+                                   VerticalAlignment="Center" Margin="24,2,0,0"/>
+                    </Grid>
+
                     <TextBlock HorizontalAlignment="Left" x:Name="DrawNote" Style="{StaticResource MutedText}" FontSize="11.5"
-                               TextWrapping="Wrap" MaxWidth="760"/>
-                </Grid>
+                               TextWrapping="Wrap" MaxWidth="760" Margin="0,12,0,0"/>
+                </StackPanel>
             </Border>
 
             <StackPanel>

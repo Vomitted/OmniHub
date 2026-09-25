@@ -135,23 +135,6 @@
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource BarChip}">
-                        <TextBlock x:Name="ModelText" Style="{StaticResource CardTagText}"/>
-                    </Border>
-                    <Border Style="{StaticResource BarChip}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="temp&#160;" Style="{StaticResource CardTagText}"
-                                       Foreground="{StaticResource TextFaintBrush}"/>
-                            <TextBlock x:Name="StripTemp" Text="--" Style="{StaticResource CardTagText}"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Style="{StaticResource BarChip}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="load&#160;" Style="{StaticResource CardTagText}"
-                                       Foreground="{StaticResource TextFaintBrush}"/>
-                            <TextBlock x:Name="StripLoad" Text="--" Style="{StaticResource CardTagText}"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Style="{StaticResource BarChip}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="power&#160;" Style="{StaticResource CardTagText}"
                                        Foreground="{StaticResource TextFaintBrush}"/>
@@ -173,6 +156,37 @@
                     </StackPanel>
                 </Border>
             </Grid>
+
+            <!-- What is holding the machine back. Above the trace deliberately: the verdict is
+                 the thing somebody came to find out, and the chart is the evidence for it. -->
+            <Border Style="{StaticResource CardBorderStyle}" Padding="14,12" Margin="0,0,0,18">
+                <StackPanel>
+                    <TextBlock Text="What is limiting this machine" Style="{StaticResource MetricTitle}" Margin="0,0,0,10"/>
+                    <controls:LimitStrip x:Name="Limits"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Telemetry: the primary element. The bar above every page gives the readings as they
+                 are now; this is how they got there, and the four cards below are the detail. It sat
+                 at the bottom of the page, under four cards that repeated what the bar now shows. -->
+            <Border Style="{StaticResource CardBorderStyle}" Padding="14,12" Margin="0,0,0,14">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10">
+                        <StackPanel HorizontalAlignment="Left">
+                            <TextBlock Text="Live telemetry" Style="{StaticResource MetricTitle}"/>
+                            <TextBlock Text="Die temperature, fan duty and what the curve commanded" Style="{StaticResource SubLabel}" Margin="0,3,0,0"/>
+                        </StackPanel>
+                        <Border Style="{StaticResource CardTagStyle}" HorizontalAlignment="Right" VerticalAlignment="Top">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                <TextBlock x:Name="TrendWindowText" Text="LIVE" Style="{StaticResource CardTagText}"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <controls:TimeSeriesChart x:Name="TrendChart" Height="210"/>
+                </StackPanel>
+            </Border>
 
             <!-- Four readings across, each the same shape: title, badge, value, sub-row, track.
                  The circular gauge that used to sit in the middle of this row is gone. It spent
@@ -307,35 +321,6 @@
                     </StackPanel>
                 </Border>
             </Grid>
-
-            <!-- What is holding the machine back. Above the trace deliberately: the verdict is
-                 the thing somebody came to find out, and the chart is the evidence for it. -->
-            <Border Style="{StaticResource CardBorderStyle}" Padding="14,12" Margin="0,0,0,18">
-                <StackPanel>
-                    <TextBlock Text="What is limiting this machine" Style="{StaticResource MetricTitle}" Margin="0,0,0,10"/>
-                    <controls:LimitStrip x:Name="Limits"/>
-                </StackPanel>
-            </Border>
-
-            <!-- Telemetry -->
-            <Border Style="{StaticResource CardBorderStyle}" Padding="14,12">
-                <StackPanel>
-                    <Grid Margin="0,0,0,10">
-                        <StackPanel HorizontalAlignment="Left">
-                            <TextBlock Text="Live telemetry" Style="{StaticResource MetricTitle}"/>
-                            <TextBlock Text="Die temperature, fan duty and what the curve commanded" Style="{StaticResource SubLabel}" Margin="0,3,0,0"/>
-                        </StackPanel>
-                        <Border Style="{StaticResource CardTagStyle}" HorizontalAlignment="Right" VerticalAlignment="Top">
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                                <TextBlock x:Name="TrendWindowText" Text="LIVE" Style="{StaticResource CardTagText}"
-                                           Foreground="{StaticResource TextPrimaryBrush}"/>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-                    <controls:TimeSeriesChart x:Name="TrendChart" Height="150"/>
-                </StackPanel>
-            </Border>
 
             <!-- Quick actions -->
             <WrapPanel Margin="0,14,0,0">
