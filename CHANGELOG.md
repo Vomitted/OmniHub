@@ -206,6 +206,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - **A support bundle**: one button collecting the logs, the firmware report, the machine summary
   and the settings into one archive, with a manifest that says what it holds about you rather
   than only about the hardware.
+- **Five shapes for the whole application**, chosen under Settings → Interface: the sidebar of
+  workspaces, which stays the default, and Instrument, Cockpit, Editorial and Command. Each hosts
+  the same workspaces and pages; only the frame around them differs, and every one of them keeps
+  a visible way back.
+- **The machine's state on every page.** An instrument bar above every workspace shows die and
+  GPU temperature, fan speed, package and GPU power, CPU load and what is limiting the machine,
+  each with a trace of its last three and a half minutes. It used to live only on the Dashboard,
+  so opening Fans to change the curve meant looking away from the temperature that prompted it.
 
 ### Changed
 
@@ -218,6 +226,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   Manager reads. The clock beside it came from a field this project's own source warned "is not
   guaranteed to track the CPU's real-time dynamic (Turbo Boost) frequency", and now comes from
   the per-processor clocks, which do.
+- **The Dashboard leads with history.** With current readings above every page, it was repeating
+  itself three times over. It now reads as now, then how it got here, then detail: what is
+  limiting the machine, the telemetry chart at 210px rather than 150, and only then the four
+  cards, which previously sat above a chart pushed below the fold.
+- **Where the battery's power is going is a table**: the processor, the discrete GPU and the
+  remainder, a rule, and the whole machine they come from, each beside the instrument that read
+  it. It was four equal cards, which gave the subtraction the same weight as the measurement.
+- **Trend lines have a noise floor.** Each was scaled to its own window, so 1.5 °C of sensor
+  wander on an idle die filled the box as a run of full-height spikes. A trace now stands for at
+  least ten degrees, five watts or a thousand RPM, so noise stays a ripple and a real swing still
+  fills the height — in the bar, the overlay and every panel.
+- **Labels are not coloured.** Ten carried a colour that meant nothing — CHARGE green, CYCLE COUNT
+  yellow, and HEALTH, FAN LEVEL and POWER STATE in the processor's series colour. Colour stays on
+  marks, bars, charts and on a figure past its threshold, and a test now holds that rule.
 
 ### Measured and not built
 
@@ -276,6 +298,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - **The plan builder could write into a Windows power plan it did not create.** It resolved
   the name you typed to an existing scheme, so entering "Balanced" or "Gaming" wrote settings
   straight into that scheme. Windows' own plans are now refused by name.
+- **Five rendering defects on every page**, found the first time the real windows were rendered
+  and looked at rather than read as markup. None produced a warning, a failed test or an error:
+  - Explanatory paragraphs were drawn **centred** in their cards, 150–200 px right of the label
+    above them — a width cap without an alignment centres an element in WPF, and 70 did not say
+    Left.
+  - **Invisible labels.** The tile label style set no colour, so eleven labels, among them the Fans
+    page's TEMPERATURE and nine on Network, inherited black on a near-black card.
+  - **The fan curve was clipped**: the chart carried its own 240 px card inside hosts of 188 px and
+    190 px, which cut off the 0 % line and the entire temperature axis.
+  - **Stock white inputs** on a dark page — a text box, two sliders and six combo boxes that never
+    asked for the application's styles. Those styles are now the defaults, after the combo
+    template gained the part an editable combo types into.
+  - A lighter band across the top of every card that read as a smudge — a decorative "sheen" drawn
+    inside the card's padding. Removed.
+- **Animations ran all session while nobody could see them.** Four endless animations — the
+  activity ribbon, the dashboard's LIVE dot, the sidebar's selected rail and the fan chart's
+  live-point halo — ran from launch whether the window was open or hidden in the tray, and WPF
+  services every running animation about sixty times a second. The halo was a leak: each redraw
+  started a new pair and the old pair never stopped, so every visit to the Fans page left two more
+  running. Each now runs only while it is on screen.
+- **Switching interfaces left the previous one's live band subscribed**, updating a control no
+  longer on screen, once per switch.
 
 ---
 

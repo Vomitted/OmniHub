@@ -578,7 +578,7 @@ dotnet build OmniHub.slnx -c Release</pre>
 
   <h3>Not in this download</h3>
   <p>
-    <strong><span id="ahead">136</span> commits</strong> have landed on
+    <strong><span id="ahead">152</span> commits</strong> have landed on
     <span class="m">main</span> since 1.3.3 was published on 10 September, and no release has
     been cut from them. The button at the top of this page does not have any of it. It is listed
     here so the download is not credited with work it does not contain.
@@ -631,6 +631,21 @@ dotnet build OmniHub.slnx -c Release</pre>
       existing only means the kernel has a driver for the chip. Flatpak and Snap are deliberately
       absent: both are sandboxed, neither can write to <span class="m">/sys/class/hwmon</span>,
       and a package that installs cleanly and then refuses every command is worse than none.</li>
+    <li><strong>Five shapes for the whole application.</strong> The sidebar of workspaces stays the
+      default; Instrument, Cockpit, Editorial and Command frame the same pages differently, chosen
+      in Settings, and each keeps a visible way back.</li>
+    <li><strong>The machine's state above every page</strong> &mdash; die and GPU temperature,
+      fan speed, power, load and what is limiting it &mdash; each with its last three and a half
+      minutes beside it. Trend lines now stand for at least ten degrees or five watts, so a degree
+      of sensor noise no longer draws as a spike.</li>
+    <li><strong>Every screen was rendered and looked at</strong>, for the first time, from a
+      sandboxed process that cannot touch the hardware. It found five defects on every page that
+      no test had: paragraphs drawn centred, eleven labels in black on a black card, a fan curve
+      with its temperature axis cut off, stock white inputs, and a smudge across each card. All
+      fixed, and each rule now held by a test.</li>
+    <li><strong>Nothing animates while the window is hidden.</strong> Four endless animations ran
+      for the whole session in the tray, and one leaked two more each time the Fans page was
+      opened. They now run only while they can be seen.</li>
     <li><strong>The licence changed.</strong> This download is MIT and stays MIT. Development
       after it is <strong>GPL-3.0-or-later</strong>, because widening support past HP means
       using hardware interfaces other people measured and published, and effectively all of
