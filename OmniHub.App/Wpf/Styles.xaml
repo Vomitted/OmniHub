@@ -380,17 +380,6 @@
         </Style.Triggers>
     </Style>
 
-    <!-- Paints the sheen. Applied as a sibling inside a card's Grid where the extra depth
-         earns its place; separate from CardBorderStyle so a card that is mostly chart or
-         table can opt out and stay visually quiet. -->
-    <Style x:Key="CardSheenStyle" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource CardSheenBrush}"/>
-        <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}"/>
-        <Setter Property="IsHitTestVisible" Value="False"/>
-        <Setter Property="Height" Value="44"/>
-        <Setter Property="VerticalAlignment" Value="Top"/>
-    </Style>
-
     <!-- Monospace caption sitting directly above a value inside a card. Brighter than
          SubHeadingText, which labels whole sections over the page background. -->
     <Style x:Key="DataLabelText" TargetType="TextBlock">
@@ -480,9 +469,21 @@
 
                         <!-- Not hit-test visible: clicks must reach the ToggleButton beneath,
                              or the field would be dead everywhere except the arrow. -->
-                        <ContentPresenter IsHitTestVisible="False" Margin="11,0,30,0" VerticalAlignment="Center"
+                        <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False" Margin="11,0,30,0" VerticalAlignment="Center"
                                           Content="{TemplateBinding SelectionBoxItem}"
                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+
+                        <!-- The part an editable combo types into. Without it IsEditable="True" is
+                             silently ignored and the box cannot be typed in at all. Style is nulled
+                             so the implicit TextBox style below does not draw a second border and
+                             padding inside this one. -->
+                        <TextBox x:Name="PART_EditableTextBox" Style="{x:Null}" Visibility="Collapsed"
+                                 Margin="8,0,30,0" VerticalAlignment="Center" Background="Transparent"
+                                 BorderThickness="0" Foreground="{TemplateBinding Foreground}"
+                                 CaretBrush="{StaticResource TextPrimaryBrush}"
+                                 SelectionBrush="{StaticResource AccentBrush}"
+                                 FontFamily="{TemplateBinding FontFamily}" FontSize="{TemplateBinding FontSize}"
+                                 IsReadOnly="{TemplateBinding IsReadOnly}"/>
 
                         <Popup x:Name="PART_Popup" Placement="Bottom" Focusable="False" AllowsTransparency="True"
                                IsOpen="{TemplateBinding IsDropDownOpen}" PopupAnimation="Fade"
@@ -497,6 +498,11 @@
                         </Popup>
                     </Grid>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsEditable" Value="True">
+                            <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden"/>
+                            <Setter Property="Cursor" Value="IBeam"/>
+                        </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.55"/>
                             <Setter Property="Cursor" Value="Arrow"/>
@@ -660,10 +666,13 @@
          definition". That still holds, so the answer is BasedOn with a single Setter for the
          size that differs, rather than a fresh copy of all four. Where a view's local key shares
          a name with one of these, the local one shadows it and nothing about that view changes. -->
+    <!-- Callers colour a label to match its series; one that does not still has to be legible.
+         Without this default the label inherited WPF's black and vanished into the card. -->
     <Style x:Key="TileLabel" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
         <Setter Property="FontSize" Value="10.5"/>
         <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
     </Style>
 
     <Style x:Key="TileValue" TargetType="TextBlock">
@@ -1017,5 +1026,13 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
     </Style>
+
+    <!-- Defaults for every input, so one that forgets its style still belongs to the application.
+         The keyed styles existed and eleven inputs did not use them: a preset name box, two
+         sliders and six combo boxes were drawn by stock WPF, bright white on a near-black page.
+         Last in the file because BasedOn resolves statically and needs its target defined. -->
+    <Style TargetType="TextBox" BasedOn="{StaticResource NumericTextBoxStyle}"/>
+    <Style TargetType="Slider" BasedOn="{StaticResource OmniSliderStyle}"/>
+    <Style TargetType="ComboBox" BasedOn="{StaticResource OmniComboBoxStyle}"/>
 
 </ResourceDictionary>

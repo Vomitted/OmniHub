@@ -78,15 +78,6 @@
         <GradientStop Color="{DynamicResource PanelColor}" Offset="1"/>
     </LinearGradientBrush>
 
-    <!-- Depth without shadows. On a near-black ground a drop shadow renders as a muddy
-         halo, so cards get a top-edge highlight instead: a 1px lighter line reads as
-         "lit from above" and is most of what separates a designed surface from a plain
-         rectangle. This is the vertical fade behind it, barely there by design. -->
-    <LinearGradientBrush x:Key="CardSheenBrush" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="{DynamicResource CardTopHighlightColor}" Offset="0"/>
-        <GradientStop Color="#00000000" Offset="0.55"/>
-    </LinearGradientBrush>
-
     <!-- The accent ramp: the palette's two accent stops, left to right.
 
          This used to run AccentColor into AccentDimColor, which is the same hue at 22%

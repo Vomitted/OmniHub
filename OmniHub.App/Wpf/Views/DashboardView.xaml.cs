@@ -607,6 +607,7 @@ public partial class DashboardView : UserControl
                 FontSize = 11,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 740,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
             });
             ReadinessRows.Children.Add(panel);
         }

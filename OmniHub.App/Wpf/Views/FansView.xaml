@@ -42,7 +42,7 @@
                     <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource WarnBrush}" CornerRadius="5,0,0,5"/>
                     <StackPanel Margin="17,13,14,13">
                         <TextBlock Text="KNOWN HP ISSUE" Style="{StaticResource TileLabel}" Foreground="{StaticResource WarnBrush}" Margin="0,0,0,5"/>
-                        <TextBlock Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap" MaxWidth="700"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap" MaxWidth="700"
                                    Text="On Default/Balanced BIOS mode the fan table can hit a 0% idle entry while the laptop is still genuinely hot. Auto (Curve) fixes this with a safety floor, so the fan is never allowed to fully stop once you are past the floor temperature."/>
                     </StackPanel>
                 </Grid>
@@ -58,7 +58,6 @@
 
                 <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,7,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock x:Name="TempLabel" Text="TEMPERATURE" Style="{StaticResource TileLabel}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -72,7 +71,6 @@
 
                 <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock Text="FAN LEVEL" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricCpuBrush}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -91,7 +89,6 @@
 
                 <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0,0,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock Text="MODE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricMemBrush}"/>
                             <!-- Smaller than the numeric tiles: this value is a word, and
@@ -108,16 +105,15 @@
                 <TextBlock Text="Curve / temperature to fan level" Style="{StaticResource SectionTitle}"/>
                 <Border Style="{StaticResource SectionRule}"/>
             </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Height="188" Padding="6" Margin="0,0,0,10">
+            <Border Style="{StaticResource CardBorderStyle}" Height="248" Margin="0,0,0,10">
                 <controls:FanCurveChart x:Name="Chart"/>
             </Border>
 
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="WHAT THE CURVE JUST DID" Style="{StaticResource DataLabelText}" Margin="0,0,0,8"/>
-                        <TextBlock x:Name="TickNote" Style="{StaticResource BodyText}" FontSize="12"
+                        <TextBlock HorizontalAlignment="Left" x:Name="TickNote" Style="{StaticResource BodyText}" FontSize="12"
                                    TextWrapping="Wrap" MaxWidth="760"
                                    Text="Waiting for the first tick."/>
                     </StackPanel>
@@ -130,9 +126,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640" Margin="0,0,0,12"
                                    Text="The fix for the 0% bug. Past this temperature the curve is never allowed to command less than this level, whatever the table says."/>
                         <WrapPanel VerticalAlignment="Center">
                             <TextBlock Text="Above" Style="{StaticResource BodyText}" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -163,7 +158,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,16,0">
                             <TextBlock Text="A separate curve on battery" Style="{StaticResource BodyText}"/>
-                            <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" MaxWidth="560" TextWrapping="Wrap"
+                            <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" MaxWidth="560" TextWrapping="Wrap"
                                        Text="When this is off there is one curve and it applies on both. When it is on, the curve below switches with the charger."/>
                         </StackPanel>
                         <CheckBox Grid.Column="1" x:Name="SeparateCurveToggle" Style="{StaticResource ToggleSwitchStyle}"
@@ -179,7 +174,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,16,0">
                             <TextBlock Text="A separate curve for the second fan" Style="{StaticResource BodyText}"/>
-                            <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" MaxWidth="560" TextWrapping="Wrap"
+                            <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" MaxWidth="560" TextWrapping="Wrap"
                                        Text="Both fans run the same curve when this is off. The firmware itself runs them two units apart, so the hardware can do it; whether it lets this application do it is what the check below asks."/>
                         </StackPanel>
                         <CheckBox Grid.Column="1" x:Name="SeparateFan2Toggle" Style="{StaticResource ToggleSwitchStyle}"
@@ -189,14 +184,14 @@
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <Button x:Name="SplitProbeBtn" Content="CHECK THE FANS MOVE SEPARATELY" Height="36" MinWidth="280"
                                 Style="{StaticResource FlatButtonStyle}" Click="SplitProbeBtn_Click"/>
-                        <TextBlock x:Name="SplitProbeNote" Style="{StaticResource MutedText}" FontSize="11"
+                        <TextBlock HorizontalAlignment="Left" x:Name="SplitProbeNote" Style="{StaticResource MutedText}" FontSize="11"
                                    VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="420"
                                    Text="Holds the two fans 20 raw units apart for 40 seconds and reads them back. Audible, and it pauses the curve while it runs."/>
                     </StackPanel>
 
                     <WrapPanel x:Name="EditingRailPills" Margin="0,0,0,4"/>
                     <WrapPanel x:Name="EditingFanPills" Margin="0,0,0,8"/>
-                    <TextBlock x:Name="RailNote" Style="{StaticResource MutedText}" FontSize="11"
+                    <TextBlock HorizontalAlignment="Left" x:Name="RailNote" Style="{StaticResource MutedText}" FontSize="11"
                                Margin="0,0,0,10" TextWrapping="Wrap" MaxWidth="700"/>
 
                     <DataGrid x:Name="CurveGrid" Style="{StaticResource OmniDataGridStyle}" Height="212" Margin="0,0,0,12"
@@ -225,9 +220,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640" Margin="0,0,0,12"
                                    Text="Steps the fan through raw speed levels one at a time so you can listen for where it stops getting louder. That is your unit&apos;s real ceiling, which may not match the 10-56 band measured on the board this app was written against."/>
                         <StackPanel x:Name="CalibrateIdlePanel">
                             <Button Content="Start Calibration" Width="162" Height="36" Style="{StaticResource FlatButtonStyle}" HorizontalAlignment="Left" Click="StartCalibrate_Click"/>
@@ -243,7 +237,7 @@
                         <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,18,0,14"/>
 
                         <TextBlock Text="SAVE THIS BAND" Style="{StaticResource DataLabelText}" Margin="0,0,0,6"/>
-                        <TextBlock x:Name="ProfileIntro" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640" Margin="0,0,0,12"/>
+                        <TextBlock HorizontalAlignment="Left" x:Name="ProfileIntro" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640" Margin="0,0,0,12"/>
 
                         <WrapPanel Margin="0,0,0,10">
                             <StackPanel Margin="0,0,14,0">
@@ -262,7 +256,7 @@
                                     Style="{StaticResource FlatButtonStyle}" Click="SaveBandBtn_Click"/>
                         </WrapPanel>
 
-                        <TextBlock x:Name="ProfileStatus" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" MaxWidth="640"/>
+                        <TextBlock HorizontalAlignment="Left" x:Name="ProfileStatus" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" MaxWidth="640"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -273,15 +267,14 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,12"
                                    Text="Hands the fans back to the BIOS, releases the timer and composition priority, clears the GPU unlock latch and returns the Windows power plan, then reports what could not be undone without a restart. Use it when you want this application ruled out of a problem: one click and a reading, instead of stopping services and rebooting."/>
                         <WrapPanel>
                             <Button x:Name="StockBtn" Content="Return to stock" Width="160" Height="36"
                                     Style="{StaticResource FlatButtonStyle}" Click="StockBtn_Click"/>
                         </WrapPanel>
-                        <TextBlock x:Name="StockSummary" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" x:Name="StockSummary" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap"
                                    MaxWidth="700" Margin="0,12,0,0"/>
                         <StackPanel x:Name="StockRows" Margin="0,8,0,0"/>
                     </StackPanel>

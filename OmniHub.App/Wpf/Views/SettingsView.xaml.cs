@@ -189,6 +189,7 @@ public partial class SettingsView : UserControl
                             Margin = new Thickness(2, 1, 0, 0),
                             FontSize = 10.5,
                             MaxWidth = 132,
+                            HorizontalAlignment = HorizontalAlignment.Left,
                             TextWrapping = TextWrapping.Wrap,
                             Foreground = (Brush)FindResource("TextFaintBrush"),
                         },

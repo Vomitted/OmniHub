@@ -52,7 +52,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="SMU" Style="{StaticResource DataLabelText}" VerticalAlignment="Center"/>
@@ -72,10 +71,9 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <StackPanel x:Name="LiveRows"/>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="620" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="620" TextWrapping="Wrap"
                                    Text="Read from the SMU power-management table, not estimated. The limits shown are what the processor is enforcing right now, which is not always what was last requested."/>
                     </StackPanel>
                 </Grid>
@@ -93,9 +91,8 @@
             <Border x:Name="LimitsCard" Visibility="Collapsed"
                     Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock x:Name="LimitsHeadline" Style="{StaticResource MutedText}" FontSize="11.5"
+                        <TextBlock HorizontalAlignment="Left" x:Name="LimitsHeadline" Style="{StaticResource MutedText}" FontSize="11.5"
                                    TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,10"/>
                         <StackPanel x:Name="LimitRows"/>
                     </StackPanel>
@@ -108,7 +105,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="Loads the sliders below and applies them in one step."
                                    Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
@@ -133,7 +129,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="Applies a profile while a named process is running, and restores the power-source profile when it exits. Use the name as it appears in Task Manager, without .exe."
                                    Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
@@ -161,7 +156,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel x:Name="PowerRows"/>
                 </Grid>
             </Border>
@@ -172,7 +166,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel x:Name="ThermalRows"/>
                 </Grid>
             </Border>
@@ -183,10 +176,9 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <StackPanel x:Name="GfxRows"/>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,0" MaxWidth="620" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,0" MaxWidth="620" TextWrapping="Wrap"
                                    Text="Curve Optimizer lowers core voltage at the same clock, which on a chassis whose power limits are locked is the only remaining way to buy performance: less voltage means less heat, and this machine is limited by heat rather than by watts. Nothing reads the applied offset back, so move it a few counts at a time and judge it by stability, not by the message this app prints."/>
                     </StackPanel>
                 </Grid>
@@ -198,7 +190,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="Walks the sustained limit up and down to hold a temperature target instead of pinning one number. Stops itself if the firmware ignores the writes."
                                    Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
@@ -217,7 +208,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="OMEN Gaming Hub's Eco mode, engaged automatically. Drops the panel refresh rate and applies a profile when triggered, and puts both back when the trigger clears. On this machine the refresh drop is the part that saves real power, since the firmware ignores CPU power limits."
                                    Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
@@ -234,7 +224,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="Applied as soon as OmniHub launches. With Launch when you sign in enabled on the Settings tab, that means at boot."
                                    Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
@@ -250,7 +239,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="Applies a profile automatically when the charger goes in or comes out."
                                    Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
@@ -267,7 +255,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <StackPanel x:Name="ApplyRow" Orientation="Horizontal"/>
                         <TextBlock x:Name="ResultText" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,12,0,0" TextWrapping="Wrap"/>
@@ -282,7 +269,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="What this firmware actually does with each command, rather than what the chip is nominally capable of. The baseline below was measured on this model; press Re-test to ask your machine directly. Re-testing is a no-op: every knob is re-sent the value it already holds, so nothing changes."
                                    Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>

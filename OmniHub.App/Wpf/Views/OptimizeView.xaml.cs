@@ -331,6 +331,7 @@ public partial class OptimizeView : UserControl
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 480,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
             Margin = new Thickness(0, 2, 0, 0),
         });
 

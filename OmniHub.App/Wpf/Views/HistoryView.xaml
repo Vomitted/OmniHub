@@ -31,7 +31,6 @@
 
         <Border Grid.Row="2" Style="{StaticResource CardBorderStyle}">
             <Grid>
-                <Border Style="{StaticResource CardSheenStyle}"/>
                 <ContentControl x:Name="ChartHost"/>
             </Grid>
         </Border>

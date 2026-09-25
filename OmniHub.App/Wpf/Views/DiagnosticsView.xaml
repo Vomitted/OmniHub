@@ -18,9 +18,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="Loads every core and records temperature, package power, CPU clock and fan speed. Run it once before a change and once after: the clock floor and the p90 temperature are what move when sustained behaviour does. The machine will get hot. Nothing here commands a fan or writes a power limit."/>
 
@@ -47,9 +46,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="Read from the board rather than from a list of model numbers. Where a capability reads as unavailable, the control stays enabled unless the firmware states plainly that it is unsupported: a reply carrying nothing is an unknown, not a refusal."/>
                         <StackPanel x:Name="CapabilityRows"/>
@@ -63,9 +61,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="Saves everything the BIOS reports about this laptop to a text file, unmodified. This is the evidence a board nobody has tested needs before its fan curve can be trusted, and it is what a per-model profile gets written from."/>
                         <Button x:Name="SaveProbeBtn" Content="Save probe report" Width="180" Height="36"
@@ -82,12 +79,11 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="This application reads 22 fields from a table with hundreds of words in it, and leaves the rest unmapped rather than guessing what they are. This is how the 22 were found: capture the table, change one thing about the machine, capture it again, and see which words moved."/>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="Nothing here is given a name it has not earned. A word is reported as a number at a position, and only the handful already confirmed against readings from elsewhere are labelled."/>
                         <WrapPanel>
@@ -96,7 +92,7 @@
                             <Button x:Name="ClearTableBtn" Content="Forget capture" Width="150" Height="36"
                                     IsEnabled="False" Style="{StaticResource FlatButtonStyle}" Click="ClearTableBtn_Click"/>
                         </WrapPanel>
-                        <TextBlock x:Name="TableStatus" Style="{StaticResource MutedText}" FontSize="11"
+                        <TextBlock HorizontalAlignment="Left" x:Name="TableStatus" Style="{StaticResource MutedText}" FontSize="11"
                                    Margin="0,10,0,0" TextWrapping="Wrap" MaxWidth="760"/>
                         <StackPanel x:Name="TableChanges" Margin="0,8,0,0"/>
                     </StackPanel>
@@ -109,17 +105,16 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="Collects the thermal trace, the power transitions, the poll timings, the crash log, the firmware report above and your settings into one archive. It is the same list assembled by hand every time this machine has needed diagnosing, which is what makes it worth a button."/>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="The archive includes your settings file, which carries the paths of any applications you have given a graphics preference. A manifest inside lists everything collected. Nothing is sent anywhere -- the file is written to disk and what happens to it next is your decision."/>
                         <Button x:Name="SaveBundleBtn" Content="Save support bundle" Width="200" Height="36"
                                 HorizontalAlignment="Left" Style="{StaticResource FlatButtonStyle}" Click="SaveBundleBtn_Click"/>
-                        <TextBlock x:Name="BundleStatus" Style="{StaticResource MutedText}" FontSize="11"
+                        <TextBlock HorizontalAlignment="Left" x:Name="BundleStatus" Style="{StaticResource MutedText}" FontSize="11"
                                    Margin="0,10,0,0" TextWrapping="Wrap" MaxWidth="760"/>
                     </StackPanel>
                 </Grid>

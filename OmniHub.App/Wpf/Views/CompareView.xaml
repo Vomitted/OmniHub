@@ -13,7 +13,6 @@
 
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <!-- Naming a stretch of time, so a measurement has something deliberate
                              to be compared against rather than whatever came before it. -->
@@ -24,7 +23,7 @@
                             <Button x:Name="SessionBtn" Content="START" Width="120" Height="36"
                                     Style="{StaticResource FlatButtonStyle}" Click="SessionBtn_Click"/>
                         </StackPanel>
-                        <TextBlock x:Name="SessionStatus" Style="{StaticResource MutedText}" FontSize="11"
+                        <TextBlock HorizontalAlignment="Left" x:Name="SessionStatus" Style="{StaticResource MutedText}" FontSize="11"
                                    Margin="0,0,0,16" TextWrapping="Wrap" MaxWidth="620"/>
 
                         <TextBlock Text="HOW MUCH OF EACH" Style="{StaticResource DataLabelText}" Margin="0,0,0,8"/>
@@ -50,7 +49,7 @@
                                     Style="{StaticResource FlatButtonStyle}" Click="ExportPngBtn_Click"/>
                         </WrapPanel>
 
-                        <TextBlock x:Name="Status" Style="{StaticResource MutedText}" FontSize="11.5"
+                        <TextBlock HorizontalAlignment="Left" x:Name="Status" Style="{StaticResource MutedText}" FontSize="11.5"
                                    Margin="0,14,0,0" TextWrapping="Wrap" MaxWidth="760"/>
                     </StackPanel>
                 </Grid>
@@ -62,11 +61,10 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock x:Name="Verdict" Style="{StaticResource BodyText}" FontSize="13"
+                        <TextBlock HorizontalAlignment="Left" x:Name="Verdict" Style="{StaticResource BodyText}" FontSize="13"
                                    TextWrapping="Wrap" MaxWidth="760" Text="Choose a window to begin."/>
-                        <TextBlock x:Name="IntervalNote" Style="{StaticResource MutedText}" FontSize="11.5"
+                        <TextBlock HorizontalAlignment="Left" x:Name="IntervalNote" Style="{StaticResource MutedText}" FontSize="11.5"
                                    Margin="0,10,0,0" TextWrapping="Wrap" MaxWidth="760"/>
                     </StackPanel>
                 </Grid>
@@ -78,7 +76,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel x:Name="MetricRows"/>
                 </Grid>
             </Border>

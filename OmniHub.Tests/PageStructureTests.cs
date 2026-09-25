@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Xml;
+using System.Xml.Linq;
 using Xunit;
 
 namespace OmniHub.Tests;
@@ -128,5 +130,108 @@ public class PageStructureTests
         Assert.True(overridden.Count == 0,
             $"{file} overrides the page scale inline: {string.Join(", ", overridden)}. "
             + "If a size genuinely must differ, base a style on the scale so the exception has a name.");
+    }
+
+    private static readonly XNamespace X = "http://schemas.microsoft.com/winfx/2006/xaml";
+
+    private static bool Pins(string? alignment) => alignment is { Length: > 0 } a && a != "Stretch";
+
+    /// <summary>Keys of styles that pin horizontal alignment, and every style that caps width without doing so.</summary>
+    private static (HashSet<string> Pinning, List<string> Unpinned) StyleAlignment()
+    {
+        var pinning = new HashSet<string>(StringComparer.Ordinal);
+        var unpinned = new List<string>();
+
+        foreach (var style in XDocument.Load(Path.Combine(WpfTestHost.WpfDir, "Styles.xaml"))
+                                       .Descendants().Where(e => e.Name.LocalName == "Style"))
+        {
+            string? Setter(string property) => style.Elements()
+                .FirstOrDefault(s => s.Name.LocalName == "Setter" && (string?)s.Attribute("Property") == property)
+                ?.Attribute("Value")?.Value;
+
+            string key = (string?)style.Attribute(X + "Key") ?? $"(implicit {(string?)style.Attribute("TargetType")})";
+            if (Pins(Setter("HorizontalAlignment"))) pinning.Add(key);
+            else if (Setter("MaxWidth") is not null) unpinned.Add(key);
+        }
+
+        return (pinning, unpinned);
+    }
+
+    /// <summary>
+    /// A width cap always says which side it keeps to.
+    ///
+    /// WPF centres an element whose MaxWidth is narrower than its slot when its alignment is Stretch,
+    /// which is the default. Every explanatory paragraph in the application is capped at a readable
+    /// measure, and every one of them that did not also say Left was drawn centred in its card, 150 to
+    /// 200 pixels to the right of the label above it -- on every page, in every interface. It is
+    /// invisible in the markup, which is why it spread to sixty-eight places before anyone could see
+    /// the screen: the fix already existed in one of them.
+    /// </summary>
+    [Fact]
+    public void EveryWidthCapSaysWhichSideItKeepsTo()
+    {
+        var (pinning, unpinnedStyles) = StyleAlignment();
+        var offenders = new List<string>(unpinnedStyles.Select(k => $"Styles.xaml: style {k} caps width without pinning alignment"));
+        int caps = 0;
+
+        foreach (var file in Directory.EnumerateFiles(WpfTestHost.WpfDir, "*.xaml", SearchOption.AllDirectories))
+        {
+            foreach (var el in XDocument.Load(file, LoadOptions.SetLineInfo).Descendants())
+            {
+                if (el.Attribute("MaxWidth") is null) continue;
+                caps++;
+
+                if (Pins((string?)el.Attribute("HorizontalAlignment"))) continue;
+
+                var styleRef = Regex.Match((string?)el.Attribute("Style") ?? "", @"Resource\s+(\w+)\}");
+                if (styleRef.Success && pinning.Contains(styleRef.Groups[1].Value)) continue;
+
+                offenders.Add($"{Path.GetFileName(file)}:{((IXmlLineInfo)el).LineNumber} <{el.Name.LocalName}>");
+            }
+        }
+
+        // Code-built elements. An initializer that sets MaxWidth must set the alignment in the same
+        // braces; a statement that assigns it must assign the alignment to the same target.
+        foreach (var file in Directory.EnumerateFiles(WpfTestHost.WpfDir, "*.cs", SearchOption.AllDirectories))
+        {
+            string code = File.ReadAllText(file);
+            foreach (Match m in Regex.Matches(code, @"(?<target>[\w.]+\.)?MaxWidth\s*=\s*\d"))
+            {
+                caps++;
+                string scope = m.Groups["target"].Success
+                    ? code
+                    : Enclosing(code, m.Index);
+                string needle = m.Groups["target"].Success ? m.Groups["target"].Value + "HorizontalAlignment" : "HorizontalAlignment";
+
+                if (!scope.Contains(needle))
+                    offenders.Add($"{Path.GetFileName(file)}:{code[..m.Index].Count(c => c == '\n') + 1} (code)");
+            }
+        }
+
+        Assert.True(caps > 50, $"only {caps} width caps found; this test is no longer looking at the real markup");
+        Assert.True(offenders.Count == 0,
+            $"{offenders.Count} width caps with no alignment, each drawn centred in a wide slot:{Environment.NewLine}"
+            + string.Join(Environment.NewLine, offenders));
+    }
+
+    /// <summary>The object initializer containing <paramref name="at"/>: from its unmatched '{' to the matching '}'.</summary>
+    private static string Enclosing(string code, int at)
+    {
+        int depth = 0, start = at;
+        for (; start > 0; start--)
+        {
+            if (code[start] == '}') depth++;
+            else if (code[start] == '{' && depth-- == 0) break;
+        }
+
+        depth = 0;
+        int end = start;
+        for (; end < code.Length; end++)
+        {
+            if (code[end] == '{') depth++;
+            else if (code[end] == '}' && --depth == 0) break;
+        }
+
+        return code[start..Math.Min(end + 1, code.Length)];
     }
 }

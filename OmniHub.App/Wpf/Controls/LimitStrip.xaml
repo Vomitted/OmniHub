@@ -18,7 +18,7 @@
 
             <WrapPanel x:Name="Legend" Margin="0,8,0,0"/>
 
-            <TextBlock x:Name="BandNote" Style="{DynamicResource MutedText}" FontSize="11"
+            <TextBlock HorizontalAlignment="Left" x:Name="BandNote" Style="{DynamicResource MutedText}" FontSize="11"
                        TextWrapping="Wrap" MaxWidth="760" Margin="0,8,0,0"/>
         </StackPanel>
     </StackPanel>

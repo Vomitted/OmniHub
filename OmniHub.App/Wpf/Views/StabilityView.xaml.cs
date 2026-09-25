@@ -217,7 +217,6 @@ public partial class StabilityView : UserControl
         }
 
         var grid = new Grid();
-        grid.Children.Add(new Border { Style = (Style)FindResource("CardSheenStyle") });
         grid.Children.Add(stack);
         card.Child = grid;
         return card;

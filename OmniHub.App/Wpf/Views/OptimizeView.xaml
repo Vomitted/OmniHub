@@ -19,7 +19,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <Grid Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
@@ -39,7 +38,7 @@
                             <CheckBox Grid.Column="1" x:Name="TimerToggle" Style="{StaticResource ToggleSwitchStyle}"
                                       VerticalAlignment="Center" Checked="TimerToggle_Changed" Unchecked="TimerToggle_Changed"/>
                         </Grid>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
                                    Text="A finer timer makes the scheduler wake more often, which smooths frame pacing and input handling. It also measurably increases idle power draw, so this is a trade rather than a free win. Leave it off on battery."/>
                     </StackPanel>
                 </Grid>
@@ -47,7 +46,6 @@
 
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -62,7 +60,7 @@
                             </StackPanel>
                             <TextBlock Style="{StaticResource BodyText}" Margin="0,4,0,0" TextWrapping="Wrap"
                                        Text="Runs desktop composition on the multimedia scheduler."/>
-                            <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0" MaxWidth="560" TextWrapping="Wrap"
+                            <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,4,0,0" MaxWidth="560" TextWrapping="Wrap"
                                        Text="Raises the compositor thread's priority. Helps most with stutter while the CPU is saturated. Windows may reset this on its own schedule, so it is not persistent."/>
                         </StackPanel>
                         <CheckBox Grid.Column="1" x:Name="MmcssToggle" Style="{StaticResource ToggleSwitchStyle}"
@@ -77,7 +75,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="LIVE DRAW" Style="{StaticResource DataLabelText}"/>
                         <TextBlock x:Name="DrawValue" Style="{StaticResource BigNumberText}" FontSize="24" Text="--" Margin="0,2,0,0"/>
@@ -100,7 +97,7 @@
                                        FontFamily="{StaticResource MonoFont}" FontSize="12" Margin="12,0,0,0"
                                        Foreground="{StaticResource TextPrimaryBrush}"/>
                         </Grid>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
                                    Text="The panel is usually the single largest consumer on a laptop, which makes this the most effective battery lever available without a driver. Runtime is capacity divided by measured draw at this instant, so it moves when load moves; it is not smoothed to look reassuring."/>
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                             <Button x:Name="BatterySaverBtn" Content="Battery Saver" Style="{StaticResource FlatButtonStyle}" Click="BatterySaverBtn_Click"/>
@@ -118,12 +115,11 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="AVAILABLE PHYSICAL" Style="{StaticResource DataLabelText}"/>
                         <TextBlock x:Name="MemValue" Style="{StaticResource BigNumberText}" FontSize="24" Text="--" Margin="0,2,0,0"/>
                         <TextBlock x:Name="MemSub" Style="{StaticResource MutedText}" FontSize="11"/>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,0" MaxWidth="600" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,0" MaxWidth="600" TextWrapping="Wrap"
                                    Text="The standby list is cached data Windows will hand to any process that asks, so it is not wasted memory and purging it is not routine maintenance. It is worth doing in one case: reclaiming a large cache footprint left by something else, right before launching a game."/>
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                             <Button x:Name="PurgeBtn" Content="Purge Standby List" Style="{StaticResource FlatButtonStyle}" Click="PurgeBtn_Click"/>
@@ -139,11 +135,10 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <ItemsControl x:Name="GamingList"/>
                         <TextBlock x:Name="GamingResult" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,10,0,0" TextWrapping="Wrap"/>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
                                    Text="These are the same settings Windows exposes in Settings > Gaming and Display > Graphics, written to the documented registry values. A toggle showing no state means Windows has never been given a value for it, which is not the same as it being off. Each change is read back afterwards, so a value blocked by policy reports as refused rather than appearing to apply."/>
                     </StackPanel>
                 </Grid>
@@ -155,7 +150,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="FOREGROUND APP" Style="{StaticResource DataLabelText}"/>
                         <TextBlock x:Name="ForegroundValue" Style="{StaticResource BigNumberText}" FontSize="22" Text="--" Margin="0,2,0,0"/>
@@ -165,7 +159,7 @@
                             <Button x:Name="TrimBtn" Content="Trim Background" Style="{StaticResource FlatButtonStyle}" Margin="8,0,0,0" Click="TrimBtn_Click"/>
                         </StackPanel>
                         <TextBlock x:Name="ProcessResult" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,10,0,0" TextWrapping="Wrap"/>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
                                    Text="Both of these are modest. Windows already schedules well, so raising priority helps mainly when something else is competing hard, and trimming a working set pushes pages onto the standby list rather than truly freeing them. Priority is set to above-normal, never High or RealTime: those starve the audio, input and compositor threads a game depends on. Nothing is suspended or killed."/>
                     </StackPanel>
                 </Grid>
@@ -177,12 +171,11 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="ON DISK" Style="{StaticResource DataLabelText}"/>
                         <TextBlock x:Name="CacheValue" Style="{StaticResource BigNumberText}" FontSize="24" Text="--" Margin="0,2,0,0"/>
                         <ItemsControl x:Name="CacheList" Margin="0,8,0,0"/>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
                                    Text="Safe to delete: drivers rebuild these on demand, at the cost of a one-off compile pause next launch. Worth clearing after a driver update, where a stale cache genuinely causes stutter and crashes. Clearing it routinely just means paying the recompile again."/>
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                             <Button x:Name="ClearCacheBtn" Content="Clear Shader Caches" Style="{StaticResource FlatButtonStyle}" Click="ClearCacheBtn_Click"/>
@@ -199,12 +192,11 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <TextBlock Text="RECLAIMABLE" Style="{StaticResource DataLabelText}"/>
                         <TextBlock x:Name="DiskValue" Style="{StaticResource BigNumberText}" FontSize="24" Text="--" Margin="0,2,0,0"/>
                         <ItemsControl x:Name="DiskList" Margin="0,8,0,0"/>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="600" TextWrapping="Wrap"
                                    Text="A fixed list of known-safe locations only: temp folders, crash dumps, the Windows Update cache, Prefetch and Delivery Optimization. Nothing is discovered or pattern-matched, no document folder is ever touched, and only files older than 24 hours are removed so anything currently in use is left alone."/>
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                             <Button x:Name="CleanDiskBtn" Content="Clean Up" Style="{StaticResource FlatButtonStyle}" Click="CleanDiskBtn_Click"/>
@@ -221,9 +213,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,10" MaxWidth="600" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,10" MaxWidth="600" TextWrapping="Wrap"
                                    Text="The OS-level policy for processor states and idle behaviour. Separate from the BIOS wattage caps on the Tuning tab, which are firmware limits; the two are often confused and they do different things."/>
                         <ItemsControl x:Name="PlanList"/>
                         <TextBlock x:Name="PlanResult" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,10,0,0" TextWrapping="Wrap"/>
@@ -237,9 +228,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,14" MaxWidth="620" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,14" MaxWidth="620" TextWrapping="Wrap"
                                    Text="Makes a new plan from one decision: battery life at the left, performance at the right. Every setting below is derived from that, and the available values come from what Windows reports this machine supports rather than from a fixed table. Your existing plans are never modified -- this only adds new ones."/>
 
                         <Grid Margin="0,0,0,14">

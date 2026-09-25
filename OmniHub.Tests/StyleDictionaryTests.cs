@@ -41,7 +41,7 @@ public class StyleDictionaryTests
             // still fail here if a Setter or a trigger inside one of these is wrong.
             foreach (string key in new[]
             {
-                "CardBorderStyle", "CardSheenStyle", "SubHeadingText", "BodyText", "MutedText",
+                "CardBorderStyle", "SubHeadingText", "BodyText", "MutedText",
                 "TileLabel", "TileValue", "TileUnit", "TileFoot",
                 "PillRadioStyle", "FlatButtonStyle", "PrimaryButtonStyle", "ToggleSwitchStyle",
                 "OmniCheckBoxStyle", "OmniSliderStyle", "OmniComboBoxStyle", "OmniDataGridStyle",
@@ -56,6 +56,76 @@ public class StyleDictionaryTests
             Assert.IsType<Thickness>(merged["CardPadding"]);
         });
     }
+
+    /// <summary>
+    /// Every text style says what colour it is.
+    ///
+    /// A TextBlock with no Foreground of its own inherits one, and inside these views nothing above
+    /// it sets one, so it inherits WPF's default: black. TileLabel had no Foreground and trusted each
+    /// caller to supply one; eleven did not. The Fans page's TEMPERATURE label rendered at
+    /// RGB(4,4,3) on a card of RGB(27,22,19), and four tiles and five column headers on the Network
+    /// page were the same -- invisible in every palette. The contrast tests could not see any of it,
+    /// because they check the colours the palettes define, and this text had none.
+    /// </summary>
+    [Fact]
+    public void EveryTextStyleSaysWhatColourItIs()
+    {
+        WpfTestHost.Run(() =>
+        {
+            var merged = WpfTestHost.LoadResources();
+
+            var textStyles = merged.MergedDictionaries
+                .SelectMany(d => d.Keys.Cast<object>().Select(k => (Key: k, Value: d[k])))
+                .Where(e => e.Value is Style s && typeof(System.Windows.Controls.TextBlock).IsAssignableFrom(s.TargetType))
+                .ToList();
+
+            Assert.True(textStyles.Count > 10, $"only {textStyles.Count} text styles found; this is not the real style layer");
+
+            var colourless = textStyles.Where(e => !SetsForeground((Style)e.Value)).Select(e => e.Key.ToString()).ToList();
+            Assert.True(colourless.Count == 0,
+                "these text styles leave the colour to each caller, and a caller that forgets draws black: "
+                + string.Join(", ", colourless));
+        });
+    }
+
+    /// <summary>
+    /// An input that names no style still belongs to the application, and an editable combo can
+    /// still be typed in.
+    ///
+    /// The styles existed and were keyed, so they applied only where a view remembered to ask. Eleven
+    /// inputs did not, and stock WPF drew them white on a near-black page. Making the styles the
+    /// defaults exposed a second fault underneath: the combo template had no editable part, so the
+    /// one editable combo in the application -- the game picker -- could only have been styled by
+    /// losing the ability to type into it.
+    /// </summary>
+    [Fact]
+    public void EveryInputHasTheApplicationsLookByDefault()
+    {
+        WpfTestHost.Run(() =>
+        {
+            var merged = WpfTestHost.LoadResources();
+
+            foreach (var type in new[] { typeof(System.Windows.Controls.TextBox), typeof(System.Windows.Controls.Slider),
+                                         typeof(System.Windows.Controls.ComboBox) })
+            {
+                Assert.True(merged[type] is Style s && s.TargetType == type,
+                            $"no default style for {type.Name}; one that names no style is drawn by stock WPF");
+            }
+
+            var combo = new System.Windows.Controls.ComboBox { IsEditable = true };
+            combo.Style = (Style)merged[typeof(System.Windows.Controls.ComboBox)];
+            Assert.True(combo.ApplyTemplate(), "the combo template did not apply");
+
+            var part = combo.Template.FindName("PART_EditableTextBox", combo) as System.Windows.Controls.TextBox;
+            Assert.True(part is not null, "the combo template has no PART_EditableTextBox, so IsEditable is ignored");
+            Assert.Equal(Visibility.Visible, part!.Visibility);
+        });
+    }
+
+    private static bool SetsForeground(Style? style) =>
+        style is not null
+        && (style.Setters.OfType<Setter>().Any(s => s.Property == System.Windows.Controls.TextBlock.ForegroundProperty)
+            || SetsForeground(style.BasedOn));
 
     /// <summary>
     /// The card's padding default has to stay the value its callers stopped writing out.

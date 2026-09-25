@@ -105,6 +105,7 @@ public sealed class InstrumentWallView : UserControl, IDisposable
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
             MaxWidth = 380,
+            HorizontalAlignment = HorizontalAlignment.Left,
         });
         identity.Children.Add(Divider());
         identity.Children.Add(new TextBlock

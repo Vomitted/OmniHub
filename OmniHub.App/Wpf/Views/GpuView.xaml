@@ -40,7 +40,6 @@
                  never been put on the tab for the hardware they describe. -->
             <Border Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,0,14">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
                         <Grid>
                             <TextBlock Text="LIVE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricGpuBrush}"/>
@@ -83,7 +82,6 @@
 
                 <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,7,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock Text="GRAPHICS MODE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricGpuBrush}"/>
                             <TextBlock x:Name="ModeText" Style="{StaticResource TileValue}" Text="--" Margin="0,4,0,0" TextWrapping="Wrap"/>
@@ -94,7 +92,6 @@
 
                 <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0,0,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock Text="POWER STATE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricCpuBrush}"/>
                             <TextBlock x:Name="PowerText" Style="{StaticResource TileValue}" FontSize="22" Text="--" Margin="0,7,0,0" TextWrapping="Wrap"/>
@@ -110,9 +107,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12" MaxWidth="640" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12" MaxWidth="640" TextWrapping="Wrap"
                                    Text="Custom TGP and Dynamic Boost both ship disabled on this machine, which holds the discrete GPU at its stock power cap well below what the card is rated for. This is HP's own interface, so the firmware honours it. Re-applied at every launch, because it does not survive a reboot on its own."/>
                         <CheckBox x:Name="MaxPowerCheck" Content="Unlock GPU power (Custom TGP + Dynamic Boost)"
                                   Style="{StaticResource OmniCheckBoxStyle}"/>
@@ -127,9 +123,8 @@
             </StackPanel>
             <Border x:Name="PresetCard" Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12" MaxWidth="640" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12" MaxWidth="640" TextWrapping="Wrap"
                                    Text="Sets the GPU's TGP and boost flags through the HP interface. These take effect immediately and do not need a reboot."/>
                         <!-- A segmented selector, not three buttons. These are three states of
                              one setting, and the previous layout styled PERFORMANCE as the
@@ -155,9 +150,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12" MaxWidth="640" TextWrapping="Wrap"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12" MaxWidth="640" TextWrapping="Wrap"
                                    Text="Switches which GPU drives the internal display. Unlike the power preset above, this one requires a restart."/>
                         <WrapPanel>
                             <ComboBox x:Name="ModeCombo" Width="210" Height="36" Margin="0,0,12,0" Style="{StaticResource OmniComboBoxStyle}"/>
@@ -167,7 +161,7 @@
                         <!-- Shown only when the firmware states this board cannot switch modes.
                              Stays collapsed when the firmware declines to answer: unknown is
                              not a denial. -->
-                        <TextBlock x:Name="ModeUnsupportedNote" Style="{StaticResource MutedText}" FontSize="11.5"
+                        <TextBlock HorizontalAlignment="Left" x:Name="ModeUnsupportedNote" Style="{StaticResource MutedText}" FontSize="11.5"
                                    Margin="0,10,0,0" MaxWidth="640" TextWrapping="Wrap" Visibility="Collapsed"/>
                     </StackPanel>
                 </Grid>
@@ -183,7 +177,7 @@
                     <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource DangerBrush}" CornerRadius="5,0,0,5"/>
                     <StackPanel Margin="17,13,14,13">
                         <TextBlock Text="READ BEFORE SWITCHING MODE" Style="{StaticResource TileLabel}" Margin="0,0,0,5"/>
-                        <TextBlock Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap" MaxWidth="700"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap" MaxWidth="700"
                                    Text="This is not Advanced Optimus, and it takes effect only after a reboot. Switching to Discrete on a laptop where the dGPU is not wired to the internal display can leave you with no video output at all, recoverable only by booting into Safe Mode and switching back. If you are unsure which applies to your machine, leave this alone and use App GPU Routing instead."/>
                     </StackPanel>
                 </Grid>

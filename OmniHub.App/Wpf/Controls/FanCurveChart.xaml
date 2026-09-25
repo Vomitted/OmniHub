@@ -2,7 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Loaded="OnLoaded" SizeChanged="OnSizeChanged">
-    <Border Style="{StaticResource CardBorderStyle}" Height="240" Padding="8">
-        <Canvas x:Name="Root" ClipToBounds="True"/>
-    </Border>
+    <!-- No card and no height of its own: both hosts draw the card and decide the size. It used
+         to carry a 240px card of its own inside their 188px and 190px ones, so the bottom of the
+         plot and the whole temperature axis were clipped, inside a double frame. -->
+    <Canvas x:Name="Root" ClipToBounds="True"/>
 </UserControl>

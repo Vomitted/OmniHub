@@ -494,6 +494,7 @@ public partial class NetworkView : UserControl, IDisposable
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 660,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
             Margin = new Thickness(0, 0, 0, 6),
         });
 

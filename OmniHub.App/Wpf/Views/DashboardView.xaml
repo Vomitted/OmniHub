@@ -103,7 +103,7 @@
                     <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource WarnBrush}" CornerRadius="10,0,0,10"/>
                     <StackPanel Margin="17,13,14,13">
                         <TextBlock Text="This machine" Style="{StaticResource MetricTitle}" Margin="0,0,0,6"/>
-                        <TextBlock x:Name="ReadinessHeadline" Style="{StaticResource BodyText}" FontSize="12"
+                        <TextBlock HorizontalAlignment="Left" x:Name="ReadinessHeadline" Style="{StaticResource BodyText}" FontSize="12"
                                    TextWrapping="Wrap" MaxWidth="760" Margin="0,0,0,8"/>
                         <StackPanel x:Name="ReadinessRows"/>
                         <Button x:Name="GetPawnIoBtn" Content="Install the PawnIO driver" Width="200" Height="36"
@@ -345,7 +345,7 @@
                 <Button x:Name="ChipMaxFans" Content="100% FANS" Style="{StaticResource ChipButton}" Click="ChipMaxFans_Click"/>
                 <Button x:Name="ChipAutoFans" Content="AUTO FANS" Style="{StaticResource ChipButton}" Click="ChipAutoFans_Click"/>
                 <Button x:Name="ChipTimer" Content="HI-RES TIMER" Style="{StaticResource ChipButton}" Click="ChipTimer_Click"/>
-                <TextBlock x:Name="ChipResult" Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center"
+                <TextBlock HorizontalAlignment="Left" x:Name="ChipResult" Style="{StaticResource MutedText}" FontSize="11" VerticalAlignment="Center"
                            Margin="6,0,0,7" TextWrapping="Wrap" MaxWidth="360"/>
             </WrapPanel>
 

@@ -31,7 +31,6 @@
 
                 <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,7,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock Text="WHOLE MACHINE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricMemBrush}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -45,7 +44,6 @@
 
                 <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock Text="PROCESSOR" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricCpuBrush}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -59,7 +57,6 @@
 
                 <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock Text="DISCRETE GPU" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricGpuBrush}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -73,7 +70,6 @@
 
                 <Border Grid.Column="3" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0,0,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock Text="EVERYTHING ELSE" Style="{StaticResource TileLabel}" Foreground="{StaticResource AccentBrush}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -88,8 +84,7 @@
 
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
-                    <TextBlock x:Name="DrawNote" Style="{StaticResource MutedText}" FontSize="11.5"
+                    <TextBlock HorizontalAlignment="Left" x:Name="DrawNote" Style="{StaticResource MutedText}" FontSize="11.5"
                                TextWrapping="Wrap" MaxWidth="760"/>
                 </Grid>
             </Border>
@@ -107,7 +102,6 @@
 
                 <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,7,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock Text="CHARGE" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricMemBrush}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -121,7 +115,6 @@
 
                 <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock Text="HEALTH" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricCpuBrush}"/>
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -135,7 +128,6 @@
 
                 <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0,0,0">
                     <Grid>
-                        <Border Style="{StaticResource CardSheenStyle}"/>
                         <StackPanel>
                             <TextBlock Text="CYCLE COUNT" Style="{StaticResource TileLabel}" Foreground="{StaticResource MetricGpuBrush}"/>
                             <TextBlock x:Name="CyclesValue" Style="{StaticResource TileValue}" Text="--" Margin="0,4,0,0"/>
@@ -151,7 +143,6 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -159,7 +150,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,16,0">
                             <TextBlock Text="Idle power saving" Style="{StaticResource BodyText}"/>
-                            <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" MaxWidth="560" TextWrapping="Wrap"
+                            <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" MaxWidth="560" TextWrapping="Wrap"
                                        Text="A firmware idle state exposed by the HP interface. Its exact behaviour is not documented by HP, so this reports only whether the command was accepted, not what it changed."/>
                         </StackPanel>
                         <CheckBox Grid.Column="1" x:Name="IdleToggle" Style="{StaticResource ToggleSwitchStyle}"
@@ -178,7 +169,7 @@
                 <StackPanel Margin="17,13,14,13">
                     <TextBlock Text="LOOKING FOR CPU POWER LIMITS?" Style="{StaticResource TileLabel}"
                                Foreground="{StaticResource MetricCpuBrush}" Margin="0,0,0,5"/>
-                    <TextBlock Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap" MaxWidth="700"
+                    <TextBlock HorizontalAlignment="Left" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap" MaxWidth="700"
                                Text="Sustained and boost wattage now live on the Tuning tab, together with the thermal limit and the adaptive controller, so there is one place that decides what the processor is allowed to draw."/>
                 </StackPanel>
             </Border>

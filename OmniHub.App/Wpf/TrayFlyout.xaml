@@ -31,7 +31,7 @@
 
             <!-- What is actually holding the machine back. Computed for the Dashboard strip
                  anyway, and this is the thing people open the flyout to find out. -->
-            <TextBlock x:Name="LimitText" Style="{StaticResource MutedText}" Margin="0,0,0,16"
+            <TextBlock HorizontalAlignment="Left" x:Name="LimitText" Style="{StaticResource MutedText}" Margin="0,0,0,16"
                        TextWrapping="Wrap" MaxWidth="240"/>
 
             <Button Content="Open OmniHub" Height="36" Style="{StaticResource PrimaryButtonStyle}" Click="OpenClick"/>

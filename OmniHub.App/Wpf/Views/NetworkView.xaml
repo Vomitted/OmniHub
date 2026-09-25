@@ -18,9 +18,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="Average round trip is the number everyone quotes and the one least likely to be your problem. Jitter and loss are what a game feels: a rollback netcode visibly corrects on every jitter spike, and no netcode can rewind to a state it never received. One percent loss is worse than a hundred milliseconds of steady delay."/>
 
@@ -92,9 +91,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="The measurement most worth having, and the one almost nothing reports. If your ping is fine until a patch downloads or somebody starts a video call, oversized buffers in the modem and at your ISP are holding your packets rather than dropping them. This measures the connection idle, then again while deliberately filling it, and reports the difference. It downloads a few hundred megabytes to do that."/>
 
@@ -106,7 +104,7 @@
                         </WrapPanel>
 
                         <TextBlock x:Name="LoadHeadline" Style="{StaticResource BigNumberText}" Text="--"/>
-                        <TextBlock x:Name="LoadStatus" Style="{StaticResource MutedText}" FontSize="11.5"
+                        <TextBlock HorizontalAlignment="Left" x:Name="LoadStatus" Style="{StaticResource MutedText}" FontSize="11.5"
                                    Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="700" Text="Not run yet."/>
                         <StackPanel x:Name="LoadDetail" Margin="0,10,0,0"/>
                     </StackPanel>
@@ -119,9 +117,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="For a far server most of the delay is the speed of light through fibre, and no software removes it. The floor column is the fastest that distance could possibly be answered; the overhead column is everything the real path adds on top. Only the overhead was ever available to improve, and that is precisely what a paid routing service sells you."/>
 
@@ -157,9 +154,8 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,0,12"
                                    MaxWidth="700" TextWrapping="Wrap"
                                    Text="Read from the driver, never written. Applying any of these resets the adapter and drops the link for a second or two, which is not something a button should do to you mid-match, so each carries the command that applies it and the choice stays yours. Expect small gains: these concern the adapter powering parts of itself down between packets, not your ping."/>
                         <StackPanel x:Name="AdapterRows"/>
@@ -175,13 +171,12 @@
             </StackPanel>
             <Border Style="{StaticResource CardBorderStyle}">
                 <Grid>
-                    <Border Style="{StaticResource CardSheenStyle}"/>
                     <StackPanel>
-                        <TextBlock Style="{StaticResource BodyText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource BodyText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700"
                                    Text="OmniHub does not reduce your ping, and no purely local application can. The services that genuinely do it work by owning relay servers around the world and carrying your packets over their own transit, sometimes down several paths at once so a loss on one never reaches you. That is a network rather than a setting, and it is the one item on this page that costs money precisely because it is the one that requires hardware in other countries."/>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700" Margin="0,10,0,0"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700" Margin="0,10,0,0"
                                    Text="The tweaks left out were left out on purpose. Disabling Nagle does nothing for a game speaking UDP, which is most of them. NetworkThrottlingIndex governs a ceiling ordinary game traffic never approaches. Closing background processes was independently measured at a median of 2.4 frames per second. Where something real was found it is above, labelled with what it is actually worth."/>
-                        <TextBlock Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700" Margin="0,10,0,0"
+                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700" Margin="0,10,0,0"
                                    Text="If the load test comes back bloated, the fix is in your router rather than on this screen: enable SQM or QoS running fq_codel or CAKE, shaped to about ninety percent of your real line rate. That single change is worth more than every tweak on this page put together."/>
                     </StackPanel>
                 </Grid>
