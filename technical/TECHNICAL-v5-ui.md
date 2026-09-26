@@ -287,10 +287,10 @@ is read down a vertical line. 5, 15 or 30 minutes.
 The data is `MetricSource.Recent`, a `RecentSeries` per reading holding the last thirty minutes,
 recorded whether or not anything is drawn: a chart that collected for itself would open empty after
 a session in the tray, exactly when its history mattered. Fan levels are recorded only on the ticks
-that read them — the thermal log's rule — and a missing reading adds nothing. While hidden the slow
-readings arrive every thirty seconds, so their series carry an explicit 95-second gap threshold;
-the known limit, marked in the code, is that a stretch of nulls shorter than that (a GPU asleep for a
-minute) is bridged.
+that read them — the thermal log's rule. While hidden the slow readings arrive every thirty seconds,
+so their series carry an explicit 95-second gap threshold. A missing reading is not left to that
+rule: `RecentSeries` records it as a break (one NaN per run), and `TimeSeriesDecimator` ends the line
+at any non-finite value, so a GPU asleep for a minute is a gap, never a straight line across it.
 
 The chart control gained what the strips needed, and every chart shares it: `ShareScale` draws the
 series of one unit against one scale (before, a second series sat at a height its axis did not

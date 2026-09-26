@@ -160,12 +160,14 @@ public class TimeSeriesDecimatorTests
         points[3] = new TimePoint(points[3].AtUtc, double.NaN);
         points[6] = new TimePoint(points[6].AtUtc, double.PositiveInfinity);
 
-        var drawn = TimeSeriesDecimator
-            .Decimate(points, Start, points[^1].AtUtc, 100, NoGaps)
-            .SelectMany(s => s)
-            .ToList();
+        var segments = TimeSeriesDecimator.Decimate(points, Start, points[^1].AtUtc, 100, NoGaps);
+        var drawn = segments.SelectMany(s => s).ToList();
 
         Assert.Equal(8, drawn.Count);
         Assert.All(drawn, p => Assert.True(double.IsFinite(p.Value)));
+
+        // And each ends the line, even with no gap rule at all: a reading that had no value is an
+        // absence, and joining across it would draw the value it did not have.
+        Assert.Equal(3, segments.Count);
     }
 }

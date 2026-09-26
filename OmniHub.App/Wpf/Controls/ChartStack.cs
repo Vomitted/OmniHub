@@ -32,8 +32,7 @@ public sealed class ChartStack : StackPanel
 
     // The slow readings arrive every five seconds on screen and every thirty from the tray, and a
     // default gap rule of three median intervals would erase the whole tray stretch as missing.
-    // ponytail: a stretch of null readings shorter than this (a GPU asleep for a minute) is bridged
-    // by a straight line; recording nulls as segment breaks in RecentSeries would fix it properly.
+    // A reading that did not answer is not left to this rule: RecentSeries records it as a break.
     private static readonly TimeSpan SlowGap = TimeSpan.FromSeconds(95);
     private static readonly HashSet<string> FastKeys = new() { "cpu", "fan", "fan2" };
 

@@ -204,7 +204,12 @@ internal static class Snapshot
             {
                 if (Stamp(r) is not { } at) continue;
                 foreach (var (key, value) in Row(r, Num(r, "fan1_raw") * 100))
+                {
+                    // An empty fan field is a tick that did not read the fans, which the application
+                    // never records -- not a fan that did not answer, which it records as a break.
+                    if (key == "fan" && value is null) continue;
                     ((OmniHub.Core.Telemetry.RecentSeries)recent[key]!).Add(at + shift, value);
+                }
             }
         }
 

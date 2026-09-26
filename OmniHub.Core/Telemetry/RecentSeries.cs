@@ -12,9 +12,11 @@ namespace OmniHub.Core.Telemetry;
 /// showed the few seconds since the window appeared -- empty at exactly the moment its history was
 /// the thing worth seeing. This keeps recording whether or not anything is drawn.
 ///
-/// A missing reading adds nothing, so a stretch without one reaches the chart as a gap in time,
-/// which the chart already draws as a gap. Recording a zero or the last value instead would draw a
-/// measurement nobody took.
+/// A missing reading is recorded as a break -- one NaN for a run of them -- which ends the line
+/// there (TimeSeriesDecimator). Recording a zero or the last value instead would draw a measurement
+/// nobody took, and recording nothing let a short absence be bridged: the slow readings arrive
+/// thirty seconds apart from the tray, so the chart has to tolerate wide spacing, and a GPU asleep
+/// for a minute was drawn as a straight line across the minute.
 /// </summary>
 public sealed class RecentSeries
 {
@@ -34,7 +36,12 @@ public sealed class RecentSeries
 
     public void Add(DateTime atUtc, double? value)
     {
-        if (value is not { } v || double.IsNaN(v) || double.IsInfinity(v)) return;
+        if (value is not { } v || !double.IsFinite(v))
+        {
+            // One break per run of missing readings, and none before the first real one.
+            if (_points.Count == 0 || double.IsNaN(_points[^1].Value)) return;
+            v = double.NaN;
+        }
 
         _points.Add(new TimePoint(atUtc, v));
 

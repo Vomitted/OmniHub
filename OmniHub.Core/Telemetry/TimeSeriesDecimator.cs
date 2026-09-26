@@ -83,7 +83,16 @@ public static class TimeSeriesDecimator
         foreach (var p in points)
         {
             if (p.AtUtc < fromUtc || p.AtUtc > toUtc) continue;
-            if (double.IsNaN(p.Value) || double.IsInfinity(p.Value)) continue;
+
+            // Never drawn, and it ends the line: a reading taken that had no value is a measured
+            // absence, and a line joined across it would say the value passed smoothly from one
+            // side to the other. RecentSeries records a missing reading this way on purpose.
+            if (double.IsNaN(p.Value) || double.IsInfinity(p.Value))
+            {
+                FlushSegment();
+                previous = null;
+                continue;
+            }
 
             // A hole ends the segment. The renderer then draws two lines with nothing between
             // them, which is the honest picture of a machine that was not running.
