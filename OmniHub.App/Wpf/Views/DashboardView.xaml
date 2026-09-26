@@ -4,13 +4,12 @@
              xmlns:controls="clr-namespace:OmniHub.App.Wpf.Controls"
              Background="{StaticResource BackgroundBrush}">
 
-    <!-- The machine at a glance, drawn (technical/TECHNICAL-v5-ui.md, section 7).
+    <!-- The machine at a glance, drawn (technical/TECHNICAL-v5-ui.md, sections 7 and 8).
 
          Four widgets lead: the processor and the graphics card as rings against their thermal
          thresholds, the fans as a fan that turns with them, the power as a battery filled to its
-         charge, each with bars filled against the real limit of what they measure. Under them the
-         last five minutes, what is limiting the processor, and the profile; under those, every
-         reading as a table, which is the detail the widgets are drawn from. -->
+         charge. Under them the history, four strips on one clock; then what is limiting the
+         processor beside the profile; then every reading as a tile. -->
     <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" Padding="18,14,18,16">
         <StackPanel>
 
@@ -44,7 +43,7 @@
                             <TextBlock Text="Processor" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left"/>
                             <TextBlock x:Name="CpuClockMeta" Style="{StaticResource PaneMeta}"/>
                         </Grid>
-                        <controls:RingGauge x:Name="CpuRing" Diameter="116" Caption="die temperature" HorizontalAlignment="Center"/>
+                        <controls:RingGauge x:Name="CpuRing" Diameter="136" Caption="die temperature" HorizontalAlignment="Center"/>
                         <controls:Meter x:Name="CpuLoadMeter" Label="Load" Margin="0,8,0,0"/>
                         <controls:Meter x:Name="CpuPowerMeter" Label="Package" Margin="0,7,0,0"/>
                     </StackPanel>
@@ -56,7 +55,7 @@
                             <TextBlock Text="Graphics" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left"/>
                             <TextBlock x:Name="GpuClockMeta" Style="{StaticResource PaneMeta}"/>
                         </Grid>
-                        <controls:RingGauge x:Name="GpuRing" Diameter="116" Caption="GPU temperature" HorizontalAlignment="Center"/>
+                        <controls:RingGauge x:Name="GpuRing" Diameter="136" Caption="GPU temperature" HorizontalAlignment="Center"/>
                         <controls:Meter x:Name="GpuLoadMeter" Label="Load" Margin="0,8,0,0"/>
                         <controls:Meter x:Name="GpuPowerMeter" Label="Power" Margin="0,7,0,0"/>
                         <TextBlock x:Name="GpuText" Text="--" Style="{StaticResource CellNote}" TextWrapping="Wrap" TextTrimming="None" Margin="0,8,0,0"/>
@@ -69,10 +68,10 @@
                             <TextBlock Text="Cooling" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left"/>
                             <TextBlock x:Name="FanModeMeta" Style="{StaticResource PaneMeta}"/>
                         </Grid>
-                        <StackPanel HorizontalAlignment="Center" Margin="0,2,0,0">
-                            <controls:FanGlyph x:Name="Fan" Width="88" Height="88" HorizontalAlignment="Center"/>
+                        <StackPanel HorizontalAlignment="Center" Margin="0,4,0,0">
+                            <controls:FanGlyph x:Name="Fan" Width="104" Height="104" HorizontalAlignment="Center"/>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
-                                <TextBlock x:Name="FanRpmText" Text="--" Style="{StaticResource BigNumberText}" FontSize="20"/>
+                                <TextBlock x:Name="FanRpmText" Text="--" Style="{StaticResource BigNumberText}" FontSize="22"/>
                                 <TextBlock Text="rpm" Style="{StaticResource TileUnit}" Margin="4,0,0,3"/>
                             </StackPanel>
                         </StackPanel>
@@ -88,22 +87,47 @@
                             <TextBlock Text="Power" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left"/>
                             <TextBlock x:Name="PowerSourceMeta" Style="{StaticResource PaneMeta}"/>
                         </Grid>
-                        <StackPanel HorizontalAlignment="Center" Margin="0,16,0,0">
+                        <StackPanel HorizontalAlignment="Center" Margin="0,22,0,0">
                             <controls:BatteryGlyph x:Name="Battery" HorizontalAlignment="Center"/>
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,14,0,0">
-                                <TextBlock x:Name="ChargeText" Text="--" Style="{StaticResource BigNumberText}" FontSize="20"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                                <TextBlock x:Name="ChargeText" Text="--" Style="{StaticResource BigNumberText}" FontSize="22"/>
                                 <TextBlock Text="%" Style="{StaticResource TileUnit}" Margin="3,0,0,3"/>
                             </StackPanel>
                         </StackPanel>
-                        <controls:Meter x:Name="MemMeter" Label="Memory" Margin="0,16,0,0"/>
+                        <controls:Meter x:Name="MemMeter" Label="Memory" Margin="0,18,0,0"/>
                         <TextBlock x:Name="PowerDrawText" Text="--" Style="{StaticResource CellNote}" TextWrapping="Wrap" TextTrimming="None" Margin="0,8,0,0"/>
                         <TextBlock x:Name="BatteryText" Text="--" Style="{StaticResource CellNote}" TextWrapping="Wrap" TextTrimming="None" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Border>
             </UniformGrid>
 
-            <!-- How the readings got here, beside what is holding the processor back and the profile.
-                 Two columns wide, one column narrow (see Reflow). -->
+            <!-- The history: four strips on one clock, filled from what the readings source kept
+                 recording while nobody was looking (see ChartStack). -->
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10">
+                        <TextBlock Text="History" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <TextBlock x:Name="HistoryMeta" Text="live" Style="{StaticResource PaneMeta}" Margin="0,0,12,0"/>
+                            <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="2">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton GroupName="HistoryWindow" Content="5 min" Tag="5" Width="60" Height="26" IsChecked="True"
+                                                 Style="{StaticResource PillRadioStyle}" Checked="HistoryWindow_Checked"/>
+                                    <RadioButton GroupName="HistoryWindow" Content="15 min" Tag="15" Width="60" Height="26" Margin="2,0"
+                                                 Style="{StaticResource PillRadioStyle}" Checked="HistoryWindow_Checked"/>
+                                    <RadioButton GroupName="HistoryWindow" Content="30 min" Tag="30" Width="60" Height="26"
+                                                 Style="{StaticResource PillRadioStyle}" Checked="HistoryWindow_Checked"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                    <ContentControl x:Name="HistoryHost" Focusable="False"/>
+                </StackPanel>
+            </Border>
+
+            <!-- What is holding the processor back, beside the profile. Two columns wide, one
+                 column narrow (see Reflow). -->
             <Grid x:Name="Columns" Margin="0,0,0,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -117,19 +141,15 @@
 
                 <Border Grid.Column="0" Style="{StaticResource PaneStyle}" VerticalAlignment="Top">
                     <StackPanel>
-                        <Grid Margin="0,0,0,8">
-                            <TextBlock Text="Last five minutes" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left"/>
-                            <TextBlock Text="die temperature · fan duty · commanded" Style="{StaticResource PaneMeta}"/>
-                        </Grid>
-                        <controls:TimeSeriesChart x:Name="TrendChart" Height="196"/>
+                        <TextBlock Text="What is limiting it" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                        <controls:LimitStrip x:Name="Limits"/>
                     </StackPanel>
                 </Border>
 
+                <!-- The profile, and what it actually sends. The buttons alone never said that
+                     Performance also pins both fans at maximum. -->
                 <StackPanel x:Name="Side" Grid.Column="2">
-
-                    <!-- The profile, and what it actually sends. The buttons alone never said that
-                         Performance also pins both fans at maximum. -->
-                    <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                    <Border Style="{StaticResource PaneStyle}">
                         <StackPanel>
                             <TextBlock Text="Profile" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
                             <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
@@ -143,26 +163,18 @@
                             <TextBlock x:Name="ProfileNote" Style="{StaticResource FieldLabel}" Margin="1,8,0,0"/>
                         </StackPanel>
                     </Border>
-
-                    <!-- What is holding the processor back, and what has been. -->
-                    <Border Style="{StaticResource PaneStyle}">
-                        <StackPanel>
-                            <TextBlock Text="What is limiting it" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
-                            <controls:LimitStrip x:Name="Limits"/>
-                        </StackPanel>
-                    </Border>
                 </StackPanel>
             </Grid>
 
-            <!-- The detail: every reading, now and since launch, and where it came from. -->
+            <!-- The detail: every reading, now and since launch, as a tile. -->
             <Border Style="{StaticResource PaneStyle}">
                 <DockPanel>
-                    <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
                         <TextBlock Text="Sensors" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <TextBlock x:Name="SensorsSince" Style="{StaticResource PaneMeta}" Margin="0,0,4,0"/>
                             <Button Content="reset" Style="{StaticResource LinkButtonStyle}" Click="ResetStats_Click"
-                                    ToolTip="Start the minimum, mean and maximum columns again from now"/>
+                                    ToolTip="Start the minimum, mean and maximum again from now"/>
                         </StackPanel>
                     </Grid>
                     <ContentControl x:Name="SensorsHost" Focusable="False"/>

@@ -68,6 +68,11 @@ public sealed record CustomPalette(
             ["TextFaintColor"] = Mix(text, ground, 0.34).ToString(),
 
             ["AccentColor"] = Accent.ToString(),
+
+            // The far end of every accent gradient -- rings, bars, the fan. The shipped palettes
+            // pair each accent with a lighter neighbour (blue to cyan, orange to amber), and a
+            // palette without one left those gradients ending on the previous theme's colour.
+            ["AccentColor2"] = Mix(Accent, text, 0.3).ToString(),
             ["AccentDimColor"] = Mix(Accent, ground, 0.45).ToString(),
             ["AccentSoftColor"] = Mix(Accent, ground, 0.78).ToString(),
 

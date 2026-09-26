@@ -1,6 +1,7 @@
 <UserControl x:Class="OmniHub.App.Wpf.Views.TuningView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:OmniHub.App.Wpf.Controls"
              Background="{StaticResource BackgroundBrush}">
     <UserControl.Resources>
         <!-- One tunable knob. This was fifty-four lines of C# run once per knob, which meant the
@@ -77,19 +78,16 @@
                 </StackPanel>
             </Border>
 
-            <!-- The same five numbers as LIVE above, but as a fraction of each limit, which is
-                 the form that answers "which knob would change anything". Here rather than on the
-                 dashboard because it talks about the knobs directly below it, and because on the
-                 dashboard it meant a synchronous SMU read on the UI thread every time that tab
-                 was opened. It is fed by the live timer, which already reads off-thread. -->
+            <!-- The five constraints as fractions of their own limits, which is the form that
+                 answers "which knob would change anything", and what has been binding over the last
+                 hour. The same control the Dashboard shows; this page kept a hand-built copy of it
+                 until the two drifted apart. Fed by the live timer, which already reads off-thread. -->
             <!-- The title is inside the pane, so it hides with it: as a heading above a collapsed
                  card it used to stand alone on the page, a section with nothing in it. -->
             <Border x:Name="LimitsCard" Visibility="Collapsed" Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
                 <StackPanel>
                     <TextBlock Text="What is limiting the processor" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
-                    <TextBlock HorizontalAlignment="Left" x:Name="LimitsHeadline" Style="{StaticResource MutedText}" FontSize="11.5"
-                               TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,10"/>
-                    <StackPanel x:Name="LimitRows"/>
+                    <controls:LimitStrip x:Name="Limits"/>
                 </StackPanel>
             </Border>
 

@@ -248,4 +248,87 @@ keeping a copy.
 
 **Open, not addressed here.** Switching theme live leaves the gradient accents — rings, fan, bars,
 traces — in the previous palette until restart; the palette swap does not reach brushes whose stops
-are dynamic references. It predates this work and is visible only after a live switch.
+are dynamic references. It predates this work and is visible only after a live switch. *(Fixed in
+section 8.)*
+
+## 8. The fourth pass: history as the hero, colour, and light
+
+"starting to get there, but not quite yet", answered with all four directions offered: graphics
+everywhere, a richer look, big live charts, and different colours.
+
+### The theme switch, fixed first
+
+Blue-to-cyan depends on it, so it went first. Measured on a live switch from Ember to Midnight, only
+the pane surfaces followed; the ground, the sidebar, the muted text and every gradient kept Ember.
+The cause: a `DynamicResource` reference caches what it found and forgets it only when its owning
+element announces a resource change, and a brush shared by hundreds of elements has no single owner
+to hear it from. (Styles and templates clone the brush per element; those clones do have one, which
+is why a few surfaces followed.)
+
+`ThemeManager.Apply` now re-links each shared brush after the palette swap, from
+`Core/Theming/ThemeBrushes` — a table of brush to palette colour keys that `ThemeBrushTests` holds to
+`Theme.xaml` brush for brush. Each colour gets a *fresh* reference, which is what the XAML parser
+attached in the first place. Two tempting alternatives are wrong, and the code says why: assignment
+makes the brush freezable, and a style sealed afterwards freezes it; `SetCurrentValue` layered over a
+reference makes WPF's per-element clone throw an `InvalidCastException` (seen in a render).
+
+Found on the way: a custom palette never produced `AccentColor2`, so every gradient on one ended on a
+leftover colour — and its test agreed, because its list of required keys was a hand copy. The list is
+now read from a shipped palette. Midnight is the default for new installs (`AppSettings.ThemeName`
+follows `ThemeManager.DefaultId`), and the sidebar names the theme actually applied.
+
+### History as the hero
+
+`ChartStack` draws four strips on one clock — temperature, fans, power, load — with one crosshair
+through all of them and each strip's live figures in its header, which show the values under the
+pointer while it hovers. Stacked rather than overlaid, because the question is coincidence and that
+is read down a vertical line. 5, 15 or 30 minutes.
+
+The data is `MetricSource.Recent`, a `RecentSeries` per reading holding the last thirty minutes,
+recorded whether or not anything is drawn: a chart that collected for itself would open empty after
+a session in the tray, exactly when its history mattered. Fan levels are recorded only on the ticks
+that read them — the thermal log's rule — and a missing reading adds nothing. While hidden the slow
+readings arrive every thirty seconds, so their series carry an explicit 95-second gap threshold;
+the known limit, marked in the code, is that a stretch of nulls shorter than that (a GPU asleep for a
+minute) is bridged.
+
+The chart control gained what the strips needed, and every chart shares it: `ShareScale` draws the
+series of one unit against one scale (before, a second series sat at a height its axis did not
+describe); horizontal gridlines at the labelled values; a darker plot well; fills rebuilt from the
+line's colour so a theme switch reaches them. A short plot gets no more intervals than it can label
+(`height / 22`) and of those the tightest (`ValueAxis.Tightest`) — two intervals alone drew a
+0–5,500 rpm fan band on a 0–10,000 scale.
+
+### Light
+
+Glow is a `DropShadowEffect` on the marks alone — ring arcs and meter fills — in the mark's own
+colour, so an arc past its warning glows amber. The fan gets a halo instead: a masked static fill
+behind the blades, lit only while the fan turns, because a blur on the rotor would be paid on every
+frame it rotates. The rings are 136 px with a tick every tenth and the stretch past the warning
+threshold tinted on the track like a tachometer's red zone. Panes are lit from above
+(`CardGradientBrush`) with a highlighted top edge (`PaneEdgeBrush`). Figures roll to a new reading
+in 240 ms (`Roll`), only while visible and only when Windows' animations are on — short enough that a
+number in passing is not read as a reading.
+
+### Graphics everywhere
+
+| Where | Was | Now |
+| --- | --- | --- |
+| Dashboard, GPU page | sensor table | `SensorTiles`: figure, filled trace, session min and max; mean and source in the tooltip (`SensorTable` deleted) |
+| Dashboard, Tuning | 3 px limit hairlines; Tuning kept a hand-built copy | `LimitStrip` meters with a mark at 95%, where a limit counts as binding; Tuning uses the shared control |
+| Tuning, Live | "18.3 W of 25 W" text, and a "Limited by" line coloured red and amber | meters against each limit, amber once binding; the words uncoloured |
+| System, timer | "1 ms, finest 0.5 ms" | a meter between the coarsest and finest resolution on a log scale (`Gauge.LogFraction`) |
+| System, memory | available and total | in use against installed |
+| System, shader cache and disk cleanup | text lists | `ShareBar`: each location's share of the whole, shades of the accent |
+
+### Verification
+
+964 tests pass. Each new rule was broken on purpose and its test failed: a row dropped from
+`ThemeBrushes`, `AccentColor2` dropped from the custom palette, `Tightest` reduced to two intervals,
+`LogFraction` made linear — each restored byte-identically. Rendered: a live switch from Ember to
+Midnight across all seven pages, the Dashboard, and System.
+
+**Checked and left alone.** The thermal log's `sensor` column alternates between the die sensor and
+the ACPI zone. That is `ThermalReader.Merge` taking the higher of Tctl and the six-second-cached zone
+on purpose, so the fan never acts on a lower temperature than the ACPI-only path would have; it is
+pinned by `SmuTemperatureTests`.

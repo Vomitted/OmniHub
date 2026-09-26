@@ -37,6 +37,10 @@ public sealed class MetricSource : IDisposable
     private readonly Dictionary<string, double?> _values = new();
     private readonly Dictionary<string, Sparkline> _history = new();
     private readonly Dictionary<string, RunningStats> _stats = new();
+    private readonly Dictionary<string, RecentSeries> _recent = new();
+
+    /// <summary>How far back <see cref="Recent"/> reaches: the longest window the history charts offer.</summary>
+    public static readonly TimeSpan RecentSpan = TimeSpan.FromMinutes(30);
 
     /// <summary>Raised on the UI thread whenever any value changed, and only while <see cref="Active"/>.</summary>
     public event Action? Updated;
@@ -92,6 +96,7 @@ public sealed class MetricSource : IDisposable
         {
             _history[metric.Key] = new Sparkline(minSpan: Metrics.TraceSpan(metric));
             _stats[metric.Key] = new RunningStats();
+            _recent[metric.Key] = new RecentSeries(RecentSpan);
         }
 
         if (ctx.Smu is { } smu)
@@ -114,6 +119,13 @@ public sealed class MetricSource : IDisposable
     /// <summary>The recent window for a reading, for drawing a trend beside it.</summary>
     public Sparkline History(string key) =>
         _history.TryGetValue(key, out var history) ? history : new Sparkline();
+
+    /// <summary>
+    /// The last <see cref="RecentSpan"/> of a reading, time-stamped, recorded whether or not the
+    /// window was open -- at the slow tick's thirty seconds while hidden rather than its five.
+    /// </summary>
+    public IReadOnlyList<TimePoint> Recent(string key) =>
+        _recent.TryGetValue(key, out var recent) ? recent.Points : Array.Empty<TimePoint>();
 
     /// <summary>
     /// The lowest, mean and highest value of a reading since <see cref="StatsSince"/>, counted
@@ -148,10 +160,16 @@ public sealed class MetricSource : IDisposable
     /// <summary>Installed memory, the full scale for a memory gauge. Null until the first read.</summary>
     public double? MemoryTotalGB { get; private set; }
 
-    private void Set(string key, double? value)
+    /// <param name="measured">
+    /// False for a value carried over from an earlier read -- the fan levels between their
+    /// readbacks. It still shows as the current value, but it is not stamped into the history as a
+    /// reading taken now, the rule the thermal log keeps for the same columns.
+    /// </param>
+    private void Set(string key, double? value, bool measured = true)
     {
         _values[key] = value;
         if (_stats.TryGetValue(key, out var stats)) stats.Add(value);
+        if (measured && _recent.TryGetValue(key, out var recent)) recent.Add(DateTime.UtcNow, value);
 
         // The trace is only for drawing. Pushed while hidden, it would mix five-second samples with
         // thirty-second ones on an axis that assumes they are evenly spaced.
@@ -174,8 +192,8 @@ public sealed class MetricSource : IDisposable
         bool ceiling = !fromDie && ThermalReader.IsAtCeiling(tempC, _ctx.ZoneCeilingC);
 
         Set("cpu", ceiling ? null : displayC);
-        Set("fan", r.FanLevel1 is { } f1 ? _ctx.FanBackend.Calibration.RawToRpm(f1) : null);
-        Set("fan2", r.FanLevel2 is { } f2 ? _ctx.FanBackend.Calibration.RawToRpm(f2) : null);
+        Set("fan", r.FanLevel1 is { } f1 ? _ctx.FanBackend.Calibration.RawToRpm(f1) : null, r.FanLevelsFresh);
+        Set("fan2", r.FanLevel2 is { } f2 ? _ctx.FanBackend.Calibration.RawToRpm(f2) : null, r.FanLevelsFresh);
 
         if (_active) Updated?.Invoke();
     });

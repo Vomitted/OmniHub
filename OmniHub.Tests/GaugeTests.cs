@@ -51,4 +51,24 @@ public class GaugeTests
         Assert.Equal(0.4, Gauge.SecondsPerTurn(20000)!.Value, 9);   // never a blur
         Assert.Equal(8.0, Gauge.SecondsPerTurn(150)!.Value, 9);     // never imperceptibly slow
     }
+
+    [Fact]
+    public void ATimerIsPlacedByRatioSoTheStepThatMattersIsTheLongOne()
+    {
+        // 15.625 ms to 0.5 ms: 1 ms is four fifths of the way on a log scale, where a linear bar
+        // would have put it at 97% and indistinguishable from the finest.
+        Assert.Equal(0.0, Gauge.LogFraction(15.625, 15.625, 0.5)!.Value, 9);
+        Assert.Equal(1.0, Gauge.LogFraction(0.5, 15.625, 0.5)!.Value, 9);
+        Assert.Equal(Math.Log(15.625) / Math.Log(31.25), Gauge.LogFraction(1, 15.625, 0.5)!.Value, 9);
+    }
+
+    [Theory]
+    [InlineData(null, 15.625, 0.5)]
+    [InlineData(1.0, null, 0.5)]
+    [InlineData(0.0, 15.625, 0.5)]
+    [InlineData(1.0, 1.0, 1.0)]
+    public void ATimerThatCannotBePlacedIsNotDrawn(double? value, double? coarse, double? fine)
+    {
+        Assert.Null(Gauge.LogFraction(value, coarse, fine));
+    }
 }

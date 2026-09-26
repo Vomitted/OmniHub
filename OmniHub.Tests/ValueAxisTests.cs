@@ -81,4 +81,19 @@ public class ValueAxisTests
         var scale = ValueAxis.Nice(double.NaN, 5);
         Assert.True(scale.Hi > scale.Lo);
     }
+
+    [Fact]
+    public void AShortPlotGetsTheTightestScaleItHasRoomToLabel()
+    {
+        // Two intervals alone round a 0-5,500 RPM fan band up to 0-10,000; three end it at 6,000.
+        Assert.Equal(10000.0, ValueAxis.Nice(0, 5500, 2).Hi, 9);
+        Assert.Equal(6000.0, ValueAxis.Tightest(0, 5500, 3).Hi, 9);
+    }
+
+    [Fact]
+    public void ATieKeepsTheMoreGridlines()
+    {
+        // 0-100 fits exactly in two steps of 50 and five of 20; a tall chart keeps its five.
+        Assert.Equal(20.0, ValueAxis.Tightest(0, 100, 5).Step, 9);
+    }
 }

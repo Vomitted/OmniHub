@@ -231,14 +231,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   Pages are now panes — a bordered surface with its title inside — in two columns wherever there
   is an instrument and the settings that drive it, stacking on a narrow window. The density
   setting reaches all of it.
-- **The Dashboard is the whole machine at once.** Every reading in one table: its current value,
-  the lowest, mean and highest since launch, a trace, and where it came from. The session figures
-  keep counting while the window is in the tray, so a peak during a game is there afterwards.
-  Beside the table: the profile, what is limiting the processor, and what is in force; under it,
-  the last five minutes. Four cards that restated the bar above them are gone, and six chips that
-  duplicated controls on other pages — one of which changed the saved fan mode without the Fans
-  page finding out. The profile now says what each button sends, including that Performance pins
-  both fans at maximum.
+- **The Dashboard is the whole machine at once.** Every reading as a tile: its current value, its
+  recent trace, and the lowest and highest since launch, with the mean and where it came from in
+  the tile's tooltip. The session figures keep counting while the window is in the tray, so a peak
+  during a game is there afterwards. Four cards that restated the bar above them are gone, and six
+  chips that duplicated controls on other pages — one of which changed the saved fan mode without
+  the Fans page finding out. The profile now says what each button sends, including that
+  Performance pins both fans at maximum.
+- **The history is four live charts on one clock** — temperature, fans, power and load, the
+  processor and the graphics card in their own colours in each — with one crosshair through all of
+  them and the values under the pointer in each chart's header. Five, fifteen or thirty minutes,
+  and full the moment the window opens: the last half hour is recorded whether or not the window
+  is showing, so opening it after a game shows the game.
+- **Midnight is the default look**, blue to cyan, and the whole interface is lit: gradient panes
+  with a highlighted top edge, a glow on the rings and bars in their own colour, a fan lit only
+  while it turns, larger rings marked every tenth with their warning zone tinted, and figures that
+  roll to a new reading in a quarter of a second. An existing theme choice is kept.
+- **More of every page is drawn.** Tuning's live figures are meters against each limit, amber once
+  a limit binds, and its "limited by" line is no longer coloured red. System draws the timer
+  between the coarsest and finest resolution Windows allows, memory in use against installed, and
+  the shader cache and disk cleanup as bars of what each location holds. The limit bars are meters
+  with a mark where a limit starts to bind. Every chart has gridlines at its labelled values, and a
+  chart's lines of one unit share one scale.
 - **Readings are drawn, not only written.** The Dashboard leads with four widgets: the processor
   and the graphics card as temperature rings, the fans as an impeller that turns faster when they
   do, the power as the battery filled to its charge, each with bars filled against the real limit
@@ -278,6 +292,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Fixed
 
+- **Switching theme repaints everything at once.** A live switch used to move the pane surfaces
+  and leave the window background, the sidebar, the muted text and every gradient — rings, fan,
+  bars, chart lines — in the previous theme until a restart. A test now holds the list of what a
+  switch repaints to the theme file, so a colour added later cannot be missed.
+- **A custom palette's gradients end on its own colour.** Built palettes never produced the
+  second accent stop, so every ring, bar and fan on one faded into whatever theme came before.
 - **A stopped fan that was never stopped.** The log recorded fan 2 at zero for stretches of up to
   twenty-eight minutes while the machine was hot, and the user could hear no difference. Across
   192,791 readings the pattern turned out to be a single pair — fan 1 at exactly 27 beside fan 2

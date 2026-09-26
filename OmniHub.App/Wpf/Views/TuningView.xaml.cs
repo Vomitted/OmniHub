@@ -60,9 +60,10 @@ public partial class TuningView : UserControl, IDisposable
     private readonly Dictionary<string, KnobRow> _knobs = new();
     private AdaptiveTuning? _adaptive;
     private DispatcherTimer? _liveTimer;
-    private TextBlock? _liveStapm, _liveFast, _liveSlow, _liveTemp;
-    private TextBlock? _liveLimiting, _liveTdc, _liveEdc, _liveSocCurrent, _liveCoreTemp, _liveSocTemp;
-    private TextBlock? _liveGpu;
+    private TextBlock? _liveTemp, _liveLimiting, _liveSocCurrent, _liveSocTemp, _liveGpu;
+
+    // Every live figure that has a limit is drawn against it; the rest stay figures.
+    private Controls.Meter? _meterStapm, _meterFast, _meterSlow, _meterTdc, _meterEdc, _meterCore;
 
     public TuningView(HardwareContext ctx, AppSettings settings)
     {
@@ -125,16 +126,23 @@ public partial class TuningView : UserControl, IDisposable
     private void BuildLiveRows()
     {
         _liveLimiting = AddReadout("Limited by");
-        _liveStapm = AddReadout("Sustained (STAPM)");
-        _liveFast = AddReadout("Boost (PPT fast)");
-        _liveSlow = AddReadout("Slow (PPT slow)");
-        _liveTdc = AddReadout("Core current (TDC)");
-        _liveEdc = AddReadout("Core current (EDC)");
+        _meterStapm = AddMeter("Sustained (STAPM)");
+        _meterFast = AddMeter("Boost (PPT fast)");
+        _meterSlow = AddMeter("Slow (PPT slow)");
+        _meterTdc = AddMeter("Core current (TDC)");
+        _meterEdc = AddMeter("Core current (EDC)");
         _liveSocCurrent = AddReadout("SoC current");
-        _liveCoreTemp = AddReadout("Core (SMU)");
+        _meterCore = AddMeter("Core (SMU)");
         _liveSocTemp = AddReadout("SoC / graphics");
         _liveTemp = AddReadout("Die temperature");
         if (GpuTelemetry.IsAvailable) _liveGpu = AddReadout("GPU");
+
+        Controls.Meter AddMeter(string label)
+        {
+            var meter = new Controls.Meter { Label = label, Margin = new Thickness(0, 5, 0, 5) };
+            LiveRows.Children.Add(meter);
+            return meter;
+        }
 
         TextBlock AddReadout(string label)
         {
@@ -1260,114 +1268,40 @@ public partial class TuningView : UserControl, IDisposable
     /// <summary>The model for a knob, or null if nothing built that key.</summary>
     private KnobRow? Knob(string key) => _knobs.GetValueOrDefault(key);
 
-    /// <summary>One constraint's row: built once, then only its value and bar move.</summary>
-    private sealed record LimitRowUi(TextBlock Percent, Grid Bar);
+    /// <summary>
+    /// A live figure against its limit: the pair written out, the bar filled to it, and amber once
+    /// it is at the share <see cref="OmniHub.Core.Telemetry.LimitHistory"/> calls binding. No limit,
+    /// no bar -- the figure alone.
+    /// </summary>
+    private void Against(Controls.Meter meter, double? value, double? limit, string unit)
+    {
+        double? fraction = OmniHub.Core.Telemetry.Gauge.Fraction(value, limit);
+        string text = value is not { } v ? "unavailable"
+            : limit is { } l && l > 0 ? FormattableString.Invariant($"{v:0.0} / {l:0} {unit}")
+            : FormattableString.Invariant($"{v:0.0} {unit}");
 
-    private readonly List<LimitRowUi> _limitRows = new();
+        bool binding = fraction >= OmniHub.Core.Telemetry.LimitHistory.BindingPercent / 100;
+        meter.Show(text, fraction, binding ? (Brush)FindResource("WarnBrush") : null);
+    }
 
     /// <summary>
-    /// Shows each constraint as a fraction of its own limit, and names the tightest.
-    ///
-    /// The LIVE card above already prints these as "X of Y". The fraction is the form that
-    /// answers the question people actually have: at 99% of core current and 60% of power,
-    /// raising the power limit changes nothing, and no single figure says so.
+    /// Shows each constraint as a fraction of its own limit, names the tightest, and draws what has
+    /// been binding over the last hour -- the Dashboard's strip, beside the knobs it is about.
     ///
     /// Called from the live timer's UI callback, so the PM table read has already happened off
     /// the UI thread. That matters: reading it here instead is an SMU mailbox transaction with
-    /// spin loops, and doing that on a tab change is what made switching tabs stutter.
+    /// spin loops, and doing that on a tab change is what made switching tabs stutter. The band is
+    /// a walk over the in-memory ring the SMU records into, not a second read.
     /// </summary>
     private void UpdateLimits(PowerSnapshot? snapshot)
     {
-        if (snapshot is null)
-        {
-            LimitsCard.Visibility = Visibility.Collapsed;
-            return;
-        }
+        LimitsCard.Visibility = snapshot is null ? Visibility.Collapsed : Visibility.Visible;
+        if (snapshot is null) return;
 
-        var limits = snapshot.Limits();
-
-        if (_limitRows.Count != limits.Length)
-        {
-            _limitRows.Clear();
-            LimitRows.Children.Clear();
-            foreach (var (name, _) in limits) _limitRows.Add(BuildLimitRow(name));
-        }
-
-        for (int i = 0; i < limits.Length; i++)
-        {
-            double pct = limits[i].Percent;
-            _limitRows[i].Percent.Text = $"{pct:0}%";
-            SetBar(_limitRows[i].Bar, pct);
-        }
-
-        var tightest = snapshot.TightestLimit();
-        LimitsHeadline.Text = tightest.Percent >= 95
-            ? $"Held back by {tightest.Name.ToLowerInvariant()}, at {tightest.Percent:0}% of its limit. "
-              + "Raising anything with room to spare below will not change this."
-            : $"Nothing is close to its limit. The tightest is {tightest.Name.ToLowerInvariant()} "
-              + $"at {tightest.Percent:0}%.";
-
-        LimitsCard.Visibility = Visibility.Visible;
+        Limits.Show(snapshot);
+        if (_ctx.Smu is { } smu) Limits.ShowHistory(smu.Limits, TimeSpan.FromHours(1));
     }
 
-    private LimitRowUi BuildLimitRow(string name)
-    {
-        var grid = new Grid { Margin = new Thickness(0, 0, 0, 7) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(148) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) });
-
-        var label = new TextBlock
-        {
-            Text = name,
-            Style = (Style)FindResource("TileFoot"),
-            Margin = new Thickness(0),
-            VerticalAlignment = System.Windows.VerticalAlignment.Center,
-        };
-        Grid.SetColumn(label, 0);
-
-        var bar = new Grid
-        {
-            Height = 3,
-            VerticalAlignment = System.Windows.VerticalAlignment.Center,
-            Margin = new Thickness(4, 0, 10, 0),
-        };
-        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(0, GridUnitType.Star) });
-        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100, GridUnitType.Star) });
-
-        var filled = new Border { Background = (Brush)FindResource("MetricCpuBrush"), CornerRadius = new CornerRadius(2) };
-        Grid.SetColumn(filled, 0);
-        var rest = new Border { Background = (Brush)FindResource("PanelAltBrush"), CornerRadius = new CornerRadius(2) };
-        Grid.SetColumn(rest, 1);
-        bar.Children.Add(filled);
-        bar.Children.Add(rest);
-        Grid.SetColumn(bar, 1);
-
-        var percent = new TextBlock
-        {
-            Style = (Style)FindResource("TileFoot"),
-            Margin = new Thickness(0),
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
-            VerticalAlignment = System.Windows.VerticalAlignment.Center,
-            Text = "--",
-        };
-        Grid.SetColumn(percent, 2);
-
-        grid.Children.Add(label);
-        grid.Children.Add(bar);
-        grid.Children.Add(percent);
-        LimitRows.Children.Add(grid);
-
-        return new LimitRowUi(percent, bar);
-    }
-
-    /// <summary>Fills a two-column star rail from a 0-100 percentage.</summary>
-    private static void SetBar(Grid bar, double percent)
-    {
-        double pct = Math.Clamp(percent, 0, 100);
-        bar.ColumnDefinitions[0].Width = new GridLength(pct, GridUnitType.Star);
-        bar.ColumnDefinitions[1].Width = new GridLength(100 - pct, GridUnitType.Star);
-    }
 
     // ---------------------------------------------------------------- behaviour
 
@@ -1694,16 +1628,16 @@ public partial class TuningView : UserControl, IDisposable
                     var p = t.Result.Power;
                     const string NA = "unavailable";
 
-                    _liveStapm!.Text = p is null ? NA : $"{p.StapmWatts:0.0} W  of  {p.StapmLimitWatts:0} W";
-                    _liveFast!.Text = p is null ? NA : $"{p.FastWatts:0.0} W  of  {p.FastLimitWatts:0} W";
-                    _liveSlow!.Text = p is null ? NA : $"{p.SlowWatts:0.0} W  of  {p.SlowLimitWatts:0} W";
-                    _liveTdc!.Text = p is null ? NA : $"{p.TdcVddAmps:0.0} A  of  {p.TdcVddLimitAmps:0} A";
-                    _liveEdc!.Text = p is null ? NA : $"{p.EdcVddAmps:0.0} A  of  {p.EdcVddLimitAmps:0} A";
-                    _liveSocCurrent!.Text = p is null ? NA
-                        : $"TDC {p.TdcSocAmps:0.0}/{p.TdcSocLimitAmps:0} A   EDC {p.EdcSocAmps:0.0}/{p.EdcSocLimitAmps:0} A";
-                    _liveCoreTemp!.Text = p is null ? NA : $"{p.CoreTempC:0.0} C  of  {p.ThermalLimitC:0} C";
-                    _liveSocTemp!.Text = p is null ? NA : $"{p.SocTempC:0.0} C  /  {p.GfxTempC:0.0} C";
-                    _liveTemp!.Text = t.Result.Temp is double c ? $"{c:0.0} C" : NA;
+                    Against(_meterStapm!, p?.StapmWatts, p?.StapmLimitWatts, "W");
+                    Against(_meterFast!, p?.FastWatts, p?.FastLimitWatts, "W");
+                    Against(_meterSlow!, p?.SlowWatts, p?.SlowLimitWatts, "W");
+                    Against(_meterTdc!, p?.TdcVddAmps, p?.TdcVddLimitAmps, "A");
+                    Against(_meterEdc!, p?.EdcVddAmps, p?.EdcVddLimitAmps, "A");
+                    Against(_meterCore!, p?.CoreTempC, p?.ThermalLimitC, "°C");
+                    _liveSocCurrent!.Text = p is null ? NA : FormattableString.Invariant(
+                        $"TDC {p.TdcSocAmps:0.0}/{p.TdcSocLimitAmps:0} A   EDC {p.EdcSocAmps:0.0}/{p.EdcSocLimitAmps:0} A");
+                    _liveSocTemp!.Text = p is null ? NA : FormattableString.Invariant($"{p.SocTempC:0.0} °C  /  {p.GfxTempC:0.0} °C");
+                    _liveTemp!.Text = t.Result.Temp is double c ? FormattableString.Invariant($"{c:0.0} °C") : NA;
 
                     UpdateLimits(p);
 
@@ -1716,13 +1650,13 @@ public partial class TuningView : UserControl, IDisposable
 
                     // The headline: which ceiling the processor is actually pressed against.
                     // A wattage on its own says nothing about whether more power would help.
+                    // Never coloured: the words say which limit, and the meters below carry the
+                    // colour on the bar that is pressed against its ceiling.
                     if (p is null) _liveLimiting!.Text = NA;
                     else
                     {
                         var (name, percent) = p.TightestLimit();
-                        _liveLimiting!.Text = $"{name}  -  {percent:0}% of limit";
-                        _liveLimiting.Foreground = (Brush)FindResource(
-                            percent >= 95 ? "DangerBrush" : percent >= 80 ? "WarnBrush" : "TextFaintBrush");
+                        _liveLimiting!.Text = FormattableString.Invariant($"{name}  -  {percent:0}% of limit");
                     }
                 });
             });

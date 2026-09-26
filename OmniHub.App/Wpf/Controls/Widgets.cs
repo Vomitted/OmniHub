@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using OmniHub.Core.Telemetry;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
@@ -12,9 +13,91 @@ using Path = System.Windows.Shapes.Path;
 
 namespace OmniHub.App.Wpf.Controls;
 
-// The widgets (technical/TECHNICAL-v5-ui.md, section 7): readings drawn rather than written. Each
-// one draws against a real full scale or not at all -- Gauge.Fraction returns null without one, and
-// a null draws the track alone -- and each moves only while it can be seen.
+// The widgets (technical/TECHNICAL-v5-ui.md, sections 7 and 8): readings drawn rather than written.
+// Each one draws against a real full scale or not at all -- Gauge.Fraction returns null without one,
+// and a null draws the track alone -- and each moves only while it can be seen.
+
+/// <summary>
+/// Figures that count to a new reading rather than jumping to it.
+///
+/// Over 240 ms, the application's figure for a readout moving, and only while the figure can be seen;
+/// hidden, or with Windows' animations turned off, it simply takes the value. The count passes through
+/// numbers nobody measured on its way, which is why it is this short: long enough to show the size and
+/// direction of a change, too short for a figure in passing to be read as a reading.
+/// </summary>
+internal static class Roll
+{
+    private sealed record Form(string Format, string Suffix);
+
+    private static readonly DependencyProperty FormProperty =
+        DependencyProperty.RegisterAttached("RollForm", typeof(Form), typeof(Roll));
+
+    private static readonly DependencyProperty ValueProperty = DependencyProperty.RegisterAttached(
+        "RollValue", typeof(double), typeof(Roll), new PropertyMetadata(double.NaN, (d, e) =>
+        {
+            if (d is TextBlock text && text.GetValue(FormProperty) is Form form && e.NewValue is double v && !double.IsNaN(v))
+                text.Text = v.ToString(form.Format, System.Globalization.CultureInfo.InvariantCulture) + form.Suffix;
+        }));
+
+    /// <param name="animate">False to set at once -- a figure following the pointer must not trail it.</param>
+    public static void To(TextBlock text, double? value, string format, string suffix = "", bool animate = true)
+    {
+        if (value is not { } v || double.IsNaN(v) || double.IsInfinity(v))
+        {
+            text.BeginAnimation(ValueProperty, null);
+            text.SetValue(ValueProperty, double.NaN);
+            text.Text = Metrics.Unavailable;
+            return;
+        }
+
+        text.SetValue(FormProperty, new Form(format, suffix));
+
+        if (!animate || double.IsNaN((double)text.GetValue(ValueProperty)) || !text.IsVisible || !SystemParameters.ClientAreaAnimation)
+        {
+            text.BeginAnimation(ValueProperty, null);
+            text.SetValue(ValueProperty, v);
+            // Set as well, because an unchanged value raises nothing and the format may be new.
+            text.Text = v.ToString(format, System.Globalization.CultureInfo.InvariantCulture) + suffix;
+            return;
+        }
+
+        text.BeginAnimation(ValueProperty, new DoubleAnimation(v, TimeSpan.FromMilliseconds(240))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        });
+    }
+}
+
+/// <summary>
+/// The colour a drawn reading glows in: its own, so a warning arc glows amber rather than blue.
+///
+/// A glow is light the mark gives off, which is why it is on the arcs, the bars and the fan and
+/// nowhere near the words. Built from the brush at the moment it is drawn, so a theme switch reaches
+/// the glow on the next reading.
+/// </summary>
+internal static class Glow
+{
+    public static DropShadowEffect Make(double blur, double opacity) =>
+        new() { ShadowDepth = 0, BlurRadius = blur, Opacity = opacity };
+
+    public static Color Of(Brush brush)
+    {
+        switch (brush)
+        {
+            case SolidColorBrush solid:
+                return solid.Color;
+
+            case GradientBrush { GradientStops.Count: > 0 } gradient:
+                double r = 0, g = 0, b = 0;
+                foreach (var stop in gradient.GradientStops) { r += stop.Color.R; g += stop.Color.G; b += stop.Color.B; }
+                int n = gradient.GradientStops.Count;
+                return Color.FromRgb((byte)(r / n), (byte)(g / n), (byte)(b / n));
+
+            default:
+                return Colors.Transparent;
+        }
+    }
+}
 
 /// <summary>
 /// A 240 degree arc, open at the bottom, filled to a fraction.
@@ -27,23 +110,33 @@ internal static class Arc
 {
     private const double StartDeg = 150, TotalDeg = 240;
 
-    public static Geometry Geometry(double diameter, double fraction, double inset = 5)
+    public static Geometry Geometry(double diameter, double fraction, double inset = 5) =>
+        Stretch(diameter, 0, fraction, inset);
+
+    /// <summary>The arc between two fractions of the way round -- a zone on the dial.</summary>
+    public static Geometry Stretch(double diameter, double from, double to, double inset = 5)
     {
         double r = diameter / 2 - inset;
         double c = diameter / 2;
 
-        fraction = Math.Clamp(fraction, 0, 1);
-        if (fraction <= 0.001 || r <= 0) return System.Windows.Media.Geometry.Empty;
+        from = Math.Clamp(from, 0, 1);
+        to = Math.Clamp(to, 0, 1);
+        if (to - from <= 0.001 || r <= 0) return System.Windows.Media.Geometry.Empty;
 
-        double sweep = TotalDeg * fraction;
-        Point At(double deg) => new(c + r * Math.Cos(deg * Math.PI / 180), c + r * Math.Sin(deg * Math.PI / 180));
-
-        var figure = new PathFigure { StartPoint = At(StartDeg), IsClosed = false };
-        figure.Segments.Add(new ArcSegment(At(StartDeg + sweep), new System.Windows.Size(r, r), 0,
+        double sweep = TotalDeg * (to - from);
+        var figure = new PathFigure { StartPoint = At(c, r, from), IsClosed = false };
+        figure.Segments.Add(new ArcSegment(At(c, r, to), new System.Windows.Size(r, r), 0,
                                            isLargeArc: sweep > 180, SweepDirection.Clockwise, isStroked: true));
         var g = new PathGeometry();
         g.Figures.Add(figure);
         return g;
+    }
+
+    /// <summary>The point a fraction of the way round, at radius <paramref name="r"/> from the centre.</summary>
+    public static Point At(double c, double r, double fraction)
+    {
+        double rad = (StartDeg + TotalDeg * fraction) * Math.PI / 180;
+        return new Point(c + r * Math.Cos(rad), c + r * Math.Sin(rad));
     }
 
     public static Path Path(double diameter, double fraction, Brush stroke, double thickness, double inset = 5) => new()
@@ -59,12 +152,20 @@ internal static class Arc
 /// <summary>
 /// A reading as an arc: the track, the value over it, the figure and its unit in the middle, and
 /// what it is under the ring.
+///
+/// Marked like the instrument it imitates: a tick every tenth of the scale, and the stretch past the
+/// reading's warning threshold tinted on the track the way a tachometer carries its red zone -- so how
+/// close the value is to trouble is drawn before the value ever gets there.
 /// </summary>
 public sealed class RingGauge : Grid
 {
     private readonly Canvas _canvas = new() { HorizontalAlignment = HorizontalAlignment.Center };
     private readonly Path _track;
+    private readonly Path _zone = new() { StrokeThickness = Stroke, Opacity = 0.45 };
+    private readonly Path _ticks = new() { StrokeThickness = 1 };
     private readonly Path _value;
+    private readonly DropShadowEffect _glow = Glow.Make(blur: 14, opacity: 0.6);
+    private double? _warnFrom;
     private readonly TextBlock _figure = new() { HorizontalAlignment = HorizontalAlignment.Center };
     private readonly TextBlock _unit = new() { HorizontalAlignment = HorizontalAlignment.Center };
     // In the arc's open bottom, where a physical gauge carries its label.
@@ -90,8 +191,14 @@ public sealed class RingGauge : Grid
         _track = Arc.Path(_diameter, 1, System.Windows.Media.Brushes.Transparent, Stroke, Stroke / 2 + 1);
         _track.SetResourceReference(Shape.StrokeProperty, "BorderBrush");
         _value = Arc.Path(_diameter, 0, System.Windows.Media.Brushes.Transparent, Stroke, Stroke / 2 + 1);
+        _value.Effect = _glow;
+
+        _zone.SetResourceReference(Shape.StrokeProperty, "WarnBrush");
+        _ticks.SetResourceReference(Shape.StrokeProperty, "BorderStrongBrush");
 
         _canvas.Children.Add(_track);
+        _canvas.Children.Add(_zone);
+        _canvas.Children.Add(_ticks);
         _canvas.Children.Add(_value);
 
         _figure.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
@@ -132,12 +239,21 @@ public sealed class RingGauge : Grid
     /// Shows a reading. A null <paramref name="fraction"/> draws the track alone: without a real full
     /// scale there is no arc, only the figure.
     /// </summary>
-    public void Show(double? fraction, string figure, string unit, Brush arc, Brush figureBrush)
+    /// <param name="warnFrom">Where on the scale the reading's warning threshold falls, or null for none.</param>
+    public void Show(double? fraction, double? value, string format, string unit, Brush arc, Brush figureBrush,
+                     double? warnFrom = null)
     {
-        _figure.Text = figure;
+        Roll.To(_figure, value, format);
         _figure.Foreground = figureBrush;
         _unit.Text = unit;
         _value.Stroke = arc;
+        _glow.Color = Glow.Of(arc);
+
+        if (warnFrom != _warnFrom)
+        {
+            _warnFrom = warnFrom;
+            DrawMarks();
+        }
 
         double target = fraction ?? 0;
 
@@ -166,13 +282,13 @@ public sealed class RingGauge : Grid
 
         double? value = source.Value(key);
         var level = Metrics.LevelOf(key, value);
+        double? full = Metrics.FullScale(metric, null);
 
-        Show(Gauge.Fraction(value, Metrics.FullScale(metric, null)),
-             value?.ToString(metric.Format, System.Globalization.CultureInfo.InvariantCulture) ?? Metrics.Unavailable,
-             "°C",
+        Show(Gauge.Fraction(value, full), value, metric.Format, "°C",
              (Brush)FindResource(level switch { MetricLevel.Hot => "DangerBrush", MetricLevel.Warn => "WarnBrush", _ => "AccentGradientBrush" }),
              (Brush)FindResource(value is null ? "TextFaintBrush"
-                 : level switch { MetricLevel.Hot => "DangerBrush", MetricLevel.Warn => "WarnBrush", _ => "TextPrimaryBrush" }));
+                 : level switch { MetricLevel.Hot => "DangerBrush", MetricLevel.Warn => "WarnBrush", _ => "TextPrimaryBrush" }),
+             Gauge.Fraction(metric.WarnAt, full));
     }
 
     private void Resize()
@@ -180,7 +296,21 @@ public sealed class RingGauge : Grid
         _canvas.Width = _canvas.Height = _diameter;
         _track.Data = Arc.Geometry(_diameter, 1, Stroke / 2 + 1);
         _figure.FontSize = Math.Round(_diameter * 0.22);
+        DrawMarks();
         Redraw();
+    }
+
+    /// <summary>The warning zone on the track, and a tick every tenth just inside it.</summary>
+    private void DrawMarks()
+    {
+        _zone.Data = _warnFrom is { } w ? Arc.Stretch(_diameter, w, 1, Stroke / 2 + 1) : System.Windows.Media.Geometry.Empty;
+
+        double c = _diameter / 2, inner = c - Stroke - 4;
+        var ticks = new GeometryGroup();
+        for (int i = 0; i <= 10; i++)
+            ticks.Children.Add(new LineGeometry(Arc.At(c, inner, i / 10.0), Arc.At(c, inner - (i % 5 == 0 ? 5 : 3), i / 10.0)));
+        ticks.Freeze();
+        _ticks.Data = ticks;
     }
 
     private void Redraw() => _value.Data = Arc.Geometry(_diameter, Drawn, Stroke / 2 + 1);
@@ -197,6 +327,7 @@ public sealed class Meter : Grid
     private readonly ColumnDefinition _filled = new() { Width = new GridLength(0, GridUnitType.Star) };
     private readonly ColumnDefinition _rest = new() { Width = new GridLength(100, GridUnitType.Star) };
     private readonly Border _fill = new();
+    private readonly DropShadowEffect _glow = Glow.Make(blur: 8, opacity: 0.55);
 
     public Meter()
     {
@@ -220,6 +351,7 @@ public sealed class Meter : Grid
 
         _fill.SetResourceReference(Border.BackgroundProperty, "AccentGradientBrush");
         _fill.SetResourceReference(Border.CornerRadiusProperty, "RadiusPill");
+        _fill.Effect = _glow;
 
         _bar.Children.Add(track);
         _bar.Children.Add(_fill);
@@ -245,6 +377,7 @@ public sealed class Meter : Grid
 
         if (fill is null) _fill.SetResourceReference(Border.BackgroundProperty, "AccentGradientBrush");
         else _fill.Background = fill;
+        _glow.Color = Glow.Of(_fill.Background);
     }
 }
 
@@ -260,9 +393,26 @@ public sealed class FanGlyph : Viewbox
     private readonly RotateTransform _turn = new() { CenterX = 50, CenterY = 50 };
     private double? _secondsPerTurn;
 
+    // A ring of the accent's light around the blades, brightest where they sweep. A static fill under
+    // a mask rather than a blur on the rotor: the rotor redraws every frame it turns, and a blur there
+    // would be paid every one of them.
+    private readonly Ellipse _halo = new() { Width = 100, Height = 100, Opacity = 0.5, Visibility = Visibility.Hidden, OpacityMask = HaloMask };
+
+    private static readonly Brush HaloMask = Frozen(new RadialGradientBrush(new GradientStopCollection
+    {
+        new(Color.FromArgb(0x00, 0, 0, 0), 0.30),
+        new(Color.FromArgb(0xFF, 0, 0, 0), 0.66),
+        new(Color.FromArgb(0x00, 0, 0, 0), 1.00),
+    }));
+
+    private static Brush Frozen(Brush brush) { brush.Freeze(); return brush; }
+
     public FanGlyph()
     {
         var canvas = new Canvas { Width = 100, Height = 100 };
+
+        _halo.SetResourceReference(Shape.FillProperty, "AccentBrush");
+        canvas.Children.Add(_halo);
 
         var housing = new Ellipse { Width = 96, Height = 96, StrokeThickness = 3 };
         housing.SetResourceReference(Shape.StrokeProperty, "BorderBrush");
@@ -308,6 +458,10 @@ public sealed class FanGlyph : Viewbox
     public void SetSpeed(double? rpm)
     {
         double? next = Gauge.SecondsPerTurn(rpm);
+
+        // Lit while it turns. A glowing fan that is standing still would say it was running.
+        _halo.Visibility = next is null ? Visibility.Hidden : Visibility.Visible;
+
         if (next == _secondsPerTurn) return;
 
         // A new clock every reading would restart the turn each time; small drifts are left alone.
@@ -332,6 +486,80 @@ public sealed class FanGlyph : Viewbox
 
         _turn.BeginAnimation(RotateTransform.AngleProperty,
             new DoubleAnimation(angle, angle + 360, TimeSpan.FromSeconds(seconds)) { RepeatBehavior = RepeatBehavior.Forever });
+    }
+}
+
+/// <summary>
+/// Parts of a whole in one bar, each as wide as its share, with a legend naming them.
+///
+/// For totals made of pieces -- a shader cache spread over three drivers' folders, a cleanup over
+/// five locations. The whole is the full scale by construction, so this is one bar that can never
+/// lack one. Shades of the accent rather than the series colours: those mean the processor and the
+/// graphics card everywhere else, and a temp folder is neither.
+/// </summary>
+public sealed class ShareBar : StackPanel
+{
+    private static readonly double[] Shades = { 1.0, 0.7, 0.5, 0.36, 0.26, 0.18 };
+    private readonly Grid _bar = new() { Height = 8 };
+    private readonly StackPanel _legend = new() { Margin = new Thickness(0, 8, 0, 0) };
+
+    public ShareBar()
+    {
+        Children.Add(_bar);
+        Children.Add(_legend);
+    }
+
+    /// <summary>Draws the parts; nothing at all when there is nothing, rather than an empty bar.</summary>
+    public void Show(IReadOnlyList<(string Label, double Value, string Detail)> parts)
+    {
+        _bar.ColumnDefinitions.Clear();
+        _bar.Children.Clear();
+        _legend.Children.Clear();
+
+        var drawn = parts.Select((p, i) => (Part: p, Shade: Shades[Math.Min(i, Shades.Length - 1)])).ToList();
+        var filled = drawn.Where(d => d.Part.Value > 0).ToList();
+        Visibility = drawn.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+
+        for (int i = 0; i < filled.Count; i++)
+        {
+            _bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(filled[i].Part.Value, GridUnitType.Star) });
+
+            var segment = new Border
+            {
+                Opacity = filled[i].Shade,
+                Margin = new Thickness(i == 0 ? 0 : 1, 0, 0, 0),
+                CornerRadius = filled.Count == 1 ? new CornerRadius(3)
+                    : i == 0 ? new CornerRadius(3, 0, 0, 3)
+                    : i == filled.Count - 1 ? new CornerRadius(0, 3, 3, 0)
+                    : new CornerRadius(0),
+                ToolTip = $"{filled[i].Part.Label}\n{filled[i].Part.Detail}",
+            };
+            segment.SetResourceReference(Border.BackgroundProperty, "AccentBrush");
+            Grid.SetColumn(segment, i);
+            _bar.Children.Add(segment);
+        }
+
+        // Every part in the legend, an empty one included: a location scanned and found clean is
+        // a finding, and a list that dropped it would read as one that was never looked at.
+        foreach (var (part, shade) in drawn)
+        {
+            var dot = new Border { Width = 8, Height = 8, CornerRadius = new CornerRadius(2), Opacity = shade, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 7, 0) };
+            dot.SetResourceReference(Border.BackgroundProperty, "AccentBrush");
+
+            var name = new TextBlock { Text = part.Label, FontSize = 11.5 };
+            name.SetResourceReference(StyleProperty, "CellLabel");
+
+            var detail = new TextBlock { Text = part.Detail, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(12, 0, 0, 0) };
+            detail.SetResourceReference(StyleProperty, "CellNote");
+
+            var row = new DockPanel { Margin = new Thickness(0, 3, 0, 0), LastChildFill = true };
+            DockPanel.SetDock(dot, Dock.Left);
+            DockPanel.SetDock(detail, Dock.Right);
+            row.Children.Add(dot);
+            row.Children.Add(detail);
+            row.Children.Add(name);
+            _legend.Children.Add(row);
+        }
     }
 }
 

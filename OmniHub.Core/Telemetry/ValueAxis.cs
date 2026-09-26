@@ -58,6 +58,26 @@ public static class ValueAxis
         return new Scale(niceLo, niceHi, step);
     }
 
+    /// <summary>
+    /// The scale that wastes the least of the plot, trying every interval count up to
+    /// <paramref name="maxIntervals"/> and preferring more gridlines when two fit equally well.
+    ///
+    /// One fixed count cannot suit every range. A fan band of 0 to 5,500 RPM in two intervals rounds
+    /// its step up to 5,000 and draws the fan in the bottom half of a 0-to-10,000 scale; in three it
+    /// is 2,000, and the scale ends at 6,000. Short plots can only label a few intervals, which is
+    /// exactly where the rounding of a small count overshoots most.
+    /// </summary>
+    public static Scale Tightest(double lo, double hi, int maxIntervals)
+    {
+        Scale best = Nice(lo, hi, Math.Max(1, maxIntervals));
+        for (int n = maxIntervals - 1; n >= 2; n--)
+        {
+            var candidate = Nice(lo, hi, n);
+            if (candidate.Hi - candidate.Lo < best.Hi - best.Lo - 1e-9) best = candidate;
+        }
+        return best;
+    }
+
     public static int DecimalsFor(double step)
     {
         for (int d = 0; d <= 6; d++)

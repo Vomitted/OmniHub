@@ -181,15 +181,41 @@ internal static class Snapshot
             && double.TryParse(r[i], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v)
             && v >= 0 ? v : null;
 
+        (string Key, double? Value)[] Row(string[] r, double? fanRpm) => new[]
+        {
+            ("cpu", Num(r, "temp_c")), ("gpu", Num(r, "gpu_c")), ("fan", fanRpm),
+            ("pkg", Num(r, "pkg_w")), ("gpuw", Num(r, "gpu_w")), ("limit", Num(r, "limit_pct")),
+        };
+
+        // The history charts draw time-stamped series, so the last half hour of rows goes in at the
+        // log's own spacing, shifted so the newest row is now. Unmeasured as far as Set is concerned
+        // below, so the current values do not stamp a second copy of the newest row.
+        var recent = (System.Collections.IDictionary)Field(metrics, "_recent")!;
+        int stampCol = Col("timestamp");
+        DateTime? Stamp(string[] r) =>
+            stampCol >= 0 && stampCol < r.Length && DateTime.TryParse(r[stampCol], System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var at) ? at : null;
+
+        var tail = lines.Skip(Math.Max(1, lines.Length - 900)).Select(l => l.Trim().Split(',')).ToArray();
+        if (tail.Length > 0 && Stamp(tail[^1]) is { } newest)
+        {
+            TimeSpan shift = DateTime.UtcNow - newest;
+            foreach (var r in tail)
+            {
+                if (Stamp(r) is not { } at) continue;
+                foreach (var (key, value) in Row(r, Num(r, "fan1_raw") * 100))
+                    ((OmniHub.Core.Telemetry.RecentSeries)recent[key]!).Add(at + shift, value);
+            }
+        }
+
         double? fan = null;
         string? limit = null;
         foreach (var line in lines.Skip(Math.Max(1, lines.Length - 40)))
         {
             var r = line.Trim().Split(',');
             if (Num(r, "fan1_raw") is { } raw) fan = raw * 100;
-            foreach (var (key, value) in new[] { ("cpu", Num(r, "temp_c")), ("gpu", Num(r, "gpu_c")), ("fan", fan),
-                                                 ("pkg", Num(r, "pkg_w")), ("gpuw", Num(r, "gpu_w")), ("limit", Num(r, "limit_pct")) })
-                set.Invoke(metrics, new object?[] { key, value });
+            foreach (var (key, value) in Row(r, fan))
+                set.Invoke(metrics, new object?[] { key, value, false });
             if (Col("limit") is var li && li >= 0 && li < r.Length && r[li].Length > 0) limit = r[li];
         }
 

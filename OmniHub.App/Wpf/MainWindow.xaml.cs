@@ -276,7 +276,11 @@ public partial class MainWindow : Window
         RegisterOverlayHotkey(new System.Windows.Interop.WindowInteropHelper(this).Handle);
     }
 
-    private void OnThemeChanged(ThemeDefinition theme) => ThemeManager.ApplyToWindowFrame(this);
+    private void OnThemeChanged(ThemeDefinition theme)
+    {
+        ThemeManager.ApplyToWindowFrame(this);
+        UpdateNavStatus();
+    }
 
     // ---------- activity ribbon ----------
 
@@ -755,7 +759,7 @@ public partial class MainWindow : Window
             },
             TimerResolution = _settings.HighResolutionTimer,
             DwmPriority = _settings.DwmMmcss,
-            Theme = _settings.ThemeName,
+            Theme = ThemeManager.Current.DisplayName,
         };
 
         foreach (var (type, status) in _navStatus)

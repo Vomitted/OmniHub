@@ -764,14 +764,16 @@ public partial class FansView : UserControl
     {
         TempFoot.Text = throttling ? "THROTTLING NOW" : foot ?? "NOMINAL";
 
-        // Against the processor's own hot threshold, the same full scale the Dashboard's ring uses.
+        // Against the processor's own hot threshold, the same full scale and warning zone the
+        // Dashboard's ring uses.
         bool hot = throttling || tempC >= 80;
+        var cpu = OmniHub.Core.Telemetry.Metrics.Find("cpu")!;
+        double? full = OmniHub.Core.Telemetry.Metrics.FullScale(cpu, null);
         TempRing.Show(
-            OmniHub.Core.Telemetry.Gauge.Fraction(tempC,
-                OmniHub.Core.Telemetry.Metrics.FullScale(OmniHub.Core.Telemetry.Metrics.Find("cpu")!, null)),
-            tempC.ToString(System.Globalization.CultureInfo.InvariantCulture), "°C",
+            OmniHub.Core.Telemetry.Gauge.Fraction(tempC, full), tempC, "0", "°C",
             (Brush)FindResource(hot ? "DangerBrush" : "AccentGradientBrush"),
-            (Brush)FindResource(hot ? "DangerBrush" : "TextPrimaryBrush"));
+            (Brush)FindResource(hot ? "DangerBrush" : "TextPrimaryBrush"),
+            OmniHub.Core.Telemetry.Gauge.Fraction(cpu.WarnAt, full));
     }
 
     /// <summary>The drawn fan follows the first fan's tachometer; a board that did not report stands it still.</summary>

@@ -13,19 +13,16 @@ using UserControl = System.Windows.Controls.UserControl;
 namespace OmniHub.App.Wpf.Views;
 
 /// <summary>
-/// The console: every reading with its session figures, the profile, what is limiting the
-/// processor, what is in force, and the last five minutes.
+/// The machine at a glance: four widgets, the history on one clock, what is limiting the processor,
+/// the profile, and every reading as a tile.
 ///
-/// What this page no longer does is as deliberate as what it does. It drew four metric cards
-/// restating the bar above every page, and read the system counters a second time to fill them;
-/// the sensor table reads the one shared <see cref="MetricSource"/> instead. It carried six chips
-/// that duplicated controls living on the Fans and System pages -- and one of them changed the
-/// saved fan mode without the Fans page's own selector finding out.
+/// Everything here reads the one shared <see cref="MetricSource"/>. What this page no longer does
+/// is as deliberate as what it does: it carried six chips that duplicated controls living on the
+/// Fans and System pages -- and one of them changed the saved fan mode without the Fans page's own
+/// selector finding out.
 /// </summary>
 public partial class DashboardView : UserControl
 {
-    private readonly int _trendTemp, _trendFan, _trendCommanded;
-
     private readonly HardwareContext _ctx;
     private readonly FanService _service;
     private readonly AppSettings _settings;
@@ -38,26 +35,41 @@ public partial class DashboardView : UserControl
     private string? _gpuState;
 
     /// <summary>
-    /// The sensor table's groups, in the order a person reads the machine: the processor, the
-    /// graphics card, what the fans are doing about both, and the rest of the system -- this
-    /// application's own cost last, because a tool for finding what drains a laptop should say
-    /// what it draws itself.
+    /// The tiles, in the order a person reads the machine: the processor, the graphics card, what
+    /// the fans are doing about both, and the rest of the system -- this application's own cost
+    /// last, because a tool for finding what drains a laptop should say what it draws itself.
     /// </summary>
-    private static readonly string[][] SensorGroups =
+    private static readonly string[] SensorKeys =
     {
-        new[] { "cpu", "cpuclk", "cpuload", "pkg", "limit" },
-        new[] { "gpu", "gpuclk", "gpuload", "gpuw" },
-        new[] { "fan", "fan2" },
-        new[] { "mem", "selfcpu", "selfmem" },
+        "cpu", "cpuclk", "cpuload", "pkg", "limit",
+        "gpu", "gpuclk", "gpuload", "gpuw",
+        "fan", "fan2",
+        "mem", "selfcpu", "selfmem",
     };
+
+    private readonly Controls.ChartStack _history;
 
     public DashboardView(HardwareContext ctx, FanService service, AppSettings settings, MetricSource metrics)
     {
         InitializeComponent();
         _ctx = ctx; _service = service; _settings = settings; _metrics = metrics;
 
-        SensorsHost.Content = new Controls.SensorTable(metrics, SensorGroups);
+        SensorsHost.Content = new Controls.SensorTiles(metrics, SensorKeys);
         ShowSince();
+
+        // Four strips, the processor and the graphics card in their own colours in every one, so a
+        // colour means one component all the way down. Each strip shares a scale across its lines:
+        // temperatures and power from the data, the fans against their measured maximum, load
+        // against a hundred.
+        double? maxRpm = ctx.FanBackend.Calibration.MaxRpm;
+        _history = new Controls.ChartStack(metrics);
+        _history.AddStrip("TEMPERATURE", ("cpu", "CPU", "MetricCpuBrush", null, null), ("gpu", "GPU", "MetricGpuBrush", null, null));
+        _history.AddStrip("FANS", ("fan", "Fan 1", "AccentBrush", 0, maxRpm), ("fan2", "Fan 2", "AccentBrush2", 0, maxRpm));
+        _history.AddStrip("POWER", ("pkg", "CPU", "MetricCpuBrush", 0, null), ("gpuw", "GPU", "MetricGpuBrush", 0, null));
+        _history.AddStrip("LOAD", ("cpuload", "CPU", "MetricCpuBrush", 0, 100), ("gpuload", "GPU", "MetricGpuBrush", 0, 100));
+        _history.SetWindow(TimeSpan.FromMinutes(5));
+        _history.HoverChanged += at => HistoryMeta.Text = at is { } t ? t.ToLocalTime().ToString("HH:mm:ss") : "live";
+        HistoryHost.Content = _history;
 
         LoadBattery();
         StartPowerDrawTimer();
@@ -66,48 +78,6 @@ public partial class DashboardView : UserControl
         // query, and the call site is inside a dispatcher callback, so leaving it cold
         // would put that one query on the UI thread the first time the GPU reads as asleep.
         Task.Run(() => GpuPowerState.ReadDiscrete());
-
-        // Three series where there was one. The old control could hold a single Queue of doubles,
-        // so the card showed die temperature alone -- which answers "is it hot" and cannot answer
-        // "and did the fan do anything about it", the question anyone actually has while looking
-        // at a temperature trace.
-        //
-        // Fan duty and commanded percentage share a fixed 0-100 range, so they stay comparable
-        // with each other; temperature autoscales and owns the labelled axis.
-        _trendTemp = TrendChart.AddSeries(new Controls.ChartSeries
-        {
-            Name = "die temp",
-            Stroke = (Brush)FindResource("DangerBrush"),
-            Unit = " C",
-            Format = "0.#",
-            Fill = true,
-            IsPrimary = true,
-        });
-
-        _trendFan = TrendChart.AddSeries(new Controls.ChartSeries
-        {
-            Name = "fan duty",
-            Stroke = (Brush)FindResource("AccentBrush"),
-            Unit = "%",
-            Format = "0",
-            Min = 0,
-            Max = 100,
-        });
-
-        _trendCommanded = TrendChart.AddSeries(new Controls.ChartSeries
-        {
-            Name = "commanded",
-            Stroke = (Brush)FindResource("MetricMemBrush"),
-            Unit = "%",
-            Format = "0",
-            Min = 0,
-            Max = 100,
-        });
-
-        // Five minutes rather than the old sixty samples. The previous window was not a duration
-        // at all -- it was a sample count, so it silently meant two minutes at the current poll
-        // rate and something else entirely if the rate ever changed.
-        TrendChart.SetLiveWindow(TimeSpan.FromMinutes(5));
 
         // Best-effort guess at which preset is "active" -- settings only stores the
         // fan mode, not which GPU level was paired with it, so Auto defaults to
@@ -161,12 +131,18 @@ public partial class DashboardView : UserControl
 
     // ---------------------------------------------------------------- layout
 
+    private void HistoryWindow_Checked(object sender, RoutedEventArgs e)
+    {
+        // Checked fires during InitializeComponent for the default, before the stack exists.
+        if (sender is System.Windows.Controls.RadioButton { Tag: string tag } && int.TryParse(tag, out int minutes))
+            _history?.SetWindow(TimeSpan.FromMinutes(minutes));
+    }
+
     /// <summary>
-    /// Two columns where there is room for the sensor table beside the side panes, one where
-    /// there is not.
+    /// Two columns where there is room for the limits beside the profile, one where there is not.
     ///
-    /// The table needs about 480 px to show its figures without crowding them, and the side panes
-    /// 300; below that the side panes go underneath rather than squeezing the numbers. At 150%
+    /// The limit rows need about 480 px to keep their names, bars and figures on one line, and the
+    /// profile 300; below that the profile goes underneath rather than squeezing the bars. At 150%
     /// display scaling a laptop screen is 1280 px wide, and the window's minimum is narrower
     /// than the two columns need.
     /// </summary>
@@ -208,7 +184,7 @@ public partial class DashboardView : UserControl
 
         double? fan1 = _metrics.Value("fan"), fan2 = _metrics.Value("fan2");
         Fan.SetSpeed(fan1);
-        FanRpmText.Text = Fig(fan1, "0", "");
+        Controls.Roll.To(FanRpmText, fan1, "0");
         Fan1Meter.Show(Fig(fan1, "0", " rpm"), Gauge.Fraction(fan1, maxRpm));
         Fan2Meter.Show(Fig(fan2, "0", " rpm"), Gauge.Fraction(fan2, maxRpm));
 
@@ -221,7 +197,7 @@ public partial class DashboardView : UserControl
                        && power.BatteryLifePercent <= 1f;   // 255 over 100 is Windows for "unknown"
         double? charge = battery ? Math.Round(power.BatteryLifePercent * 100) : null;
         Battery.Show(charge, power.BatteryChargeStatus.HasFlag(System.Windows.Forms.BatteryChargeStatus.Charging));
-        ChargeText.Text = Fig(charge, "0", "");
+        Controls.Roll.To(ChargeText, charge, "0");
         PowerSourceMeta.Text = power.PowerLineStatus switch
         {
             System.Windows.Forms.PowerLineStatus.Online => "on AC",
@@ -687,25 +663,6 @@ public partial class DashboardView : UserControl
         // fan curve stops commanding: a UI hiccup taking the cooling down with it.
         Dispatcher.BeginInvoke(() =>
         {
-            // Full precision where there is any. Older Readings carry no precise value, so
-            // fall back to the whole-degree field rather than rendering NaN.
-            double tempC = double.IsNaN(r.PreciseTemperatureC) ? r.TemperatureC : r.PreciseTemperatureC;
-
-            // Appended with the reading's own instant rather than "now", so the chart's x axis is
-            // the time the sensor was read at, not the time the UI got round to drawing it.
-            var at = DateTime.UtcNow;
-            TrendChart.Append(_trendTemp, at, tempC);
-
-            // Nothing appended when the board did not report a level: the chart draws a hole as a
-            // hole, rather than a line dropping to the floor and back -- which is what a plot of
-            // "0 because we did not ask successfully" looks like, and it looks alarming.
-            if (r.FanLevel1 is { } raw)
-                TrendChart.Append(_trendFan, at, _ctx.FanBackend.Calibration.RawToPercent(raw));
-
-            // Nothing to plot rather than a zero-percent command that never happened.
-            if (_service.HasCommanded)
-                TrendChart.Append(_trendCommanded, at, _service.LastCommandedLevelPercent);
-
             ShowFans(r);
 
             _gpuState = gpuState;

@@ -1,6 +1,7 @@
 <UserControl x:Class="OmniHub.App.Wpf.Views.OptimizeView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:OmniHub.App.Wpf.Controls"
              Background="{StaticResource BackgroundBrush}">
 
     <!-- Nine tools, as panes in two columns (technical/TECHNICAL-v5-ui.md). They were nine cards in
@@ -50,6 +51,9 @@
                                         </Border>
                                     </StackPanel>
                                     <TextBlock x:Name="TimerValue" Style="{StaticResource BigNumberText}" FontSize="22" Text="--" Margin="0,2,0,0"/>
+                                    <!-- Where the timer sits between the coarsest and the finest this machine
+                                         allows, on a log scale: the step that matters is 15.6 ms to 1 ms. -->
+                                    <controls:Meter x:Name="TimerMeter" Margin="0,6,16,0"/>
                                     <TextBlock x:Name="TimerSub" Style="{StaticResource MutedText}" FontSize="11"/>
                                 </StackPanel>
                                 <CheckBox Grid.Column="1" x:Name="TimerToggle" Style="{StaticResource ToggleSwitchStyle}"
@@ -89,6 +93,7 @@
                             <TextBlock Text="AVAILABLE PHYSICAL" Style="{StaticResource DataLabelText}"/>
                             <TextBlock x:Name="MemValue" Style="{StaticResource BigNumberText}" FontSize="22" Text="--" Margin="0,2,0,0"/>
                             <TextBlock x:Name="MemSub" Style="{StaticResource MutedText}" FontSize="11"/>
+                            <controls:Meter x:Name="MemUsedMeter" Label="In use" Margin="0,8,0,0"/>
                             <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"
                                        Text="The standby list is cached data Windows will hand to any process that asks, so it is not wasted memory and purging it is not routine maintenance. It is worth doing in one case: reclaiming a large cache footprint left by something else, right before launching a game."/>
                             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
@@ -119,7 +124,7 @@
                             <TextBlock Text="Shader cache" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
                             <TextBlock Text="ON DISK" Style="{StaticResource DataLabelText}"/>
                             <TextBlock x:Name="CacheValue" Style="{StaticResource BigNumberText}" FontSize="22" Text="--" Margin="0,2,0,0"/>
-                            <ItemsControl x:Name="CacheList" Margin="0,8,0,0"/>
+                            <controls:ShareBar x:Name="CacheShares" Margin="0,10,0,0"/>
                             <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"
                                        Text="Safe to delete: drivers rebuild these on demand, at the cost of a one-off compile pause next launch. Worth clearing after a driver update, where a stale cache genuinely causes stutter and crashes. Clearing it routinely just means paying the recompile again."/>
                             <WrapPanel Margin="0,10,0,0">
@@ -183,7 +188,7 @@
                             <TextBlock Text="Disk cleanup" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
                             <TextBlock Text="RECLAIMABLE" Style="{StaticResource DataLabelText}"/>
                             <TextBlock x:Name="DiskValue" Style="{StaticResource BigNumberText}" FontSize="22" Text="--" Margin="0,2,0,0"/>
-                            <ItemsControl x:Name="DiskList" Margin="0,8,0,0"/>
+                            <controls:ShareBar x:Name="DiskShares" Margin="0,10,0,0"/>
                             <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"
                                        Text="A fixed list of known-safe locations only: temp folders, crash dumps, the Windows Update cache, Prefetch and Delivery Optimization. Nothing is discovered or pattern-matched, no document folder is ever touched, and only files older than 24 hours are removed so anything currently in use is left alone."/>
                             <WrapPanel Margin="0,10,0,0">

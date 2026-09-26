@@ -66,8 +66,11 @@ public partial class TimeSeriesChart : UserControl, IDisposable
     {
         public required ChartSeries Definition { get; init; }
         public List<TimePoint> Points { get; } = new();
-        public Path Line { get; } = new() { StrokeThickness = 1.4, StrokeLineJoin = PenLineJoin.Round };
+        public Path Line { get; } = new() { StrokeThickness = 1.5, StrokeLineJoin = PenLineJoin.Round };
         public Path Area { get; } = new();
+
+        /// <summary>The colour the fill was last built from, so a theme switch rebuilds it.</summary>
+        public Color? Tint { get; set; }
     }
 
     private readonly List<SeriesState> _series = new();
@@ -134,12 +137,8 @@ public partial class TimeSeriesChart : UserControl, IDisposable
         var state = new SeriesState { Definition = series };
         state.Line.Stroke = series.Stroke;
 
-        if (series.Fill)
-        {
-            state.Area.Fill = new LinearGradientBrush(
-                ColorAt(series.Stroke, 0x40), ColorAt(series.Stroke, 0x00), 90);
-            Plot.Children.Insert(0, state.Area);
-        }
+        // The fill's brush is built at render time from the stroke's colour then (see Tint).
+        if (series.Fill) Plot.Children.Insert(0, state.Area);
 
         Plot.Children.Add(state.Line);
 
@@ -262,12 +261,32 @@ public partial class TimeSeriesChart : UserControl, IDisposable
         DrawGrid(width, height, from, to);
         DrawMarkers(width, height, from, to);
 
+        // No more intervals than there is height to label -- a label is fourteen pixels tall, and a
+        // seventy-pixel strip asked for five set them on top of each other -- and of those, the count
+        // whose round steps waste the least of the plot (ValueAxis.Tightest).
+        int intervals = Math.Clamp((int)(height / 22), 2, 5);
+
+        // One scale for every series, when they share a unit: the union of their ranges.
+        OmniHub.Core.Telemetry.ValueAxis.Scale? shared = null;
+        if (ShareScale)
+        {
+            double lo = double.MaxValue, hi = double.MinValue;
+            foreach (var (state, segments) in built)
+            {
+                if (!segments.Any(s => s.Count > 0)) continue;
+                var (a, b) = RangeFor(state, segments);
+                lo = Math.Min(lo, a);
+                hi = Math.Max(hi, b);
+            }
+            if (lo < hi) shared = OmniHub.Core.Telemetry.ValueAxis.Tightest(lo, hi, intervals);
+        }
+
         foreach (var (state, segments) in built)
         {
             // Widened to round steps, so every gridline the axis labels sits on the value its label
             // names. See ValueAxis; the name is qualified because this control's axis canvas has it.
             var (dataLo, dataHi) = RangeFor(state, segments);
-            var scale = OmniHub.Core.Telemetry.ValueAxis.Nice(dataLo, dataHi);
+            var scale = shared ?? OmniHub.Core.Telemetry.ValueAxis.Tightest(dataLo, dataHi, intervals);
             double lo = scale.Lo, hi = scale.Hi;
 
             var geometry = new PathGeometry();
@@ -304,9 +323,10 @@ public partial class TimeSeriesChart : UserControl, IDisposable
 
             state.Line.Data = geometry;
             state.Area.Data = area;
+            if (state.Definition.Fill) Tint(state);
 
             if (state.Definition.IsPrimary || _series.Count == 1)
-                DrawValueAxis(segments.Any(s => s.Count > 0) ? scale : null, height);
+                DrawValueAxis(segments.Any(s => s.Count > 0) ? scale : null, width, height);
         }
     }
 
@@ -387,15 +407,21 @@ public partial class TimeSeriesChart : UserControl, IDisposable
     /// Nothing is drawn for a series with no data. An empty chart used to label a 0-to-1 axis beside
     /// "No data in this range" -- numbers for data that did not exist, two of them rounded wrong.
     /// </summary>
-    private void DrawValueAxis(OmniHub.Core.Telemetry.ValueAxis.Scale? scale, double height)
+    private void DrawValueAxis(OmniHub.Core.Telemetry.ValueAxis.Scale? scale, double width, double height)
     {
         ValueAxis.Children.Clear();
         if (scale is not { } s) return;
 
+        var gridBrush = (Brush)FindResource("GridLineBrush");
         string format = "F" + s.Decimals;
         foreach (double value in s.Ticks())
         {
             double y = height - (value - s.Lo) / Math.Max(1e-9, s.Hi - s.Lo) * height;
+
+            // A line across the plot at each labelled value, so a reading can be taken off the chart
+            // rather than estimated between two labels. Not at the edges, where the frame already is.
+            if (y > 1 && y < height - 1)
+                _grid.Children.Add(new Line { X1 = 0, X2 = width, Y1 = y, Y2 = y, Stroke = gridBrush, StrokeThickness = 1 });
 
             var label = new TextBlock
             {
@@ -525,6 +551,7 @@ public partial class TimeSeriesChart : UserControl, IDisposable
     {
         _crosshair.Visibility = Visibility.Collapsed;
         Readout.Text = "";
+        HoverEnded?.Invoke();
     }
 
     private static Color ColorAt(Brush brush, byte alpha)
@@ -532,4 +559,80 @@ public partial class TimeSeriesChart : UserControl, IDisposable
         Color c = brush is SolidColorBrush s ? s.Color : Colors.Gray;
         return Color.FromArgb(alpha, c.R, c.G, c.B);
     }
+
+    /// <summary>
+    /// The area under a line, in the line's colour fading to nothing.
+    ///
+    /// Built from the stroke's colour as it is now rather than once at AddSeries: the stroke is a
+    /// shared theme brush that follows a theme switch, and a fill copied from it at construction
+    /// kept the old theme's colour under the new theme's line.
+    /// </summary>
+    private static void Tint(SeriesState state)
+    {
+        Color c = ColorAt(state.Definition.Stroke, 0xFF);
+        if (state.Tint == c) return;
+
+        state.Tint = c;
+        state.Area.Fill = new LinearGradientBrush(ColorAt(state.Definition.Stroke, 0x50), ColorAt(state.Definition.Stroke, 0x00), 90);
+    }
+
+    // ------------------------------------------------------------------ stacking
+
+    /// <summary>
+    /// Draw every series against one scale, the union of their ranges.
+    ///
+    /// Off by default because the default chart mixes units -- a temperature over fan percentages --
+    /// and each series is scaled to itself with only the primary labelled. Two series in one unit
+    /// must not be drawn that way: the unlabelled one would sit at a height its axis does not
+    /// describe, and two lines at the same height could be twenty degrees apart.
+    /// </summary>
+    public bool ShareScale { get; set; }
+
+    /// <summary>The series' names and colours above the plot. Off where a caption names them instead.</summary>
+    public bool ShowLegend
+    {
+        get => Legend.Visibility == Visibility.Visible;
+        set => Legend.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The time labels. A stack of charts sharing one clock labels it once, under the last.</summary>
+    public bool ShowTimeAxis
+    {
+        get => TimeAxisCanvas.Visibility == Visibility.Visible;
+        set => TimeAxisCanvas.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The hover line under the plot. Off where something else shows the hovered values.</summary>
+    public bool ShowReadout
+    {
+        get => Readout.Visibility == Visibility.Visible;
+        set => Readout.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Raised when the pointer leaves the plot, so charts hovered together can let go together.</summary>
+    public event Action? HoverEnded;
+
+    /// <summary>
+    /// Draws the crosshair at an instant, or clears it -- without raising <see cref="OnHover"/>, so
+    /// charts following each other's pointer do not echo it back.
+    /// </summary>
+    public void ShowCrosshairAt(DateTime? atUtc)
+    {
+        double width = Plot.ActualWidth;
+        if (atUtc is not { } at || width < 8 || at < _from || at > _to)
+        {
+            _crosshair.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        double x = (at - _from).TotalSeconds / Math.Max(0.001, (_to - _from).TotalSeconds) * width;
+        _crosshair.X1 = _crosshair.X2 = x;
+        _crosshair.Y1 = 0;
+        _crosshair.Y2 = Plot.ActualHeight;
+        _crosshair.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>A series' value at an instant, or null inside a gap -- the rule the readout keeps.</summary>
+    public double? ValueAt(int index, DateTime atUtc) =>
+        index >= 0 && index < _series.Count ? NearestValue(_series[index], atUtc) : null;
 }

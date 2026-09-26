@@ -78,6 +78,13 @@
         <GradientStop Color="{DynamicResource PanelColor}" Offset="1"/>
     </LinearGradientBrush>
 
+    <!-- A pane's frame, lit along its top edge and settling into the border tone down the sides:
+         light from above, the same light the card gradient under it describes. -->
+    <LinearGradientBrush x:Key="PaneEdgeBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{DynamicResource CardTopHighlightColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource BorderColor}" Offset="0.35"/>
+    </LinearGradientBrush>
+
     <!-- The accent ramp: the palette's two accent stops, left to right.
 
          This used to run AccentColor into AccentDimColor, which is the same hue at 22%

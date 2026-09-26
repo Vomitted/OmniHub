@@ -1048,8 +1048,8 @@
          dense layout a whole region lighting up under the pointer is noise.
          ================================================================== -->
     <Style x:Key="PaneStyle" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+        <Setter Property="Background" Value="{StaticResource CardGradientBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource PaneEdgeBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}"/>
         <Setter Property="Padding" Value="{DynamicResource PanePadding}"/>

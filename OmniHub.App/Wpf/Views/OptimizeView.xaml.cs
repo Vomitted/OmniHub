@@ -66,9 +66,16 @@ public partial class OptimizeView : UserControl
     {
         double current = SystemTuning.CurrentTimerResolutionMs();
         double best = SystemTuning.BestTimerResolutionMs();
+        double coarsest = SystemTuning.CoarsestTimerResolutionMs();
 
-        TimerValue.Text = double.IsNaN(current) ? "--" : $"{current:0.###} ms";
-        TimerSub.Text = double.IsNaN(best) ? "" : $"finest available {best:0.###} ms";
+        TimerValue.Text = double.IsNaN(current) ? "--" : FormattableString.Invariant($"{current:0.###} ms");
+
+        // The two ends of the timer's own range, written at the ends of its bar; the bar is filled
+        // as far toward the fine end as the timer now is. No range read, no bar.
+        TimerMeter.Label = double.IsNaN(coarsest) ? "" : FormattableString.Invariant($"coarsest {coarsest:0.#} ms");
+        TimerMeter.Show(double.IsNaN(best) ? "" : FormattableString.Invariant($"finest {best:0.###} ms"),
+                        OmniHub.Core.Telemetry.Gauge.LogFraction(current, coarsest, best));
+        TimerSub.Text = "";
 
         // Derived from the granted resolution, not from the toggle: if the request was
         // refused, or another process already holds a finer timer, the chip tells the truth
@@ -267,11 +274,15 @@ public partial class OptimizeView : UserControl
         {
             MemValue.Text = "--";
             MemSub.Text = "unavailable";
+            MemUsedMeter.Show("--", null);
             return;
         }
 
-        MemValue.Text = $"{available / 1024.0 / 1024 / 1024:0.0} GB";
-        MemSub.Text = $"of {total / 1024.0 / 1024 / 1024:0.0} GB total";
+        double availableGb = available / 1024.0 / 1024 / 1024, totalGb = total / 1024.0 / 1024 / 1024;
+        MemValue.Text = FormattableString.Invariant($"{availableGb:0.0} GB");
+        MemSub.Text = FormattableString.Invariant($"of {totalGb:0.0} GB total");
+        MemUsedMeter.Show(FormattableString.Invariant($"{totalGb - availableGb:0.0} / {totalGb:0.0} GB"),
+                          OmniHub.Core.Telemetry.Gauge.Fraction(totalGb - availableGb, totalGb));
     }
 
     private void PurgeBtn_Click(object sender, RoutedEventArgs e)
@@ -471,27 +482,16 @@ public partial class OptimizeView : UserControl
     private void RescanCaches()
     {
         CacheValue.Text = "scanning...";
-        CacheList.Items.Clear();
+        CacheShares.Show(Array.Empty<(string, double, string)>());
 
         Task.Run(() => ShaderCache.Scan()).ContinueWith(t =>
         {
             var locations = t.Result;
             Dispatcher.Invoke(() =>
             {
-                CacheList.Items.Clear();
                 long total = locations.Sum(l => l.Bytes);
                 CacheValue.Text = locations.Count == 0 ? "0 KB" : ShaderCache.FormatBytes(total);
-
-                foreach (var location in locations)
-                {
-                    CacheList.Items.Add(new TextBlock
-                    {
-                        Text = $"{location.Label} - {ShaderCache.FormatBytes(location.Bytes)} ({location.Files} files)",
-                        FontSize = 11,
-                        Margin = new Thickness(0, 2, 0, 0),
-                        Foreground = (Brush)FindResource("TextFaintBrush"),
-                    });
-                }
+                CacheShares.Show(locations.Select(l => (l.Label, (double)l.Bytes, Share(l.Bytes, l.Files))).ToList());
             });
         }, TaskScheduler.Default);
     }
@@ -540,7 +540,7 @@ public partial class OptimizeView : UserControl
     private void RescanDisk()
     {
         DiskValue.Text = "scanning...";
-        DiskList.Items.Clear();
+        DiskShares.Show(Array.Empty<(string, double, string)>());
 
         Task.Run(() => DiskCleanup.Scan()).ContinueWith(t =>
         {
@@ -548,23 +548,16 @@ public partial class OptimizeView : UserControl
             Dispatcher.Invoke(() =>
             {
                 _diskTargets = targets;
-                DiskList.Items.Clear();
                 long total = targets.Sum(x => x.Bytes);
                 DiskValue.Text = targets.Count == 0 ? "0 KB" : ShaderCache.FormatBytes(total);
-
-                foreach (var target in targets)
-                {
-                    DiskList.Items.Add(new TextBlock
-                    {
-                        Text = $"{target.Label} - {ShaderCache.FormatBytes(target.Bytes)} ({target.Files} files)",
-                        FontSize = 11,
-                        Margin = new Thickness(0, 2, 0, 0),
-                        Foreground = (Brush)FindResource("TextFaintBrush"),
-                    });
-                }
+                DiskShares.Show(targets.Select(x => (x.Label, (double)x.Bytes, Share(x.Bytes, x.Files))).ToList());
             });
         }, TaskScheduler.Default);
     }
+
+    /// <summary>A location's size and file count, the detail beside its name in a share legend.</summary>
+    private static string Share(long bytes, long files) =>
+        $"{ShaderCache.FormatBytes(bytes)} · {files.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)} files";
 
     private void RescanDiskBtn_Click(object sender, RoutedEventArgs e)
     {

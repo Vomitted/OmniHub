@@ -124,6 +124,8 @@ public static class ThemeManager
         merged.Insert(0, dict);
         if (existing is not null) merged.Remove(existing);
 
+        Repaint();
+
         Current = theme;
 
         // Re-derived from the new palette, not carried over. Density is a multiplier on the
@@ -134,6 +136,45 @@ public static class ThemeManager
 
         ThemeChanged?.Invoke(theme);
     }
+
+    /// <summary>
+    /// Points Theme.xaml's shared brushes at the palette now merged.
+    ///
+    /// The DynamicResource inside each brush was supposed to do this, and measurably does not: after
+    /// a live switch only the pane surfaces followed, and the ground, the sidebar, the muted text and
+    /// every gradient kept the old palette until a restart. A resource reference caches what it found
+    /// and forgets it only when its owning element announces a resource change -- and a brush shared
+    /// by hundreds of elements has no single owner to hear it from. (Styles and templates clone the
+    /// brush per element, and those clones do have one, which is why a few surfaces did follow.)
+    ///
+    /// So each colour gets a fresh reference, which looks the palette up now -- exactly what the XAML
+    /// parser attached in the first place. Not a plain colour: that would make the brush freezable,
+    /// and a style sealed afterwards freezes any Freezable in its setters, so the next switch would
+    /// find it frozen. Not SetCurrentValue either: layered over a reference it breaks the per-element
+    /// clone above with an InvalidCastException inside WPF, which is how this came to be written down.
+    /// </summary>
+    private static void Repaint()
+    {
+        var app = Application.Current;
+
+        foreach (var (key, colours) in ThemeBrushes.All)
+        {
+            switch (app.TryFindResource(key))
+            {
+                case SolidColorBrush { IsFrozen: false } solid:
+                    Relink(solid, SolidColorBrush.ColorProperty, colours[0]);
+                    break;
+
+                case GradientBrush { IsFrozen: false } gradient:
+                    for (int i = 0; i < Math.Min(colours.Length, gradient.GradientStops.Count); i++)
+                        Relink(gradient.GradientStops[i], GradientStop.ColorProperty, colours[i]);
+                    break;
+            }
+        }
+    }
+
+    private static void Relink(DependencyObject target, DependencyProperty property, string colourKey) =>
+        target.SetValue(property, new DynamicResourceExtension(colourKey).ProvideValue(null));
 
     /// <summary>The density in force. Normal until something says otherwise.</summary>
     public static UiDensity CurrentDensity { get; private set; } = UiDensity.Normal;

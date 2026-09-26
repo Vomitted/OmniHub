@@ -578,20 +578,23 @@ dotnet build OmniHub.slnx -c Release</pre>
 
   <h3>Not in this download</h3>
   <p>
-    <strong><span id="ahead">159</span> commits</strong> have landed on
+    <strong><span id="ahead">160</span> commits</strong> have landed on
     <span class="m">main</span> since 1.3.3 was published on 10 September, and no release has
     been cut from them. The button at the top of this page does not have any of it. It is listed
     here so the download is not credited with work it does not contain.
   </p>
   <ul>
     <li><strong>Readings are drawn.</strong> The Dashboard opens on four widgets — temperature rings for
-      the processor and the graphics card, an impeller that turns faster when the fans do, the battery
-      filled to its charge — each with bars filled against the limit the hardware itself reports, and
-      no bar where it reports none.</li>
-    <li><strong>Every page is a console rather than a column.</strong> The Dashboard lists every
-      reading with its current value, the lowest, mean and highest since launch — counted while
-      the window sits in the tray — a trace and where the number came from, beside what is
-      limiting the processor and what is in force. Each sidebar item states its subject's current
+      the processor and the graphics card, marked every tenth with their warning zone tinted, an
+      impeller that turns faster when the fans do, the battery filled to its charge — each with bars
+      filled against the limit the hardware itself reports, and no bar where it reports none. Under
+      them, the last half hour as four live charts on one clock — temperature, fans, power and load —
+      recorded while the window sits in the tray, so it opens full. The default look is Midnight,
+      blue to cyan, and switching theme now repaints everything without a restart.</li>
+    <li><strong>Every page is a console rather than a column.</strong> The Dashboard shows every
+      reading as a tile: its current value, its trace, and the lowest and highest since launch —
+      counted while the window sits in the tray — with the mean and where the number came from a
+      hover away, beside what is limiting the processor and what is in force. Each sidebar item states its subject's current
       state: fan mode and speed, charge and power source. Fans shows the loop's last twelve
       decisions as a table, with a note wherever a spike was set aside.</li>
     <li><strong>The sidebar is a list of workspaces, not seven fixed tabs.</strong> A workspace is

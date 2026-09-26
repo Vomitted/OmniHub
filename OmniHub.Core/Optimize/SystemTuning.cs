@@ -42,6 +42,17 @@ public static class SystemTuning
         return current / 10000.0;
     }
 
+    /// <summary>
+    /// Coarsest resolution the timer runs at, in milliseconds -- where it sits when nothing has
+    /// asked for better, and the far end of the scale the System page draws the timer on.
+    /// </summary>
+    public static double CoarsestTimerResolutionMs()
+    {
+        // "minimum" is minimum precision: the largest interval. Same inverted naming as below.
+        if (NtFailed(NtQueryTimerResolution(out uint minimum, out _, out _))) return double.NaN;
+        return minimum / 10000.0;
+    }
+
     /// <summary>Finest resolution this system will grant, in milliseconds.</summary>
     public static double BestTimerResolutionMs()
     {

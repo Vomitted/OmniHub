@@ -30,8 +30,8 @@ public partial class GpuView : UserControl
         _settings = settings;
         ModeCombo.ItemsSource = new[] { GpuMode.Hybrid, GpuMode.Discrete, GpuMode.Optimus };
 
-        // The card's readings, from the one shared source every table reads, and drawn from the same.
-        SensorsHost.Content = new Controls.SensorTable(metrics, new[] { "gpu", "gpuclk", "gpuload", "gpuw" });
+        // The card's readings as tiles, from the one shared source every panel reads.
+        SensorsHost.Content = new Controls.SensorTiles(metrics, "gpu", "gpuclk", "gpuload", "gpuw");
         _metrics = metrics;
         Loaded += (_, _) => { metrics.Updated -= ShowGauges; metrics.Updated += ShowGauges; ShowGauges(); };
         Unloaded += (_, _) => metrics.Updated -= ShowGauges;

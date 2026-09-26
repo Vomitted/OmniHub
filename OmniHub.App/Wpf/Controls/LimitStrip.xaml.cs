@@ -106,7 +106,9 @@ public partial class LimitStrip : UserControl
             // Colour on the bar, never on the name. A limit at 99% is a fact about the machine,
             // not a warning about it, and a red label would read as something being wrong.
             _rows[i].Fill.SetResourceReference(Border.BackgroundProperty,
-                percent >= BindingPercent ? "WarnBrush" : "MetricCpuBrush");
+                percent >= BindingPercent ? "WarnBrush" : "AccentGradientBrush");
+            if (_rows[i].Fill.Effect is System.Windows.Media.Effects.DropShadowEffect glow)
+                glow.Color = Glow.Of(_rows[i].Fill.Background);
         }
 
         var tightest = s.TightestLimit();
@@ -120,7 +122,7 @@ public partial class LimitStrip : UserControl
 
     private void BuildRow(string name)
     {
-        var grid = new Grid { Margin = new Thickness(0, 0, 0, 7) };
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 9) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(148) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) });
@@ -129,28 +131,43 @@ public partial class LimitStrip : UserControl
         label.SetResourceReference(StyleProperty, "TileFoot");
         Grid.SetColumn(label, 0);
 
+        // A meter like every other on the page: the track in the border tone so the unfilled part
+        // still reads as a proportion, the fill in the accent's gradient with its glow, and a mark
+        // where "binding" begins, so a bar's distance from it is visible before it gets there.
         var track = new Grid
         {
-            Height = 3,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(4, 0, 10, 0),
         };
+        track.SetResourceReference(HeightProperty, "TrackHeight");
 
         var filled = new ColumnDefinition { Width = new GridLength(0, GridUnitType.Star) };
         var rest = new ColumnDefinition { Width = new GridLength(100, GridUnitType.Star) };
         track.ColumnDefinitions.Add(filled);
         track.ColumnDefinitions.Add(rest);
 
-        var bar = new Border { CornerRadius = new CornerRadius(2) };
-        bar.SetResourceReference(Border.BackgroundProperty, "MetricCpuBrush");
+        var groove = new Border();
+        groove.SetResourceReference(Border.BackgroundProperty, "BorderBrush");
+        groove.SetResourceReference(Border.CornerRadiusProperty, "RadiusPill");
+        Grid.SetColumnSpan(groove, 2);
+
+        var bar = new Border { Effect = Glow.Make(blur: 8, opacity: 0.55) };
+        bar.SetResourceReference(Border.BackgroundProperty, "AccentGradientBrush");
+        bar.SetResourceReference(Border.CornerRadiusProperty, "RadiusPill");
         Grid.SetColumn(bar, 0);
 
-        var remainder = new Border { CornerRadius = new CornerRadius(2) };
-        remainder.SetResourceReference(Border.BackgroundProperty, "PanelAltBrush");
-        Grid.SetColumn(remainder, 1);
+        var binding = new Grid { Margin = new Thickness(0, -2, 0, -2), IsHitTestVisible = false };
+        binding.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(BindingPercent, GridUnitType.Star) });
+        binding.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100 - BindingPercent, GridUnitType.Star) });
+        var mark = new Border { Width = 1.5, HorizontalAlignment = System.Windows.HorizontalAlignment.Left };
+        mark.SetResourceReference(Border.BackgroundProperty, "TextFaintBrush");
+        Grid.SetColumn(mark, 1);
+        binding.Children.Add(mark);
+        Grid.SetColumnSpan(binding, 2);
 
+        track.Children.Add(groove);
         track.Children.Add(bar);
-        track.Children.Add(remainder);
+        track.Children.Add(binding);
         Grid.SetColumn(track, 1);
 
         var value = new TextBlock

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Vomitted
 
+using System.IO;
+using System.Xml.Linq;
 using OmniHub.Core.Theming;
 using Xunit;
 
@@ -26,17 +28,20 @@ public class CustomPaletteTests
         Accent: new Rgb(0x1B, 0x5E, 0xA8),
         TextPrimary: new Rgb(0x14, 0x14, 0x14));
 
-    /// <summary>The colour keys a palette dictionary defines, taken from a shipped one.</summary>
-    private static readonly string[] Required =
-    {
-        "BackgroundColor", "PanelColor", "PanelAltColor", "PanelHoverColor",
-        "BorderColor", "BorderStrongColor",
-        "TextPrimaryColor", "TextMutedColor", "TextFaintColor",
-        "AccentColor", "AccentDimColor", "AccentSoftColor", "OnAccentColor",
-        "GoodColor", "WarnColor", "DangerColor",
-        "MetricCpuColor", "MetricMemColor", "MetricGpuColor",
-        "CardTopHighlightColor", "GridLineColor", "CaptionColor", "CaptionTextColor",
-    };
+    /// <summary>
+    /// The colour keys a palette dictionary defines, read from a shipped one.
+    ///
+    /// Read rather than listed: the list this replaced was a copy, and it was missing AccentColor2 --
+    /// so the build never produced it and the test agreed, while every gradient on a custom palette
+    /// ended on a leftover colour.
+    /// </summary>
+    private static IEnumerable<string> Required =>
+        XDocument.Load(Path.Combine(WpfTestHost.WpfDir, "Palettes", "Midnight.xaml"))
+            .Descendants()
+            .Where(e => e.Name.LocalName == "Color")
+            .Select(e => e.Attribute(Xaml + "Key")!.Value);
+
+    private static readonly XNamespace Xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
 
     [Fact]
     public void EveryKeyAPaletteNeedsIsProduced()

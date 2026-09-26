@@ -29,7 +29,10 @@
 
             <Canvas x:Name="ValueAxis" Grid.Column="0" Width="42"/>
 
+            <!-- A well a step darker than the pane, so the plot reads as an instrument's screen
+                 rather than as more of the card it sits on. -->
             <Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Background="{DynamicResource BackgroundBrush}"
                     CornerRadius="{DynamicResource RadiusSm}" ClipToBounds="True">
                 <Canvas x:Name="Plot" Background="Transparent"
                         MouseMove="Plot_MouseMove" MouseLeave="Plot_MouseLeave"/>

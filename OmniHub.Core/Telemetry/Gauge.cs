@@ -27,6 +27,23 @@ public static class Gauge
     }
 
     /// <summary>
+    /// Where <paramref name="value"/> sits between a <paramref name="coarse"/> end and a
+    /// <paramref name="fine"/> end, on a log scale: 0 at the coarse end, 1 at the fine.
+    ///
+    /// For scales that run in ratios rather than steps. The Windows timer goes 15.6 ms, 1 ms,
+    /// 0.5 ms, and the step that matters is the first: drawn linearly, 1 ms and 0.5 ms would sit
+    /// together at the far end and the bar would say nothing. Null for anything that cannot be
+    /// placed -- a missing end, a non-positive value, or ends that do not differ.
+    /// </summary>
+    public static double? LogFraction(double? value, double? coarse, double? fine)
+    {
+        if (value is not { } v || coarse is not { } c || fine is not { } f) return null;
+        if (!double.IsFinite(v) || !double.IsFinite(c) || !double.IsFinite(f)) return null;
+        if (v <= 0 || c <= 0 || f <= 0 || Math.Abs(c - f) < 1e-12) return null;
+        return Math.Clamp(Math.Log(c / v) / Math.Log(c / f), 0, 1);
+    }
+
+    /// <summary>
     /// Seconds per turn for a drawn fan at <paramref name="rpm"/>, or null when it should stand still.
     ///
     /// Deliberately not the real rate. A fan at 5,600 rpm turns ninety-three times a second, which

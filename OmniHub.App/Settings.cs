@@ -113,9 +113,9 @@ public sealed class AppSettings
     /// for the same reason: a diagnostic aid rather than something to leave running forever.</summary>
     public bool NetworkLogging { get; set; } = false;
 
-    /// <summary>Active colour palette id, matching a ThemeManager.All entry (e.g. "OledBlack").
+    /// <summary>Active colour palette id, matching a ThemeManager.All entry (e.g. "Midnight").
     /// An unknown value falls back to the default rather than failing to start.</summary>
-    public string ThemeName { get; set; } = "OledBlack";
+    public string ThemeName { get; set; } = Wpf.ThemeManager.DefaultId;
 
     /// <summary>Request the finest system timer resolution. Neither of these persists across a
     /// reboot on its own -- they are re-applied at startup, which is why they are stored.</summary>
