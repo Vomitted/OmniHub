@@ -46,6 +46,7 @@
     <SolidColorBrush x:Key="MetricCpuBrush" Color="{DynamicResource MetricCpuColor}"/>
     <SolidColorBrush x:Key="MetricMemBrush" Color="{DynamicResource MetricMemColor}"/>
     <SolidColorBrush x:Key="MetricGpuBrush" Color="{DynamicResource MetricGpuColor}"/>
+    <SolidColorBrush x:Key="MetricFanBrush" Color="{DynamicResource MetricFanColor}"/>
 
     <!-- Legacy gradient keys, kept so existing markup resolves. They are flat now: six
          competing gradients plus a decorative glow blob was the single biggest reason the
@@ -135,6 +136,9 @@
     <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="UiFontSemibold">Segoe UI Variable Display Semibold, Segoe UI Semibold, Segoe UI</FontFamily>
     <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
+    <!-- The large figures, at a light weight: the reference sets its readings large and thin, which
+         is most of why it reads as an instrument rather than a form. Used with FontWeight Light. -->
+    <FontFamily x:Key="DisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>
 
     <!-- One radius scale.
 

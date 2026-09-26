@@ -32,6 +32,7 @@ public sealed record CustomPalette(
     private static readonly Rgb CpuSeed = new(0x4F, 0x9C, 0xF5);
     private static readonly Rgb MemSeed = new(0xA9, 0x7B, 0xEF);
     private static readonly Rgb GpuSeed = new(0x3F, 0xC2, 0xC9);
+    private static readonly Rgb FanSeed = new(0xF2, 0xA3, 0x3A);
 
     /// <summary>Every colour key a palette file defines, as the hex a palette file writes.</summary>
     public IReadOnlyDictionary<string, string> Build()
@@ -92,6 +93,7 @@ public sealed record CustomPalette(
             ["MetricCpuColor"] = Readable(CpuSeed, ground).ToString(),
             ["MetricMemColor"] = Readable(MemSeed, ground).ToString(),
             ["MetricGpuColor"] = Readable(GpuSeed, ground).ToString(),
+            ["MetricFanColor"] = Readable(FanSeed, ground).ToString(),
 
             ["CardTopHighlightColor"] = Mix(Panel, text, 0.08).ToString(),
             ["GridLineColor"] = Mix(Panel, text, 0.12).ToString(),

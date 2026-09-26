@@ -44,6 +44,7 @@ public static class ThemeBrushes
         ("MetricCpuBrush", ["MetricCpuColor"]),
         ("MetricMemBrush", ["MetricMemColor"]),
         ("MetricGpuBrush", ["MetricGpuColor"]),
+        ("MetricFanBrush", ["MetricFanColor"]),
         ("AppBackgroundGradient", ["PanelColor", "BackgroundColor"]),
         ("SidebarGradient", ["PanelColor", "BackgroundColor"]),
         ("CardGradientBrush", ["PanelAltColor", "PanelColor"]),

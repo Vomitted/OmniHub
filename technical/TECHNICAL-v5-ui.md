@@ -332,3 +332,73 @@ Midnight across all seven pages, the Dashboard, and System.
 the ACPI zone. That is `ThermalReader.Merge` taking the higher of Tctl and the six-second-cached zone
 on purpose, so the fan never acts on a lower temperature than the ACPI-only path would have; it is
 pinned by `SmuTemperatureTests`.
+
+## 9. The reference, measured, and built to
+
+The fourth pass was answered "i feel like either the ui, or the widget or even the graphic is still
+not there yet". The user had already settled what "there" looks like: on 31 August they supplied a
+reference image — "use this as a reference, remember, clean, elegant, gradient, and very cool, give it
+that premium app vibe you get from a very expensive brand" — and the Dashboard had drifted from it.
+Set side by side, the gap is structural, not a matter of colour: the reference is composed around a
+centre, the Dashboard was four equal boxes in a row in one colour.
+
+### What the reference is, in numbers
+
+Sampled from the image itself rather than remembered. One remembered fact was wrong: the ground is
+neutral, not blue-tinted.
+
+| Element | Measured |
+| --- | --- |
+| Ground, sidebar | `#0D0D0D` – `#0E0E0E` |
+| Cards; centre panel; card edge | `#151515` – `#161616`; `#121212`; `#1B1B1B` |
+| Processor: bar, edge stripe, icon | `#FC4080`, `#C73667`, `#B6325F` |
+| Graphics: bar, stripe, icon | `#01E3FD`, `#07A5B7`, `#07A8BA` |
+| Memory: bar, stripe, icon | `#6FF8BC`, `#5AC496`, `#5AC496` |
+| Thermals: stripe, icon | `#B87008`, `#D17E05` |
+| Centre ring, status dot | mint, `#68E8B0` at its brightest |
+| Small labels | `#77787D` |
+| Selected preset | `#DBE2FF` fill |
+
+### Its structure
+
+A header — title, one-line subtitle, the presets as a segmented control at the right. Under it three
+columns: a card per component down each side (processor and memory left, graphics and thermals
+right), each with its colour as a stripe along its outer edge, an icon in that colour, a small
+category over its name, one large light-weight figure with a raised unit, a thin bar in the colour,
+and two small labelled figures at its foot. In the centre, spanning both rows, one large ring on a
+panel of faint geometric line-work, a status under the figure, and two readouts in a box beneath.
+A wide live chart closes the screen.
+
+### What it becomes here
+
+The reference's centre is "System Index 98.4", a score, and its cards carry figures this machine does
+not have (VRAM, memory latency, coolant). The project's first rule outranks the reference: every slot
+keeps its place and its form, and takes a reading this application genuinely has.
+
+| Slot | Here |
+| --- | --- |
+| Title and subtitle | the page's name and this machine's |
+| Presets | Eco, Balanced, Performance as the segmented control, with what the selected one sends |
+| Centre ring | die temperature against its hot point; mint, amber past 80 °C, red past 90; a status word with the colour on its dot only; fan speed and package power beneath |
+| Processor (left) | clock large; load bar; package power and its sustained limit |
+| Memory (left) | memory in use large, against installed; battery charge and power source |
+| Graphics (right) | clock large; load bar; power against the driver's limit; temperature |
+| Thermals (right) | processor and graphics temperatures as bars with their figures in badges; fan speed |
+| Live chart | the history strips, in the components' colours |
+
+Colour identity is per component, everywhere a component is drawn — the cards, the history, the
+tiles: processor pink, graphics cyan, memory green, cooling amber. Cooling gets its own palette key,
+`MetricFanColor`, so a fan's amber is never read as the warning colour it happens to resemble.
+
+### How it was built
+
+`ComponentCard` and `HeroDial` (`Controls/Console.cs`) are the reference's two shapes; the ring they
+share with the small gauges moved out of `RingGauge` into `ArcDial`, so the Dashboard's dial and the
+Fans page's are one piece of code. Names on the cards are the parts' own, shortened
+(`HardwareNames`, tested): the processor's from the value Windows writes at boot, the graphics card's
+from the driver. Midnight took the measured values, and three of them one step lighter than
+measured — the pink, the danger red and the faint text — because with a mint accent the selected
+surfaces are lighter, and `ContrastTests` put all three at 4.0 to 4.5 to 1 on them. The console
+stacks below 960 px: the dial across the top, the cards two by two.
+
+Rendered at 1,440 and 1,180 px against the reference; 974 tests pass.

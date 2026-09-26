@@ -2,23 +2,26 @@
                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                      xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <!-- MIDNIGHT. The reference palette. Blue-tinted near-black, rounded, roomy. -->
+    <!-- MIDNIGHT. The reference palette, sampled from the reference image itself
+         (technical/TECHNICAL-v5-ui.md, section 9): a neutral near-black — not the blue tint this
+         file used to carry from a misremembered description — charcoal cards, mint running into
+         cyan for the accent, and a colour per component. Rounded, roomy. -->
 
-    <Color x:Key="BackgroundColor">#FF0A0D12</Color>
-    <Color x:Key="PanelColor">#FF11151B</Color>
-    <Color x:Key="PanelAltColor">#FF161B22</Color>
-    <Color x:Key="PanelHoverColor">#FF1A2028</Color>
-    <Color x:Key="BorderColor">#FF1E242C</Color>
-    <Color x:Key="BorderStrongColor">#FF262D36</Color>
+    <Color x:Key="BackgroundColor">#FF0D0D0D</Color>
+    <Color x:Key="PanelColor">#FF151515</Color>
+    <Color x:Key="PanelAltColor">#FF1A1A1A</Color>
+    <Color x:Key="PanelHoverColor">#FF202020</Color>
+    <Color x:Key="BorderColor">#FF232323</Color>
+    <Color x:Key="BorderStrongColor">#FF2E2E2E</Color>
 
-    <Color x:Key="TextPrimaryColor">#FFE6EDF3</Color>
-    <Color x:Key="TextMutedColor">#FFB8C4D1</Color>
-    <Color x:Key="TextFaintColor">#FF9AA1AA</Color>
+    <Color x:Key="TextPrimaryColor">#FFEDEDED</Color>
+    <Color x:Key="TextMutedColor">#FFB4B5BA</Color>
+    <Color x:Key="TextFaintColor">#FF9A9BA0</Color>
 
-    <Color x:Key="AccentColor">#FF4D8DF7</Color>
-    <Color x:Key="AccentColor2">#FF22D3EE</Color>
-    <Color x:Key="AccentDimColor">#383B82F6</Color>
-    <Color x:Key="AccentSoftColor">#1E3B82F6</Color>
+    <Color x:Key="AccentColor">#FF5EE0AE</Color>
+    <Color x:Key="AccentColor2">#FF06C8DF</Color>
+    <Color x:Key="AccentDimColor">#385EE0AE</Color>
+    <Color x:Key="AccentSoftColor">#1E5EE0AE</Color>
 
     <!-- Text drawn ON the accent, not beside it.
          The primary button used to hardcode white here, which is fine on a deep blue and
@@ -26,21 +29,28 @@
          gradient scored between 1.00 and 2.15 to 1, and 1.00 is literally white on white.
          The ground colour is used instead: dark on a bright fill, which clears 4.5 in every
          palette here and stays correct for any future one whose accent is lighter still. -->
-    <Color x:Key="OnAccentColor">#FF0A0D12</Color>
+    <Color x:Key="OnAccentColor">#FF0D0D0D</Color>
 
     <Color x:Key="GoodColor">#FF22C55E</Color>
     <Color x:Key="WarnColor">#FFF59E0B</Color>
-    <Color x:Key="DangerColor">#FFF15E5E</Color>
+    <Color x:Key="DangerColor">#FFFF6B6B</Color>
 
-    <Color x:Key="MetricCpuColor">#FF4D8DF7</Color>
-    <Color x:Key="MetricMemColor">#FF22C55E</Color>
-    <Color x:Key="MetricGpuColor">#FF22D3EE</Color>
+    <!-- The component colours, from the reference: the processor pink, the graphics card cyan,
+         memory green, cooling amber, each that component wherever it is drawn. The pink, the
+         danger red and the faint text sit a step lighter than the reference's own, because with a
+         mint accent the selected surfaces are lighter too, and all three are also used as text on
+         them: ContrastTests measured 4.0 to 4.5 to 1 at the reference's values. -->
+
+    <Color x:Key="MetricCpuColor">#FFFF5A92</Color>
+    <Color x:Key="MetricMemColor">#FF6FF8BC</Color>
+    <Color x:Key="MetricGpuColor">#FF01E3FD</Color>
+    <Color x:Key="MetricFanColor">#FFF2A33A</Color>
 
     <Color x:Key="CardTopHighlightColor">#14FFFFFF</Color>
-    <Color x:Key="GridLineColor">#FF171C22</Color>
+    <Color x:Key="GridLineColor">#FF1D1D1D</Color>
 
-    <Color x:Key="CaptionColor">#FF0A0D12</Color>
-    <Color x:Key="CaptionTextColor">#FFE6EDF3</Color>
+    <Color x:Key="CaptionColor">#FF0D0D0D</Color>
+    <Color x:Key="CaptionTextColor">#FFEDEDED</Color>
 
     <!-- Shape and density. These are what stop a theme being a recolour: a palette sets how
          sharp the corners are and how much air a card carries, so switching theme changes the

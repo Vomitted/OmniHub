@@ -243,10 +243,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   them and the values under the pointer in each chart's header. Five, fifteen or thirty minutes,
   and full the moment the window opens: the last half hour is recorded whether or not the window
   is showing, so opening it after a game shows the game.
-- **Midnight is the default look**, blue to cyan, and the whole interface is lit: gradient panes
-  with a highlighted top edge, a glow on the rings and bars in their own colour, a fan lit only
-  while it turns, larger rings marked every tenth with their warning zone tinted, and figures that
-  roll to a new reading in a quarter of a second. An existing theme choice is kept.
+- **The Dashboard is built around a centre**: a card per component down each side — the
+  processor, memory, the graphics card, cooling — each in its own colour on a stripe along its
+  edge, its icon and its bars, its name as the part's own ("Ryzen 5 8645HS"), one large figure and
+  two small ones; and between them a dial for the die temperature against its hot point, with its
+  status and the fan and package readings beneath. The presets sit at the top as one control, with
+  what the selected one sends written under it.
+- **Midnight is the default look**: near-black, mint running into cyan, and a colour per component
+  that means that component everywhere — cards, history, tiles. The whole interface is lit: panes
+  with a highlighted top edge, a glow on arcs and bars in their own colour, a fan lit only while it
+  turns, rings marked every tenth with their warning zone tinted, and figures that roll to a new
+  reading in a quarter of a second. An existing theme choice is kept.
 - **More of every page is drawn.** Tuning's live figures are meters against each limit, amber once
   a limit binds, and its "limited by" line is no longer coloured red. System draws the timer
   between the coarsest and finest resolution Windows allows, memory in use against installed, and

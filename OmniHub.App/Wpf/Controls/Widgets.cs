@@ -150,32 +150,27 @@ internal static class Arc
 }
 
 /// <summary>
-/// A reading as an arc: the track, the value over it, the figure and its unit in the middle, and
-/// what it is under the ring.
+/// The ring itself: the track, the stretch past the warning threshold, a tick every tenth, and the
+/// value arc with its glow, eased to each reading.
 ///
-/// Marked like the instrument it imitates: a tick every tenth of the scale, and the stretch past the
-/// reading's warning threshold tinted on the track the way a tachometer carries its red zone -- so how
-/// close the value is to trouble is drawn before the value ever gets there.
+/// Marked like the instrument it imitates: the warning stretch is tinted on the track the way a
+/// tachometer carries its red zone, so how close a value is to trouble is drawn before it gets there.
+/// Shared by the gauges on the cards and the Dashboard's centre dial, which differ only in what they
+/// set around it.
 /// </summary>
-public sealed class RingGauge : Grid
+internal sealed class ArcDial : Canvas
 {
-    private readonly Canvas _canvas = new() { HorizontalAlignment = HorizontalAlignment.Center };
-    private readonly Path _track;
-    private readonly Path _zone = new() { StrokeThickness = Stroke, Opacity = 0.45 };
+    private readonly Path _track, _value;
+    private readonly Path _zone = new() { Opacity = 0.45 };
     private readonly Path _ticks = new() { StrokeThickness = 1 };
-    private readonly Path _value;
-    private readonly DropShadowEffect _glow = Glow.Make(blur: 14, opacity: 0.6);
+    private readonly DropShadowEffect _glow;
+    private readonly double _stroke;
+    private double _diameter;
     private double? _warnFrom;
-    private readonly TextBlock _figure = new() { HorizontalAlignment = HorizontalAlignment.Center };
-    private readonly TextBlock _unit = new() { HorizontalAlignment = HorizontalAlignment.Center };
-    // In the arc's open bottom, where a physical gauge carries its label.
-    private readonly TextBlock _caption = new() { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 2) };
-    private double _diameter = 116;
-    private const double Stroke = 9;
 
     private static readonly DependencyProperty DrawnProperty = DependencyProperty.Register(
-        nameof(Drawn), typeof(double), typeof(RingGauge),
-        new PropertyMetadata(0.0, (d, _) => ((RingGauge)d).Redraw()));
+        nameof(Drawn), typeof(double), typeof(ArcDial),
+        new PropertyMetadata(0.0, (d, _) => ((ArcDial)d).Redraw()));
 
     /// <summary>The fraction on screen right now, which eases towards the reading.</summary>
     private double Drawn
@@ -184,68 +179,44 @@ public sealed class RingGauge : Grid
         set => SetValue(DrawnProperty, value);
     }
 
-    public RingGauge()
+    public ArcDial(double diameter, double stroke, double glowBlur)
     {
+        _diameter = diameter;
+        _stroke = stroke;
+        _glow = Glow.Make(blur: glowBlur, opacity: 0.65);
+        HorizontalAlignment = HorizontalAlignment.Center;
+
         // The border tone rather than TrackBrush: on a pane, the track brush is one step from the
         // pane itself and the unfilled arc all but disappears, so a gauge stops reading as a proportion.
-        _track = Arc.Path(_diameter, 1, System.Windows.Media.Brushes.Transparent, Stroke, Stroke / 2 + 1);
+        _track = Arc.Path(diameter, 1, System.Windows.Media.Brushes.Transparent, stroke, stroke / 2 + 1);
         _track.SetResourceReference(Shape.StrokeProperty, "BorderBrush");
-        _value = Arc.Path(_diameter, 0, System.Windows.Media.Brushes.Transparent, Stroke, Stroke / 2 + 1);
+        _value = Arc.Path(diameter, 0, System.Windows.Media.Brushes.Transparent, stroke, stroke / 2 + 1);
         _value.Effect = _glow;
 
+        _zone.StrokeThickness = stroke;
         _zone.SetResourceReference(Shape.StrokeProperty, "WarnBrush");
         _ticks.SetResourceReference(Shape.StrokeProperty, "BorderStrongBrush");
 
-        _canvas.Children.Add(_track);
-        _canvas.Children.Add(_zone);
-        _canvas.Children.Add(_ticks);
-        _canvas.Children.Add(_value);
-
-        _figure.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
-        _figure.FontWeight = FontWeights.SemiBold;
-        _unit.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
-        _unit.SetResourceReference(TextBlock.ForegroundProperty, "TextMutedBrush");
-        _unit.FontSize = 11;
-        _caption.SetResourceReference(StyleProperty, "CellNote");
-
-        var middle = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-        middle.Children.Add(_figure);
-        middle.Children.Add(_unit);
-
-        var face = new Grid { HorizontalAlignment = HorizontalAlignment.Center };
-        face.Children.Add(_canvas);
-        face.Children.Add(middle);
-        face.Children.Add(_caption);
-        Children.Add(face);
+        Children.Add(_track);
+        Children.Add(_zone);
+        Children.Add(_ticks);
+        Children.Add(_value);
 
         Resize();
     }
 
-    /// <summary>The ring's size; the figure scales with it.</summary>
     public double Diameter
     {
         get => _diameter;
         set { _diameter = value; Resize(); }
     }
 
-    /// <summary>What the reading is, under the ring.</summary>
-    public string Caption
-    {
-        get => _caption.Text;
-        set => _caption.Text = value;
-    }
-
     /// <summary>
-    /// Shows a reading. A null <paramref name="fraction"/> draws the track alone: without a real full
-    /// scale there is no arc, only the figure.
+    /// Draws a reading. A null <paramref name="fraction"/> draws the track alone: without a real full
+    /// scale there is no arc.
     /// </summary>
-    /// <param name="warnFrom">Where on the scale the reading's warning threshold falls, or null for none.</param>
-    public void Show(double? fraction, double? value, string format, string unit, Brush arc, Brush figureBrush,
-                     double? warnFrom = null)
+    public void Show(double? fraction, Brush arc, double? warnFrom)
     {
-        Roll.To(_figure, value, format);
-        _figure.Foreground = figureBrush;
-        _unit.Text = unit;
         _value.Stroke = arc;
         _glow.Color = Glow.Of(arc);
 
@@ -271,6 +242,90 @@ public sealed class RingGauge : Grid
         }
     }
 
+    private void Resize()
+    {
+        Width = Height = _diameter;
+        _track.Data = Arc.Geometry(_diameter, 1, _stroke / 2 + 1);
+        DrawMarks();
+        Redraw();
+    }
+
+    private void DrawMarks()
+    {
+        _zone.Data = _warnFrom is { } w ? Arc.Stretch(_diameter, w, 1, _stroke / 2 + 1) : System.Windows.Media.Geometry.Empty;
+
+        double c = _diameter / 2, inner = c - _stroke - 4;
+        var ticks = new GeometryGroup();
+        for (int i = 0; i <= 10; i++)
+            ticks.Children.Add(new LineGeometry(Arc.At(c, inner, i / 10.0), Arc.At(c, inner - (i % 5 == 0 ? 5 : 3), i / 10.0)));
+        ticks.Freeze();
+        _ticks.Data = ticks;
+    }
+
+    private void Redraw() => _value.Data = Arc.Geometry(_diameter, Drawn, _stroke / 2 + 1);
+}
+
+/// <summary>
+/// A reading as an arc: the ring, the figure and its unit in the middle, and what it is under the ring.
+/// </summary>
+public sealed class RingGauge : Grid
+{
+    private readonly ArcDial _dial = new(116, 9, 14);
+    private readonly TextBlock _figure = new() { HorizontalAlignment = HorizontalAlignment.Center };
+    private readonly TextBlock _unit = new() { HorizontalAlignment = HorizontalAlignment.Center };
+    // In the arc's open bottom, where a physical gauge carries its label.
+    private readonly TextBlock _caption = new() { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 2) };
+
+    public RingGauge()
+    {
+        _figure.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
+        _figure.FontWeight = FontWeights.SemiBold;
+        _unit.SetResourceReference(TextBlock.FontFamilyProperty, "MonoFont");
+        _unit.SetResourceReference(TextBlock.ForegroundProperty, "TextMutedBrush");
+        _unit.FontSize = 11;
+        _caption.SetResourceReference(StyleProperty, "CellNote");
+
+        var middle = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+        middle.Children.Add(_figure);
+        middle.Children.Add(_unit);
+
+        var face = new Grid { HorizontalAlignment = HorizontalAlignment.Center };
+        face.Children.Add(_dial);
+        face.Children.Add(middle);
+        face.Children.Add(_caption);
+        Children.Add(face);
+
+        _figure.FontSize = Math.Round(_dial.Diameter * 0.22);
+    }
+
+    /// <summary>The ring's size; the figure scales with it.</summary>
+    public double Diameter
+    {
+        get => _dial.Diameter;
+        set { _dial.Diameter = value; _figure.FontSize = Math.Round(value * 0.22); }
+    }
+
+    /// <summary>What the reading is, under the ring.</summary>
+    public string Caption
+    {
+        get => _caption.Text;
+        set => _caption.Text = value;
+    }
+
+    /// <summary>
+    /// Shows a reading. A null <paramref name="fraction"/> draws the track alone: without a real full
+    /// scale there is no arc, only the figure.
+    /// </summary>
+    /// <param name="warnFrom">Where on the scale the reading's warning threshold falls, or null for none.</param>
+    public void Show(double? fraction, double? value, string format, string unit, Brush arc, Brush figureBrush,
+                     double? warnFrom = null)
+    {
+        Roll.To(_figure, value, format);
+        _figure.Foreground = figureBrush;
+        _unit.Text = unit;
+        _dial.Show(fraction, arc, warnFrom);
+    }
+
     /// <summary>
     /// A temperature from the shared readings, against its own thresholds: the full scale is the
     /// reading's hot point, and past its warning point the arc and the figure take the warning
@@ -290,30 +345,6 @@ public sealed class RingGauge : Grid
                  : level switch { MetricLevel.Hot => "DangerBrush", MetricLevel.Warn => "WarnBrush", _ => "TextPrimaryBrush" }),
              Gauge.Fraction(metric.WarnAt, full));
     }
-
-    private void Resize()
-    {
-        _canvas.Width = _canvas.Height = _diameter;
-        _track.Data = Arc.Geometry(_diameter, 1, Stroke / 2 + 1);
-        _figure.FontSize = Math.Round(_diameter * 0.22);
-        DrawMarks();
-        Redraw();
-    }
-
-    /// <summary>The warning zone on the track, and a tick every tenth just inside it.</summary>
-    private void DrawMarks()
-    {
-        _zone.Data = _warnFrom is { } w ? Arc.Stretch(_diameter, w, 1, Stroke / 2 + 1) : System.Windows.Media.Geometry.Empty;
-
-        double c = _diameter / 2, inner = c - Stroke - 4;
-        var ticks = new GeometryGroup();
-        for (int i = 0; i <= 10; i++)
-            ticks.Children.Add(new LineGeometry(Arc.At(c, inner, i / 10.0), Arc.At(c, inner - (i % 5 == 0 ? 5 : 3), i / 10.0)));
-        ticks.Freeze();
-        _ticks.Data = ticks;
-    }
-
-    private void Redraw() => _value.Data = Arc.Geometry(_diameter, Drawn, Stroke / 2 + 1);
 }
 
 /// <summary>
@@ -407,6 +438,23 @@ public sealed class FanGlyph : Viewbox
 
     private static Brush Frozen(Brush brush) { brush.Freeze(); return brush; }
 
+    private readonly Path _rotor = new();
+    private readonly Ellipse _cap = new() { Width = 10, Height = 10 };
+
+    /// <summary>
+    /// The theme brush the blades, the cap and the halo take. The accent by default; a card drawing
+    /// one component gives its own colour, so the cooling card's fan turns in cooling's amber.
+    /// </summary>
+    public string ColourKey
+    {
+        set
+        {
+            _rotor.SetResourceReference(Shape.FillProperty, value);
+            _cap.SetResourceReference(Shape.FillProperty, value);
+            _halo.SetResourceReference(Shape.FillProperty, value);
+        }
+    }
+
     public FanGlyph()
     {
         var canvas = new Canvas { Width = 100, Height = 100 };
@@ -433,9 +481,10 @@ public sealed class FanGlyph : Viewbox
             blades.Children.Add(copy);
         }
 
-        var rotor = new Path { Data = blades, RenderTransform = _turn };
-        rotor.SetResourceReference(Shape.FillProperty, "AccentGradientBrush");
-        canvas.Children.Add(rotor);
+        _rotor.Data = blades;
+        _rotor.RenderTransform = _turn;
+        _rotor.SetResourceReference(Shape.FillProperty, "AccentGradientBrush");
+        canvas.Children.Add(_rotor);
 
         var hub = new Ellipse { Width = 34, Height = 34, StrokeThickness = 2 };
         hub.SetResourceReference(Shape.FillProperty, "PanelAltBrush");
@@ -444,7 +493,7 @@ public sealed class FanGlyph : Viewbox
         Canvas.SetTop(hub, 33);
         canvas.Children.Add(hub);
 
-        var cap = new Ellipse { Width = 10, Height = 10 };
+        var cap = _cap;
         cap.SetResourceReference(Shape.FillProperty, "AccentBrush");
         Canvas.SetLeft(cap, 45);
         Canvas.SetTop(cap, 45);

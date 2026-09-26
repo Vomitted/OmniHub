@@ -62,7 +62,7 @@ public sealed class SensorTiles : UserControl
     private static string BrushFor(string key) => key switch
     {
         "gpu" or "gpuclk" or "gpuload" or "gpuw" => "MetricGpuBrush",
-        "fan" or "fan2" => "AccentBrush",
+        "fan" or "fan2" => "MetricFanBrush",
         "mem" or "selfcpu" or "selfmem" => "MetricMemBrush",
         _ => "MetricCpuBrush",
     };

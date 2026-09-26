@@ -38,7 +38,7 @@ public static class ThemeManager
     // swatch cannot show.
     public static readonly IReadOnlyList<ThemeDefinition> All = new[]
     {
-        new ThemeDefinition("Midnight", "Midnight", "Blue-tinted black, rounded and roomy.",
+        new ThemeDefinition("Midnight", "Midnight", "Near-black, mint into cyan, a colour per component.",
             "Wpf/Palettes/Midnight.xaml"),
         new ThemeDefinition("OledBlack", "OLED Black", "True #000000, sharp and tight. Pixels off on an OLED panel.",
             "Wpf/Palettes/OledBlack.xaml"),

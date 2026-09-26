@@ -13,8 +13,9 @@ using UserControl = System.Windows.Controls.UserControl;
 namespace OmniHub.App.Wpf.Views;
 
 /// <summary>
-/// The machine at a glance: four widgets, the history on one clock, what is limiting the processor,
-/// the profile, and every reading as a tile.
+/// The machine at a glance, built to the reference the user supplied (technical/TECHNICAL-v5-ui.md,
+/// section 9): the presets, a card per component down each side of a dial, the history on one
+/// clock, what is limiting the processor, and every reading as a tile.
 ///
 /// Everything here reads the one shared <see cref="MetricSource"/>. What this page no longer does
 /// is as deliberate as what it does: it carried six chips that duplicated controls living on the
@@ -28,6 +29,14 @@ public partial class DashboardView : UserControl
     private readonly AppSettings _settings;
     private readonly MetricSource _metrics;
     private bool _suppressPresetEvent;
+
+    // The cards' bars, made once and filled on every reading.
+    private readonly Controls.Meter _cpuLoad, _memUsed, _gpuLoad, _curve, _fan2;
+    private readonly Controls.FanGlyph _fanIcon = new() { ColourKey = "MetricFanBrush" };
+
+    // What the poll last said that the shared readings do not carry: whether the firmware reports
+    // throttling.
+    private bool _throttling;
 
     // Graphics is stated in two halves that change at different rates: the BIOS mode and power
     // flags, which move only when something writes them, and whether the card is awake at all.
@@ -54,6 +63,23 @@ public partial class DashboardView : UserControl
         InitializeComponent();
         _ctx = ctx; _service = service; _settings = settings; _metrics = metrics;
 
+        MachineLine.Text = $"{ctx.Model.Manufacturer} {ctx.Model.Product}".Trim();
+
+        // The console's cards: the icon and bars each carries, named here so they can be filled by
+        // name below. The processor's own name comes from the value Windows writes at boot, read
+        // once -- no WMI, and nothing on the poll.
+        CpuCard.IconData = Controls.ComponentCard.Icons.Processor;
+        GpuCard.IconData = Controls.ComponentCard.Icons.Graphics;
+        MemCard.IconData = Controls.ComponentCard.Icons.Memory;
+        CoolCard.SetIcon(_fanIcon);
+        CpuCard.Title = HardwareNames.ShortCpu(ReadProcessorName()) ?? "Processor";
+        GpuCard.Title = "Discrete GPU";
+        _cpuLoad = CpuCard.AddBar("LOAD");
+        _memUsed = MemCard.AddBar("IN USE");
+        _gpuLoad = GpuCard.AddBar("LOAD");
+        _curve = CoolCard.AddBar("CURVE ASKS");
+        _fan2 = CoolCard.AddBar("FAN 2");
+
         SensorsHost.Content = new Controls.SensorTiles(metrics, SensorKeys);
         ShowSince();
 
@@ -64,7 +90,7 @@ public partial class DashboardView : UserControl
         double? maxRpm = ctx.FanBackend.Calibration.MaxRpm;
         _history = new Controls.ChartStack(metrics);
         _history.AddStrip("TEMPERATURE", ("cpu", "CPU", "MetricCpuBrush", null, null), ("gpu", "GPU", "MetricGpuBrush", null, null));
-        _history.AddStrip("FANS", ("fan", "Fan 1", "AccentBrush", 0, maxRpm), ("fan2", "Fan 2", "AccentBrush2", 0, maxRpm));
+        _history.AddStrip("FANS", ("fan", "Fan 1", "MetricFanBrush", 0, maxRpm), ("fan2", "Fan 2", "TextMutedBrush", 0, maxRpm));
         _history.AddStrip("POWER", ("pkg", "CPU", "MetricCpuBrush", 0, null), ("gpuw", "GPU", "MetricGpuBrush", 0, null));
         _history.AddStrip("LOAD", ("cpuload", "CPU", "MetricCpuBrush", 0, 100), ("gpuload", "GPU", "MetricGpuBrush", 0, 100));
         _history.SetWindow(TimeSpan.FromMinutes(5));
@@ -139,27 +165,44 @@ public partial class DashboardView : UserControl
     }
 
     /// <summary>
-    /// Two columns where there is room for the limits beside the profile, one where there is not.
+    /// The console as the reference lays it out -- cards down each side of the dial -- where there
+    /// is room for three columns, and otherwise the dial across the top with the cards two by two.
     ///
-    /// The limit rows need about 480 px to keep their names, bars and figures on one line, and the
-    /// profile 300; below that the profile goes underneath rather than squeezing the bars. At 150%
-    /// display scaling a laptop screen is 1280 px wide, and the window's minimum is narrower
-    /// than the two columns need.
+    /// The dial's field is 380 px and a card needs about 210 to keep its figure and its stats on
+    /// their lines, so three columns want about 900 with the gaps; below that the dial would be
+    /// clipped at the sides or the cards squeezed until their names cut off.
     /// </summary>
     private void Reflow(double width)
     {
-        ColumnReflow.Apply(width, below: 830, GutterColumn, SideColumn, sideWidth: 300, Side);
+        bool stacked = width < 960;
 
-        // A widget needs about 190 px to hold its ring and its bars; below four of those, two by two.
-        Hero.Columns = width < 820 ? 2 : 4;
+        CentreColumn.Width = stacked ? new GridLength(0) : new GridLength(1.3, GridUnitType.Star);
+        RightGap.Width = stacked ? new GridLength(0) : new GridLength(14);
+        StackedGap.Height = new GridLength(stacked ? 14 : 0);
+
+        // The right-hand cards stay in the last column either way: stacked, the centre column and
+        // its gap close to nothing and the last column moves in beside the first.
+        Place(Centre, row: 0, column: stacked ? 0 : 2, rowSpan: stacked ? 1 : 3, columnSpan: stacked ? 5 : 1);
+        Place(CpuCard, row: stacked ? 2 : 0, column: 0);
+        Place(GpuCard, row: stacked ? 2 : 0, column: 4);
+        Place(MemCard, row: stacked ? 4 : 2, column: 0);
+        Place(CoolCard, row: stacked ? 4 : 2, column: 4);
+
+        static void Place(UIElement element, int row, int column, int rowSpan = 1, int columnSpan = 1)
+        {
+            Grid.SetRow(element, row);
+            Grid.SetColumn(element, column);
+            Grid.SetRowSpan(element, rowSpan);
+            Grid.SetColumnSpan(element, columnSpan);
+        }
     }
 
     // ---------------------------------------------------------------- the widgets
 
     /// <summary>
-    /// Redraws the four widgets from the shared readings.
+    /// Redraws the dial and the four cards from the shared readings.
     ///
-    /// Every gauge and bar is drawn against the limit its hardware actually holds it to, read from
+    /// Every dial and bar is drawn against the limit its hardware actually holds it to, read from
     /// that hardware: the thermal thresholds the readings define, 100% for a load, the fan band's
     /// measured maximum, the SMU's sustained limit, NVML's enforced power limit, the memory
     /// installed. Where no such limit is known the figure stands alone and no bar is drawn.
@@ -167,43 +210,88 @@ public partial class DashboardView : UserControl
     private void UpdateWidgets()
     {
         double? maxRpm = _ctx.FanBackend.Calibration.MaxRpm;
-
-        CpuRing.ShowTemperature(_metrics, "cpu");
-        GpuRing.ShowTemperature(_metrics, "gpu");
-        CpuClockMeta.Text = Fig(_metrics.Value("cpuclk"), "0.00", " GHz");
-        GpuClockMeta.Text = Fig(_metrics.Value("gpuclk"), "0", " MHz");
-
-        double? cpuLoad = _metrics.Value("cpuload"), gpuLoad = _metrics.Value("gpuload");
-        CpuLoadMeter.Show(Fig(cpuLoad, "0", "%"), Gauge.Fraction(cpuLoad, 100));
-        GpuLoadMeter.Show(Fig(gpuLoad, "0", "%"), Gauge.Fraction(gpuLoad, 100));
-
-        double? pkg = _metrics.Value("pkg"), pkgLimit = _metrics.PackageLimitWatts;
-        CpuPowerMeter.Show(Of(pkg, pkgLimit, "0.0", "W"), Gauge.Fraction(pkg, pkgLimit));
-        double? gpuW = _metrics.Value("gpuw"), gpuLimit = Nvml.KnownPowerCeilingWatts;
-        GpuPowerMeter.Show(Of(gpuW, gpuLimit, "0.0", "W"), Gauge.Fraction(gpuW, gpuLimit));
-
         double? fan1 = _metrics.Value("fan"), fan2 = _metrics.Value("fan2");
-        Fan.SetSpeed(fan1);
-        Controls.Roll.To(FanRpmText, fan1, "0");
-        Fan1Meter.Show(Fig(fan1, "0", " rpm"), Gauge.Fraction(fan1, maxRpm));
-        Fan2Meter.Show(Fig(fan2, "0", " rpm"), Gauge.Fraction(fan2, maxRpm));
+        double? pkg = _metrics.Value("pkg"), pkgLimit = _metrics.PackageLimitWatts;
 
+        // The dial: the die temperature against its hot point, its warning stretch tinted, and what
+        // the fans and the package are doing about it underneath.
+        var cpuMetric = Metrics.Find("cpu")!;
+        double? temp = _metrics.Value("cpu");
+        var level = Metrics.LevelOf("cpu", temp);
+        double? full = Metrics.FullScale(cpuMetric, null);
+        Dial.Show(Gauge.Fraction(temp, full), temp, cpuMetric.Format, "°C",
+                  Brush(level switch { MetricLevel.Hot => "DangerBrush", MetricLevel.Warn => "WarnBrush", _ => "AccentGradientBrush" }),
+                  Brush(temp is null ? "TextFaintBrush" : level switch { MetricLevel.Hot => "DangerBrush", MetricLevel.Warn => "WarnBrush", _ => "TextPrimaryBrush" }),
+                  Gauge.Fraction(cpuMetric.WarnAt, full));
+        Dial.ShowStatus(
+            _throttling ? "FIRMWARE THROTTLING" : temp is null ? "NO READING" : level switch { MetricLevel.Hot => "HOT", MetricLevel.Warn => "WARM", _ => "NOMINAL" },
+            Brush(_throttling || level == MetricLevel.Hot ? "DangerBrush" : level == MetricLevel.Warn ? "WarnBrush" : temp is null ? "TextFaintBrush" : "GoodBrush"));
+        Dial.ShowChips("FAN", Fig(fan1, "0", " rpm"), "PACKAGE", Fig(pkg, "0.0", " W"));
+
+        // The processor: its clock large, its load, and its power against the sustained limit.
+        double? cpuLoad = _metrics.Value("cpuload");
+        CpuCard.ShowFigure(_metrics.Value("cpuclk"), "0.00", "GHz");
+        CpuCard.ShowBar(_cpuLoad, Fig(cpuLoad, "0", " %"), Gauge.Fraction(cpuLoad, 100));
+        CpuCard.ShowStats("PACKAGE", Fig(pkg, "0.0", " W"), "SUSTAINED LIMIT", Fig(pkgLimit, "0", " W"));
+
+        // The graphics card: its clock large, its load, its power against the driver's limit.
+        double? gpuLoad = _metrics.Value("gpuload"), gpuW = _metrics.Value("gpuw");
+        GpuCard.ShowFigure(_metrics.Value("gpuclk"), "0", "MHz");
+        GpuCard.ShowBar(_gpuLoad, Fig(gpuLoad, "0", " %"), Gauge.Fraction(gpuLoad, 100));
+        GpuCard.ShowStats("POWER", Of(gpuW, Nvml.KnownPowerCeilingWatts, "0.0", "W"), "TEMPERATURE", Fig(_metrics.Value("gpu"), "0", " °C"));
+
+        // Memory in use against installed, with the battery beside it.
         double? mem = _metrics.Value("mem"), memTotal = _metrics.MemoryTotalGB;
-        MemMeter.Show(Of(mem, memTotal, "0.0", "GB"), Gauge.Fraction(mem, memTotal));
+        MemCard.ShowFigure(mem, "0.0", "GB");
+        MemCard.ShowBar(_memUsed,
+                        memTotal is { } t && mem is { } m && t > 0 ? FormattableString.Invariant($"{m / t * 100:0} % of {t:0.0} GB") : Metrics.Unavailable,
+                        Gauge.Fraction(mem, memTotal));
 
         // Windows' own battery status: no WMI and no driver, so nothing here can wait.
         var power = System.Windows.Forms.SystemInformation.PowerStatus;
         bool battery = !power.BatteryChargeStatus.HasFlag(System.Windows.Forms.BatteryChargeStatus.NoSystemBattery)
                        && power.BatteryLifePercent <= 1f;   // 255 over 100 is Windows for "unknown"
         double? charge = battery ? Math.Round(power.BatteryLifePercent * 100) : null;
-        Battery.Show(charge, power.BatteryChargeStatus.HasFlag(System.Windows.Forms.BatteryChargeStatus.Charging));
-        Controls.Roll.To(ChargeText, charge, "0");
-        PowerSourceMeta.Text = power.PowerLineStatus switch
+        _chargeText = Fig(charge, "0", " %")
+            + (power.BatteryChargeStatus.HasFlag(System.Windows.Forms.BatteryChargeStatus.Charging) ? " charging" : "");
+        MemCard.ShowStats("BATTERY", _chargeText, "POWER", _drawText);
+
+        // The fans: the first one's speed large and turning, what the curve is asking for, the second fan.
+        _fanIcon.SetSpeed(fan1);
+        CoolCard.ShowFigure(fan1, "0", "rpm");
+        bool commanding = _settings.FanControlMode == FanControlMode.Auto && _service.IsRunning && _service.HasCommanded;
+        CoolCard.ShowBar(_curve, commanding ? $"{_service.LastCommandedLevelPercent} %" : "not commanding",
+                         commanding ? _service.LastCommandedLevelPercent / 100.0 : null);
+        CoolCard.ShowBar(_fan2, Fig(fan2, "0", " rpm"), Gauge.Fraction(fan2, maxRpm));
+        CoolCard.ShowStats("MODE", _settings.FanControlMode switch
+                           {
+                               FanControlMode.Auto => _service.IsRunning ? "curve" : "curve stopped",
+                               FanControlMode.BiosDefault => "BIOS",
+                               FanControlMode.Max => "maximum",
+                               _ => Metrics.Unavailable,
+                           },
+                           "THROTTLING", _throttling ? "reported" : "none");
+    }
+
+    // The battery's two lines, kept between the readings that fill them at different rates: the
+    // charge on every tick, the draw from its own five-second WMI read.
+    private string _chargeText = Metrics.Unavailable;
+    private string _drawText = Metrics.Unavailable;
+
+    private Brush Brush(string key) => (Brush)FindResource(key);
+
+    /// <summary>
+    /// The processor's name as Windows records it at boot. The registry rather than WMI, because it
+    /// is one value read once and WMI is a service round trip; null when it cannot be read.
+    /// </summary>
+    private static string? ReadProcessorName()
+    {
+        try
         {
-            System.Windows.Forms.PowerLineStatus.Online => "on AC",
-            System.Windows.Forms.PowerLineStatus.Offline => "on battery",
-            _ => "",
-        };
+            return Microsoft.Win32.Registry.GetValue(
+                @"HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\CentralProcessor\0", "ProcessorNameString", null) as string;
+        }
+        catch { return null; }
     }
 
     private static string Fig(double? value, string format, string unit) =>
@@ -331,35 +419,30 @@ public partial class DashboardView : UserControl
 
     private void ShowPowerDraw(OmniHub.Core.Optimize.BatteryDraw? draw)
     {
-        if (draw is null)
-        {
-            // No battery, or the provider refused. Not zero watts.
-            PowerDrawText.Text = "unavailable";
-            return;
-        }
+        _drawText = DrawText(draw);
+        MemCard.ShowStats("BATTERY", _chargeText, "POWER", _drawText);
+    }
 
+    /// <summary>What the pack is doing, short enough for a card's foot.</summary>
+    private static string DrawText(OmniHub.Core.Optimize.BatteryDraw? draw)
+    {
+        // No battery, or the provider refused. Not zero watts.
+        if (draw is null) return "unavailable";
+
+        // Charging draws real power too, and it is worth seeing, but the pack is not discharging
+        // so there is no runtime to report.
         if (draw.OnAc)
-        {
-            // Charging draws real power too, and it is worth seeing, but the pack is not
-            // discharging so there is no runtime to report.
-            PowerDrawText.Text = draw.Charging && draw.ChargeMilliwatts > 0
-                ? $"On AC, charging at {draw.ChargeMilliwatts / 1000.0:0.0} W"
-                : "On AC";
-            return;
-        }
+            return draw.Charging && draw.ChargeMilliwatts > 0
+                ? FormattableString.Invariant($"AC, +{draw.ChargeMilliwatts / 1000.0:0.0} W")
+                : "AC";
 
-        if (draw.DischargeMilliwatts <= 0)
-        {
-            // On battery but the rate came back zero. That is the firmware not having
-            // sampled yet, not the machine drawing nothing.
-            PowerDrawText.Text = "On battery, measuring";
-            return;
-        }
+        // On battery but the rate came back zero: the firmware not having sampled yet, not the
+        // machine drawing nothing.
+        if (draw.DischargeMilliwatts <= 0) return "battery, measuring";
 
-        string watts = $"{draw.DischargeMilliwatts / 1000.0:0.0} W from the battery";
-        var left = OmniHub.Core.Optimize.BatterySaver.EstimateRuntime(draw);
-        PowerDrawText.Text = left is { } t
-            ? $"{watts}, {(int)t.TotalHours} h {t.Minutes:00} m left"
+        string watts = FormattableString.Invariant($"{draw.DischargeMilliwatts / 1000.0:0.0} W");
+        return OmniHub.Core.Optimize.BatterySaver.EstimateRuntime(draw) is { } t
+            ? FormattableString.Invariant($"{watts}, {(int)t.TotalHours} h {t.Minutes:00} left")
             : watts;
     }
 
@@ -376,18 +459,20 @@ public partial class DashboardView : UserControl
             {
                 if (b is null)
                 {
-                    BatteryText.Text = "unavailable";
+                    MemCard.ToolTip = "Battery details unavailable";
                     return;
                 }
 
                 // Health only when both capacities were actually reported. A wear figure derived
                 // from a zero design capacity would be invented, not measured.
                 string health = b.DesignCapacityMWh > 0 && b.FullChargeCapacityMWh > 0
-                    ? $"health {b.FullChargeCapacityMWh * 100.0 / b.DesignCapacityMWh:0.#}%"
+                    ? FormattableString.Invariant($"health {b.FullChargeCapacityMWh * 100.0 / b.DesignCapacityMWh:0.#}%")
                     : "health not reported";
                 string cycles = b.CycleCount > 0 ? $" · {b.CycleCount} cycles" : "";
 
-                BatteryText.Text = $"{b.ChargePercent}% · {health}{cycles}";
+                // In the card's tooltip: the card is memory and the battery beside it, and the pack's
+                // wear is a slow fact that does not need a place on the screen every second.
+                MemCard.ToolTip = $"Battery {b.ChargePercent}% · {health}{cycles}";
             });
         }, TaskScheduler.Default);
     }
@@ -472,7 +557,15 @@ public partial class DashboardView : UserControl
         return parts.Count == 0 ? "--" : string.Join(" · ", parts);
     }
 
-    private void ShowGpu() => GpuText.Text = _gpuState is { } state ? $"{_gpuMode} · {state}" : _gpuMode;
+    /// <summary>
+    /// Whether the card is awake beside its category, where it changes what every figure on the card
+    /// means; the BIOS mode, the power flags and the reading's route in the card's tooltip.
+    /// </summary>
+    private void ShowGpu()
+    {
+        GpuCard.Category = _gpuState is { } state ? $"Graphics · {state}" : "Graphics";
+        GpuCard.ToolTip = _gpuMode;
+    }
 
     private static string SourceName(GpuSource source) => source switch
     {
@@ -661,47 +754,18 @@ public partial class DashboardView : UserControl
         // time, because several error paths in this app open a modal MessageBox. While it is
         // parked no readings are produced, CurrentTemperature starts throwing "stale", and the
         // fan curve stops commanding: a UI hiccup taking the cooling down with it.
+        string? gpuName = HardwareNames.ShortGpu(gpu?.Name);
+
         Dispatcher.BeginInvoke(() =>
         {
-            ShowFans(r);
+            // The firmware's own statement, shown on the dial's status rather than inferred from
+            // the temperature, because it is the one reading that says the machine is already
+            // doing something about the heat.
+            _throttling = r.Throttling == true;
 
+            if (gpuName is not null) GpuCard.Title = gpuName;
             _gpuState = gpuState;
             ShowGpu();
         });
-    }
-
-    /// <summary>
-    /// The cooling card's words: who is steering, what the curve last asked for, and whether the
-    /// firmware reports throttling. The speed itself is the fan and the bars above.
-    /// </summary>
-    private void ShowFans(Reading r)
-    {
-        var parts = new List<string>
-        {
-            _settings.FanControlMode switch
-            {
-                FanControlMode.Auto => _service.IsRunning ? "On the curve" : "Curve stopped",
-                FanControlMode.BiosDefault => "BIOS in control",
-                FanControlMode.Max => "Held at maximum",
-                _ => "--",
-            },
-        };
-
-        if (_settings.FanControlMode == FanControlMode.Auto && _service.IsRunning && _service.HasCommanded)
-            parts.Add($"{_service.LastCommandedLevelPercent}% asked");
-
-        // A level the board did not report is said, never drawn as a fan at 0 RPM, which on a hot
-        // machine is indistinguishable from the fault this application exists to catch.
-        if (r.FanLevel1 is null) parts.Add("speed not reported");
-        if (r.Throttling == true) parts.Add("firmware reports throttling");
-
-        FansText.Text = string.Join(" · ", parts);
-        FanModeMeta.Text = _settings.FanControlMode switch
-        {
-            FanControlMode.Auto => "auto",
-            FanControlMode.BiosDefault => "BIOS",
-            FanControlMode.Max => "max",
-            _ => "",
-        };
     }
 }
