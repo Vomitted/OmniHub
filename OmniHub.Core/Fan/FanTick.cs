@@ -103,4 +103,28 @@ public sealed record FanTick(
 
         return text + $". Commanded {CommandedPercent}%.";
     }
+
+    /// <summary>
+    /// The tick in a few words, for one row of a table: only what was not simply the curve.
+    ///
+    /// Empty for an ordinary tick, deliberately. A column that says "on the curve" thirty times is
+    /// a column nobody reads, and the rows that matter -- a spike set aside, a forecast, a sensor on
+    /// its ceiling, a failure -- have to stand out from the ones that do not.
+    /// </summary>
+    public string Note()
+    {
+        if (Error is { Length: > 0 }) return $"failed: {Error}";
+        if (!HasCommanded) return "nothing commanded yet";
+        if (SensorCeilingReached) return "sensor on its ceiling, forced to full";
+
+        var notes = new List<string>(2);
+
+        if (FilteredC is { } filtered && Math.Abs(filtered - MeasuredC) >= 0.05)
+            notes.Add(filtered < MeasuredC ? "spike set aside" : "fall not yet trusted");
+
+        if (PredictiveLeadSeconds > 0 && Math.Abs(LeadC) >= 0.05)
+            notes.Add($"forecast {LeadC.ToString("+0.#;-0.#", System.Globalization.CultureInfo.InvariantCulture)} C");
+
+        return string.Join(", ", notes);
+    }
 }

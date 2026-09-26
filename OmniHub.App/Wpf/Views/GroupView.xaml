@@ -9,14 +9,16 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- The sub-selector, in the same segmented style the Dashboard and Fans tabs use for a
-             set of mutually exclusive states. It sits above the hosted screen rather than inside
-             it, so the screen below stays exactly the view it always was. -->
-        <Border Grid.Row="0" Margin="26,20,26,0" HorizontalAlignment="Left"
-                Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3">
+        <!-- The sections, as document tabs across the top of the page.
+
+             They used to be the segmented control the fan mode and the power profile use, which
+             drew "which screen am I looking at" exactly like "what are the fans doing", one above
+             the other. A tab changes what is shown and never what the hardware does, so it looks
+             like a tab: text, an accent line under the chosen one, a hairline under the row. -->
+        <Grid Grid.Row="0" Margin="18,6,18,0">
+            <Border Height="1" VerticalAlignment="Bottom" Background="{StaticResource BorderBrush}"/>
             <StackPanel x:Name="Selector" Orientation="Horizontal"/>
-        </Border>
+        </Grid>
 
         <ContentControl Grid.Row="1" x:Name="Host"/>
     </Grid>

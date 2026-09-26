@@ -149,6 +149,12 @@ public sealed class FanService : IDisposable
 
     public event Action<double, byte>? OnTick;
 
+    /// <summary>
+    /// The last thirty ticks, failed ones included, for the Fans page to show as a table.
+    /// Recorded by the loop after each decision is made; it observes the loop and steers nothing.
+    /// </summary>
+    public FanTickLog Recent { get; } = new();
+
     /// <summary>Which sensor the last tick acted on. Null until the first tick has run.</summary>
     public TemperatureSource? TemperatureSource { get; private set; }
 
@@ -366,6 +372,11 @@ public sealed class FanService : IDisposable
                 LastCommandedLevel2Percent = level2Percent;
                 HasCommanded = true; // set only after the level was genuinely computed and sent
                 LastError = null;
+
+                // On this thread, with every field of this tick assigned, so the snapshot is
+                // coherent -- the one place LastTick is not racing the loop. After the decision,
+                // so recording it cannot change it.
+                Recent.Add(DateTime.UtcNow, LastTick);
                 OnTick?.Invoke(temp, levelPercent);
             }
             catch (Exception ex)
@@ -375,6 +386,7 @@ public sealed class FanService : IDisposable
                 // getting hotter. Recorded rather than swallowed so "the fans did nothing" can
                 // be diagnosed instead of guessed at.
                 LastError = ex.Message;
+                Recent.Add(DateTime.UtcNow, LastTick);
             }
 
             // OperationCanceledException, not just TaskCanceledException: the token can also

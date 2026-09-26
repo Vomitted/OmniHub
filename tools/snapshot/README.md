@@ -40,4 +40,5 @@ On top of those, every automation setting is switched off in memory before any p
 - It drives `MainWindow` by reflection (`ShowWorkspace`, `SelectNavItem`, `_settings`, `_layout`,
   `_metrics`). Renaming one breaks this tool, not the application.
 - A grouped page (Performance, System, Diagnostics) renders its first tab unless the step names one:
-  `5/History` is the History tab of the sixth workspace.
+  `5/History` is the History tab of the sixth workspace. The plan crosses a command line, where a
+  space ends an argument, so a caption with spaces is written with underscores: `4/App_GPU_routing`.

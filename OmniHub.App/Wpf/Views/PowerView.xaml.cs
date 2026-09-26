@@ -32,6 +32,9 @@ public partial class PowerView : UserControl, IDisposable
         InitializeComponent();
         _ctx = ctx;
 
+        // The power table needs its READ FROM column; below this the battery panes go underneath.
+        SizeChanged += (_, e) => ColumnReflow.Apply(e.NewSize.Width, below: 820, Gutter, SideColumn, sideWidth: 270, Side);
+
         // Titles and accents live in XAML now; the StatTiles were replaced by cards that size
         // to their content, matching the Dashboard and Fans layout.
         RefreshBattery();

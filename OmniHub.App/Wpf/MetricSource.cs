@@ -36,20 +36,32 @@ public sealed class MetricSource : IDisposable
 
     private readonly Dictionary<string, double?> _values = new();
     private readonly Dictionary<string, Sparkline> _history = new();
+    private readonly Dictionary<string, RunningStats> _stats = new();
 
-    /// <summary>Raised on the UI thread whenever any value changed.</summary>
+    /// <summary>Raised on the UI thread whenever any value changed, and only while <see cref="Active"/>.</summary>
     public event Action? Updated;
 
     private bool _active = true;
 
+    // The slow tick's two cadences. Five seconds is what a panel on screen needs; thirty is enough
+    // for a session maximum to mean something while nobody is looking.
+    private static readonly TimeSpan ShownInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan HiddenInterval = TimeSpan.FromSeconds(30);
+
     /// <summary>
     /// Whether anybody is actually looking.
     ///
-    /// This application spends most of its life minimised to the tray, and until this existed the
-    /// slow tick kept taking an SMU transaction, a GPU read and three syscalls every five seconds
-    /// to update panels nobody could see -- and processed every hardware reading on top. The
-    /// dashboard, the battery screen, the tuning screen, the overlay and the tray flyout all gate
-    /// their own work on visibility; this was the one piece added without doing so.
+    /// This application spends most of its life minimised to the tray. Until this existed the slow
+    /// tick took an SMU transaction, a GPU read and three syscalls every five seconds and raised
+    /// an update for every hardware reading, to redraw panels nobody could see.
+    ///
+    /// Hidden, nothing is drawn and nothing is raised: no traces, no <see cref="Updated"/>. What
+    /// continues is the bookkeeping behind the session figures, because the minimum, mean and
+    /// maximum beside each reading are worth most after a game played with this window in the
+    /// tray -- and a maximum that stopped counting whenever the window closed would be a number
+    /// that looks like a measurement of the session and is not one. The fast readings cost nothing
+    /// extra, since they arrive on the poll the fan curve needs anyway; the slow ones are read
+    /// every thirty seconds instead of every five.
     ///
     /// Nothing about cooling goes through here. The fan curve keeps its own loop at its own
     /// cadence, which is the one thing in this application whose latency is a safety property
@@ -62,8 +74,9 @@ public sealed class MetricSource : IDisposable
         {
             if (_active == value) return;
             _active = value;
+            _slow.Interval = value ? ShownInterval : HiddenInterval;
 
-            // Coming back, the values are as old as the window has been hidden. Refreshing at once
+            // Coming back, the traces are as old as the window has been hidden. Refreshing at once
             // means the first thing somebody sees is current rather than whatever was true when
             // they looked away.
             if (_active) RefreshSlow();
@@ -75,7 +88,11 @@ public sealed class MetricSource : IDisposable
         _ctx = ctx;
         _dispatcher = Dispatcher.CurrentDispatcher;
 
-        foreach (var metric in Metrics.All) _history[metric.Key] = new Sparkline(minSpan: Metrics.TraceSpan(metric));
+        foreach (var metric in Metrics.All)
+        {
+            _history[metric.Key] = new Sparkline(minSpan: Metrics.TraceSpan(metric));
+            _stats[metric.Key] = new RunningStats();
+        }
 
         if (ctx.Smu is { } smu)
         {
@@ -85,7 +102,7 @@ public sealed class MetricSource : IDisposable
 
         ctx.OnReading += OnReading;
 
-        _slow = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _slow = new DispatcherTimer { Interval = ShownInterval };
         _slow.Tick += (_, _) => RefreshSlow();
         _slow.Start();
         RefreshSlow();
@@ -99,6 +116,24 @@ public sealed class MetricSource : IDisposable
         _history.TryGetValue(key, out var history) ? history : new Sparkline();
 
     /// <summary>
+    /// The lowest, mean and highest value of a reading since <see cref="StatsSince"/>, counted
+    /// whether or not the window was open.
+    /// </summary>
+    public RunningStats Stats(string key) =>
+        _stats.TryGetValue(key, out var stats) ? stats : new RunningStats();
+
+    /// <summary>When the session figures started counting: launch, or the last reset.</summary>
+    public DateTime StatsSince { get; private set; } = DateTime.Now;
+
+    /// <summary>Starts every session figure again from now.</summary>
+    public void ResetStats()
+    {
+        foreach (var stats in _stats.Values) stats.Reset();
+        StatsSince = DateTime.Now;
+        if (_active) Updated?.Invoke();
+    }
+
+    /// <summary>
     /// The name of whatever is currently binding, so a panel showing the limit percentage can say
     /// what the percentage is of. Null when the SMU did not answer.
     /// </summary>
@@ -107,7 +142,11 @@ public sealed class MetricSource : IDisposable
     private void Set(string key, double? value)
     {
         _values[key] = value;
-        if (_history.TryGetValue(key, out var history)) history.Push(value);
+        if (_stats.TryGetValue(key, out var stats)) stats.Add(value);
+
+        // The trace is only for drawing. Pushed while hidden, it would mix five-second samples with
+        // thirty-second ones on an axis that assumes they are evenly spaced.
+        if (_active && _history.TryGetValue(key, out var history)) history.Push(value);
     }
 
     // BeginInvoke, never Invoke: this arrives on the poll thread, and a synchronous marshal from
@@ -115,8 +154,6 @@ public sealed class MetricSource : IDisposable
     // curve. The same reason DashboardView.OnReading gives.
     private void OnReading(Reading r) => _dispatcher.BeginInvoke(() =>
     {
-        if (!_active) return;
-
         double tempC = double.IsNaN(r.PreciseTemperatureC) ? r.TemperatureC : r.PreciseTemperatureC;
         bool fromDie = r.TemperatureSource == TemperatureSource.SmuDieTctl;
 
@@ -131,13 +168,11 @@ public sealed class MetricSource : IDisposable
         Set("fan", r.FanLevel1 is { } f1 ? _ctx.FanBackend.Calibration.RawToRpm(f1) : null);
         Set("fan2", r.FanLevel2 is { } f2 ? _ctx.FanBackend.Calibration.RawToRpm(f2) : null);
 
-        Updated?.Invoke();
+        if (_active) Updated?.Invoke();
     });
 
     private void RefreshSlow()
     {
-        if (!_active) return;
-
         var tuning = _tuning;
 
         Task.Run(() =>
@@ -188,7 +223,7 @@ public sealed class MetricSource : IDisposable
                 Set("selfcpu", selfCpu);
                 Set("selfmem", selfMem);
 
-                Updated?.Invoke();
+                if (_active) Updated?.Invoke();
             });
         }, TaskScheduler.Default);
     }

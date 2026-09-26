@@ -92,20 +92,26 @@ public partial class MainWindow : Window
 
         ModelLabel.Text = $"{_ctx.Model.Manufacturer} {_ctx.Model.Product}".Trim();
 
+        // One source for every reading in every panel and table. A dozen panels each reading the
+        // hardware for itself would be a dozen SMU transactions where one will do. Built before
+        // any view, because the Dashboard's sensor table is the first thing on screen that reads it.
+        var metrics = new MetricSource(_ctx);
+        _metrics = metrics;
+
         _fansView = new FansView(_ctx, _service, _settings);
-        _fansView.ModeChanged += UpdateActiveModeLabel;
+        _fansView.ModeChanged += UpdateNavStatus;
         // Built now, because each does something at startup that must not wait for a click:
         // the dashboard is the landing tab, FansView drives the saved fan mode through
         // ApplySavedMode below, and GpuView's constructor applies the TGP unlock (see the
         // comment on that constructor, which relies on being built here).
-        _views["dashboard"] = new DashboardView(_ctx, _service, _settings);
+        _views["dashboard"] = new DashboardView(_ctx, _service, _settings, metrics);
         _views["fans"] = _fansView;
 
         // Held rather than placed in _views: the GPU screen now lives inside the Performance
         // group, but it still has to be BUILT at startup, because its constructor applies the
         // TGP unlock. Handing the group this instance keeps the unlock on the launch path while
         // the screen itself moves behind a sub-selector.
-        _gpuView = new GpuView(_ctx, _settings);
+        _gpuView = new GpuView(_ctx, _settings, metrics);
 
         // Built on first visit. All eight were constructed before the first frame, so launching
         // the app paid for every tab whether or not it was ever opened -- and two of these are
@@ -165,13 +171,13 @@ public partial class MainWindow : Window
         // The saved arrangement, or the seven screens this application has always had when there
         // is not one yet. Load never throws -- see WorkspaceLayout.Load for why that matters more
         // here than for an ordinary settings file.
-        // One source for every metric panel in every workspace. A dozen panels each reading the
-        // hardware for itself would be a dozen SMU transactions where one will do.
-        _metrics = new MetricSource(_ctx);
-
         _layout = OmniHub.Core.Workspaces.WorkspaceLayout.Load();
         _currentWorkspace = 0;
         BuildWorkspaceNav();
+
+        // The sidebar's second lines follow the same tick as every panel, which only runs while the
+        // window is on screen -- so an index of the machine costs nothing while it sits in the tray.
+        metrics.Updated += UpdateNavStatus;
 
         // Assigned directly rather than through the navigation path, which fades the old content
         // out before swapping. There is no old content at startup, so going through it would show
@@ -224,7 +230,7 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle,
             new Action(PrewarmViews));
         _fansView.ApplySavedMode();
-        UpdateActiveModeLabel();
+        UpdateNavStatus();
         _ctx.OnReading += _ => ReassertGpuPower();
         _ctx.OnReading += OnThrottleCheck;
         _ctx.OnReading += OnLogReading;
@@ -648,16 +654,22 @@ public partial class MainWindow : Window
     private bool _suppressNav;
 
     /// <summary>
+    /// The second line under each sidebar item, keyed by the panel type that item leads with.
+    /// Rebuilt with the items; refreshed by <see cref="UpdateNavStatus"/>.
+    /// </summary>
+    private readonly List<(string Type, TextBlock Status)> _navStatus = new();
+
+    /// <summary>
     /// Builds the switcher from the saved layout.
     ///
-    /// One item per workspace, in the user's order, each carrying the number key that reaches it.
-    /// The figure replaces the hand-drawn icon each of the seven fixed items used to have: an icon
-    /// cannot be drawn for a workspace somebody invented this morning, and a shortcut that is
-    /// written down is worth more than one that has to be discovered.
+    /// One item per workspace, in the user's order: its icon, its name, and under the name the
+    /// state of whatever it leads with -- the fan mode and speed under Fans, the battery under
+    /// Battery. The number key that reaches each one is in its tooltip.
     /// </summary>
     private void BuildWorkspaceNav()
     {
         NavItems.Children.Clear();
+        _navStatus.Clear();
 
         for (int i = 0; i < _layout.Workspaces.Count; i++)
         {
@@ -666,9 +678,23 @@ public partial class MainWindow : Window
 
             var row = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
 
-            if (NavIconFor(workspace) is { } icon) row.Children.Add(icon);
+            // Level with the name rather than centred on both lines, which would float it between
+            // them and tie it to neither.
+            if (NavIconFor(workspace) is FrameworkElement icon)
+            {
+                icon.VerticalAlignment = VerticalAlignment.Top;
+                icon.Margin = new Thickness(0, 2, 10, 0);
+                row.Children.Add(icon);
+            }
 
-            row.Children.Add(new TextBlock { Text = workspace.Name, VerticalAlignment = VerticalAlignment.Center });
+            var status = new TextBlock { Style = (Style)FindResource("NavStatusText"), Visibility = Visibility.Collapsed };
+            _navStatus.Add((workspace.Panels.Count > 0 ? workspace.Panels[0].Type : "", status));
+
+            row.Children.Add(new StackPanel
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                Children = { new TextBlock { Text = workspace.Name }, status },
+            });
 
             var item = new System.Windows.Controls.RadioButton
             {
@@ -686,6 +712,57 @@ public partial class MainWindow : Window
 
             item.Checked += NavChecked;
             NavItems.Children.Add(item);
+        }
+
+        UpdateNavStatus();
+    }
+
+    /// <summary>
+    /// Restates what is in force under each sidebar item, from what this window already holds: the
+    /// fan service, the settings, the metric source, and the battery status Windows keeps without
+    /// being asked. Nothing here touches the hardware.
+    /// </summary>
+    private void UpdateNavStatus()
+    {
+        if (_navStatus.Count == 0) return;
+
+        var power = WinForms.SystemInformation.PowerStatus;
+        bool battery = !power.BatteryChargeStatus.HasFlag(WinForms.BatteryChargeStatus.NoSystemBattery)
+                       && power.BatteryLifePercent <= 1f;   // 255 over 100 is Windows for "unknown"
+        bool steering = _settings.FanControlMode == FanControlMode.Auto && _service.IsRunning && _service.HasCommanded;
+
+        var facts = new OmniHub.Core.Workspaces.NavFacts
+        {
+            LimitName = _metrics?.BindingLimitName,
+            LimitPercent = _metrics?.Value("limit"),
+            FanMode = _settings.FanControlMode switch
+            {
+                FanControlMode.Auto => "auto",
+                FanControlMode.BiosDefault => "BIOS",
+                FanControlMode.Max => "max",
+                _ => null,
+            },
+            CommandedPercent = steering ? _service.LastCommandedLevelPercent : null,
+            FanRpm = _metrics?.Value("fan"),
+            PackageWatts = _metrics?.Value("pkg"),
+            CpuClockGHz = _metrics?.Value("cpuclk"),
+            BatteryPercent = battery ? (int)Math.Round(power.BatteryLifePercent * 100) : null,
+            OnAc = power.PowerLineStatus switch
+            {
+                WinForms.PowerLineStatus.Online => true,
+                WinForms.PowerLineStatus.Offline => false,
+                _ => null,
+            },
+            TimerResolution = _settings.HighResolutionTimer,
+            DwmPriority = _settings.DwmMmcss,
+            Theme = _settings.ThemeName,
+        };
+
+        foreach (var (type, status) in _navStatus)
+        {
+            string? line = OmniHub.Core.Workspaces.NavSummary.For(type, facts);
+            status.Text = line ?? "";
+            status.Visibility = line is null ? Visibility.Collapsed : Visibility.Visible;
         }
     }
 
@@ -1200,28 +1277,17 @@ public partial class MainWindow : Window
         return null;
     }
 
-    private void UpdateActiveModeLabel()
-    {
-        ActiveModeLabel.Text = _settings.FanControlMode switch
-        {
-            FanControlMode.Auto => "Auto (Curve)",
-            FanControlMode.BiosDefault => "BIOS Default",
-            FanControlMode.Max => "Max Fan",
-            _ => "--",
-        };
-    }
-
     private void BuildTrayIcon()
     {
         var menu = new WinForms.ContextMenuStrip();
         var showItem = new WinForms.ToolStripMenuItem("Show OmniHub");
         showItem.Click += (_, _) => RestoreFromTray();
         var autoItem = new WinForms.ToolStripMenuItem("Auto (Curve)");
-        autoItem.Click += (_, _) => { _fansView.ApplyModeFromTray(FanControlMode.Auto); UpdateActiveModeLabel(); };
+        autoItem.Click += (_, _) => { _fansView.ApplyModeFromTray(FanControlMode.Auto); UpdateNavStatus(); };
         var biosItem = new WinForms.ToolStripMenuItem("BIOS Default");
-        biosItem.Click += (_, _) => { _fansView.ApplyModeFromTray(FanControlMode.BiosDefault); UpdateActiveModeLabel(); };
+        biosItem.Click += (_, _) => { _fansView.ApplyModeFromTray(FanControlMode.BiosDefault); UpdateNavStatus(); };
         var maxItem = new WinForms.ToolStripMenuItem("Max Fan");
-        maxItem.Click += (_, _) => { _fansView.ApplyModeFromTray(FanControlMode.Max); UpdateActiveModeLabel(); };
+        maxItem.Click += (_, _) => { _fansView.ApplyModeFromTray(FanControlMode.Max); UpdateNavStatus(); };
         var exitItem = new WinForms.ToolStripMenuItem("Exit");
         exitItem.Click += (_, _) => { _allowClose = true; Close(); };
 

@@ -21,6 +21,10 @@ public partial class OptimizeView : UserControl
         _settings = settings;
         _ctx = ctx;
 
+        // Two equal columns of tools; below the width two readable ones need, they stack.
+        SizeChanged += (_, e) => ColumnReflow.Apply(e.NewSize.Width, below: 760, Gutter, SideColumn,
+                                                    new GridLength(1, GridUnitType.Star), Side);
+
         _suppressEvents = true;
         TimerToggle.IsChecked = _settings.HighResolutionTimer;
         MmcssToggle.IsChecked = _settings.DwmMmcss;
@@ -323,6 +327,10 @@ public partial class OptimizeView : UserControl
             Text = toggle.Name + (toggle.RequiresReboot ? "  (restart required)" : ""),
             Foreground = (Brush)FindResource("TextPrimaryBrush"),
             FontSize = 13,
+
+            // Wraps now that the list sits in half the page: unwrapped, the longest name lost the
+            // "(restart required)" that is the one part of it a person must not miss.
+            TextWrapping = TextWrapping.Wrap,
         });
         text.Children.Add(new TextBlock
         {

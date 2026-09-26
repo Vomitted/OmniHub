@@ -262,7 +262,9 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
         <Setter Property="FontSize" Value="13.5"/>
-        <Setter Property="Height" Value="40"/>
+        <!-- A floor, not a height: an item now carries a second line when its subject has a state
+             to report, and a fixed 40 would clip that line rather than make room for it. -->
+        <Setter Property="MinHeight" Value="44"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="Template">
@@ -300,7 +302,7 @@
                              the app on first hover. "Probably safe" is not a good enough reason
                              to keep three pixels of movement in the same shape that just took
                              the process down. -->
-                        <ContentPresenter Margin="24,0,12,0" VerticalAlignment="Center"/>
+                        <ContentPresenter Margin="24,5,12,5" VerticalAlignment="Center"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -1035,6 +1037,147 @@
         <Setter Property="FontSize" Value="10"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+    </Style>
+
+    <!-- ==================================================================
+         Panes, tabs and table cells (technical/TECHNICAL-v5-ui.md).
+
+         A pane is an instrument or a group of settings with its title INSIDE it. It replaces the
+         heading-rule-card triple, which spent forty pixels per section on a heading floating
+         above its own content. Flat, and no hover: a pane is a surface to read from, and in a
+         dense layout a whole region lighting up under the pointer is noise.
+         ================================================================== -->
+    <Style x:Key="PaneStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}"/>
+        <Setter Property="Padding" Value="{DynamicResource PanePadding}"/>
+    </Style>
+
+    <!-- The pane's name, at the left of its first line. Sentence case, and never coloured. -->
+    <Style x:Key="PaneTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFontSemibold}"/>
+        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- The pane's context at the right of the same line: a window, a count, a timestamp. -->
+    <Style x:Key="PaneMeta" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+        <Setter Property="FontSize" Value="10.5"/>
+        <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+    </Style>
+
+    <!-- Table cells. The row's name in the UI face; figures in the monospace face and
+         right-aligned, so decimals stand in a column; the secondary figures — minimum, mean,
+         maximum — muted, so the current value is where the eye lands. -->
+    <Style x:Key="CellLabel" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style x:Key="CellFigure" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+    </Style>
+    <Style x:Key="CellFigureMuted" TargetType="TextBlock" BasedOn="{StaticResource CellFigure}">
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+    </Style>
+    <Style x:Key="CellNote" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+
+    <!-- A document tab. It changes what is SHOWN, never what the hardware does, so it must not
+         look like the segmented control that switches the fan mode one row below it — which is
+         what PillRadioStyle made it. Text, and a two-pixel accent line under the chosen one.
+         SemiBold throughout rather than only when selected, so the row does not reflow as the
+         selection moves. -->
+    <Style x:Key="TabBarRadioStyle" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="FontFamily" Value="{StaticResource UiFontSemibold}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Margin" Value="0,0,24,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Grid Background="Transparent">
+                        <ContentPresenter VerticalAlignment="Center" Margin="1,0,1,2"/>
+                        <Border x:Name="Underline" Height="2" VerticalAlignment="Bottom"
+                                Background="{StaticResource AccentBrush}" Opacity="0"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Underline" Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            <Setter TargetName="Underline" Property="Opacity" Value="1"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The second line of a sidebar item: what is in force for that subject. Its own weight and
+         colour are set here because the item's selected state sets both on everything inside it,
+         and a style setter outranks an inherited value. -->
+    <Style x:Key="NavStatusText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+        <Setter Property="FontSize" Value="10.5"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Foreground" Value="{StaticResource TextFaintBrush}"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
+    </Style>
+
+    <!-- A text action inside a pane header — Reset, Show all. Quieter than a button because it
+         acts on the view rather than on the machine. -->
+    <Style x:Key="LinkButtonStyle" TargetType="Button">
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+        <Setter Property="FontSize" Value="10.5"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Padding" Value="5,2"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}"
+                            CornerRadius="{DynamicResource RadiusSm}" BorderThickness="1" BorderBrush="Transparent">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource PanelHoverBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- Defaults for every input, so one that forgets its style still belongs to the application.

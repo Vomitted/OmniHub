@@ -13,11 +13,14 @@
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Margin" Value="0,4,0,0"/>
             <Setter Property="MaxWidth" Value="600"/>
+            <!-- A width cap says which side it keeps to, or WPF centres it: every note on this page
+                 was drawn seventy pixels right of the control above it until this line. -->
+            <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,20,26,24">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,14,18,20">
         <StackPanel>
 
             <StackPanel Margin="0,0,0,16">
@@ -26,475 +29,462 @@
                            Text="Stored in %AppData%\OmniHub\settings.json. Nothing here is sent anywhere."/>
             </StackPanel>
 
-            <StackPanel>
-                <TextBlock Text="Interface" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <StackPanel Margin="14,12">
-                    <TextBlock Style="{StaticResource BodyText}"
-                               Text="Which shape this application takes. Not a theme: a theme changes how the same readings are drawn, these change how many of them are on screen at once."/>
-                    <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
-                            BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3"
-                            HorizontalAlignment="Left" Margin="0,11,0,0">
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="WorkspacesUiBtn" GroupName="InterfaceMode" Content="WORKSPACES" Width="118" Height="30"
-                                         Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Workspaces"/>
-                            <RadioButton x:Name="InstrumentUiBtn" GroupName="InterfaceMode" Content="INSTRUMENT" Width="118" Height="30" Margin="3,0,0,0"
-                                         Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Instrument"/>
-                            <RadioButton x:Name="CockpitUiBtn" GroupName="InterfaceMode" Content="COCKPIT" Width="104" Height="30" Margin="3,0,0,0"
-                                         Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Cockpit"/>
-                            <RadioButton x:Name="EditorialUiBtn" GroupName="InterfaceMode" Content="EDITORIAL" Width="110" Height="30" Margin="3,0,0,0"
-                                         Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Editorial"/>
-                            <RadioButton x:Name="CommandUiBtn" GroupName="InterfaceMode" Content="COMMAND" Width="110" Height="30" Margin="3,0,0,0"
-                                         Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Command"/>
-                        </StackPanel>
-                    </Border>
-                    <TextBlock Style="{StaticResource SettingNote}"
-                               Text="Workspaces is the sidebar of arrangeable screens, and the default. Instrument puts every reading on one screen at once, each with its source named. Cockpit is an instrument cluster: one large arc for the die temperature with the fan and GPU flanking it. Editorial reads like a written report, narrow measure and small multiples. Command is one number, a few bars, and Ctrl+K for the rest. Switching is immediate and changes nothing about the hardware."/>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Interface" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource BodyText}"
+                                   Text="Which shape this application takes. Not a theme: a theme changes how the same readings are drawn, these change how many of them are on screen at once."/>
+                        <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3"
+                                HorizontalAlignment="Left" Margin="0,11,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="WorkspacesUiBtn" GroupName="InterfaceMode" Content="WORKSPACES" Width="118" Height="30"
+                                             Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Workspaces"/>
+                                <RadioButton x:Name="InstrumentUiBtn" GroupName="InterfaceMode" Content="INSTRUMENT" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Instrument"/>
+                                <RadioButton x:Name="CockpitUiBtn" GroupName="InterfaceMode" Content="COCKPIT" Width="104" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Cockpit"/>
+                                <RadioButton x:Name="EditorialUiBtn" GroupName="InterfaceMode" Content="EDITORIAL" Width="110" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Editorial"/>
+                                <RadioButton x:Name="CommandUiBtn" GroupName="InterfaceMode" Content="COMMAND" Width="110" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="InterfaceMode_Checked" Tag="Command"/>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Style="{StaticResource SettingNote}"
+                                   Text="Workspaces is the sidebar of arrangeable screens, and the default. Instrument puts every reading on one screen at once, each with its source named. Cockpit is an instrument cluster: one large arc for the die temperature with the fan and GPU flanking it. Editorial reads like a written report, narrow measure and small multiples. Command is one number, a few bars, and Ctrl+K for the rest. Switching is immediate and changes nothing about the hardware."/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
-            <StackPanel>
-                <TextBlock Text="Theme" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="Applies immediately, including the window title bar." Style="{StaticResource MutedText}"
-                                   FontSize="11.5" Margin="0,0,0,12"/>
-                        <ItemsControl x:Name="ThemeList">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-
-                        <!-- Density multiplies the palette rather than replacing it, which is why
-                             it lives in the theme card: the two compose, and picking both is
-                             picking both. -->
-                        <TextBlock Text="Density" Style="{StaticResource BodyText}" Margin="0,18,0,3"/>
-                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" MaxWidth="560" TextWrapping="Wrap"
-                                   Text="Scales the padding, the bar heights and the figure sizes this theme asks for. Normal is the theme untouched."/>
-                        <WrapPanel x:Name="DensityPills" Margin="0,8,0,0"/>
-
-                        <!-- Four colours, not thirty. The rest are derived and then measured: a
-                             palette that would be unreadable is refused with the pair named, by
-                             the same rule the eight shipped ones are audited against. -->
-                        <TextBlock Text="Build your own" Style="{StaticResource BodyText}" Margin="0,18,0,3"/>
-                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" MaxWidth="560" TextWrapping="Wrap"
-                                   Text="Pick the ground, the panel, the accent and the text. Everything else follows from those, and anything that would be unreadable is refused rather than saved."/>
-
-                        <Grid Margin="0,10,0,0" HorizontalAlignment="Left">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,14,8">
-                                <TextBlock Text="GROUND" Style="{StaticResource MutedText}" FontSize="10"/>
-                                <TextBox x:Name="PaletteBackgroundBox" Width="110" Margin="0,3,0,0"
-                                         Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
-                            </StackPanel>
-                            <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,14,8">
-                                <TextBlock Text="PANEL" Style="{StaticResource MutedText}" FontSize="10"/>
-                                <TextBox x:Name="PalettePanelBox" Width="110" Margin="0,3,0,0"
-                                         Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
-                            </StackPanel>
-                            <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,14,8">
-                                <TextBlock Text="ACCENT" Style="{StaticResource MutedText}" FontSize="10"/>
-                                <TextBox x:Name="PaletteAccentBox" Width="110" Margin="0,3,0,0"
-                                         Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
-                            </StackPanel>
-                            <StackPanel Grid.Row="0" Grid.Column="3" Margin="0,0,0,8">
-                                <TextBlock Text="TEXT" Style="{StaticResource MutedText}" FontSize="10"/>
-                                <TextBox x:Name="PaletteTextBox" Width="110" Margin="0,3,0,0"
-                                         Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,14,0">
-                                <TextBlock Text="CORNER" Style="{StaticResource MutedText}" FontSize="10"/>
-                                <TextBox x:Name="PaletteRadiusBox" Width="110" Margin="0,3,0,0"
-                                         Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                            <Button x:Name="PaletteApplyBtn" Content="USE THIS PALETTE" Height="36" MinWidth="180"
-                                    Style="{StaticResource FlatButtonStyle}" Click="PaletteApply_Click"/>
-                        </StackPanel>
-
-                        <TextBlock HorizontalAlignment="Left" x:Name="PaletteStatus" Style="{StaticResource MutedText}" FontSize="11"
-                                   Margin="0,8,0,0" TextWrapping="Wrap" MaxWidth="620"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Startup" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-
-                    <!-- Rows go in a StackPanel, matching every other card on this page. This
-                         card used to hold a single row directly in the Grid, which works only
-                         for one child: a Grid with no RowDefinitions puts every child in the
-                         same cell, so adding a second row drew it ON TOP of the first. -->
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Launch when you sign in" Style="{StaticResource SettingTitle}" VerticalAlignment="Center"/>
-                                    <Border x:Name="StartupChip" Style="{StaticResource StatusChipStyle}">
-                                        <TextBlock x:Name="StartupChipText" Style="{StaticResource StatusChipText}" Text="CHECKING"/>
-                                    </Border>
-                                </StackPanel>
-                                <TextBlock Style="{StaticResource SettingNote}"
-                                           Text="Without this, closing OmniHub hands the fan back to the stock BIOS curve, including its known 0%-while-hot behaviour, until you reopen it. Uses a Task Scheduler entry rather than a registry Run key, because OmniHub needs Administrator and a Run key would not reliably auto-elevate."/>
-                            </StackPanel>
-                            <CheckBox Grid.Column="1" x:Name="StartupToggle" Style="{StaticResource ToggleSwitchStyle}"
-                                      VerticalAlignment="Center" Checked="StartupToggle_Changed" Unchecked="StartupToggle_Changed"/>
-                        </Grid>
-
-                        <Grid Margin="0,16,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                <TextBlock Text="Start hidden in the tray" Style="{StaticResource SettingTitle}"/>
-                                <TextBlock Style="{StaticResource SettingNote}"
-                                           Text="Comes up straight to the tray icon instead of opening the window. Everything still applies at launch -- profiles, fan curve, GPU unlock -- this only decides whether you see it happen."/>
-                            </StackPanel>
-                            <CheckBox Grid.Column="1" x:Name="StartMinimizedToggle" Style="{StaticResource ToggleSwitchStyle}"
-                                      VerticalAlignment="Center" Checked="StartMinimized_Changed" Unchecked="StartMinimized_Changed"/>
-                        </Grid>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Overlay" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                <TextBlock Text="Always-on-top telemetry readout" Style="{StaticResource SettingTitle}"/>
-                                <TextBlock Style="{StaticResource SettingNote}"
-                                           Text="Temperature, fans, power, clocks and what is currently limiting the machine, in a corner of the screen. Clicks pass straight through it and it stays out of Alt-Tab. It draws as an ordinary desktop window, so it shows over borderless and windowed games but not over true fullscreen exclusive ones, which composite through the display driver and need a graphics-API hook such as RTSS."/>
-                            </StackPanel>
-                            <CheckBox Grid.Column="1" x:Name="OverlayToggle" Style="{StaticResource ToggleSwitchStyle}"
-                                      VerticalAlignment="Center" Checked="OverlayToggle_Changed" Unchecked="OverlayToggle_Changed"/>
-                        </Grid>
-                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                            <TextBlock Text="Corner" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="52"/>
-                            <ComboBox x:Name="OverlayCornerPicker" MinWidth="160" VerticalAlignment="Center"
-                                      SelectionChanged="OverlayCorner_Changed"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                            <TextBlock Text="Opacity" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="52"/>
-                            <Slider x:Name="OverlayOpacitySlider" Width="200" Minimum="0.2" Maximum="1.0"
-                                    VerticalAlignment="Center" Style="{StaticResource OmniSliderStyle}"
-                                    ValueChanged="OverlayOpacity_Changed"/>
-                            <TextBlock x:Name="OverlayOpacityLabel" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="46"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                            <TextBlock Text="Size" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="52"/>
-                            <Slider x:Name="OverlayScaleSlider" Width="200" Minimum="0.7" Maximum="2.0"
-                                    VerticalAlignment="Center" Style="{StaticResource OmniSliderStyle}"
-                                    ValueChanged="OverlayScale_Changed"/>
-                            <TextBlock x:Name="OverlayScaleLabel" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="46"/>
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                            <TextBlock Text="Trend" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="52"/>
-                            <CheckBox x:Name="OverlaySparklineToggle" Style="{StaticResource ToggleSwitchStyle}"
-                                      VerticalAlignment="Center"
-                                      Checked="OverlaySparklines_Changed" Unchecked="OverlaySparklines_Changed"/>
-                            <TextBlock Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0"
-                                       Text="A short trend line beside each number, scaled to its own recent range."/>
-                        </StackPanel>
-
-                        <TextBlock Text="What it shows" Style="{StaticResource SettingTitle}" Margin="0,16,0,2"/>
-                        <TextBlock Style="{StaticResource SettingNote}" Margin="0,0,0,8"
-                                   Text="Rows appear in the order listed here. A metric this machine cannot read shows as -- rather than vanishing, so a blank row means the reading failed, not that it was switched off."/>
-                        <WrapPanel x:Name="OverlayMetricList"/>
-
-                        <TextBlock Style="{StaticResource SettingNote}" Margin="0,12,0,0"
-                                   Text="Shortcut: Ctrl+Alt+O toggles the overlay from anywhere, including while a game has focus."/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Close behavior" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="What the window's close button does" Style="{StaticResource SettingTitle}" Margin="0,0,0,10"/>
-                        <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
-                                BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3" HorizontalAlignment="Left">
-                            <StackPanel Orientation="Horizontal">
-                                <RadioButton x:Name="TrayCloseBtn" GroupName="CloseBehavior" Content="MINIMIZE TO TRAY" Width="168" Height="30" Style="{StaticResource PillRadioStyle}" Checked="CloseBehavior_Checked" Tag="Tray"/>
-                                <RadioButton x:Name="ExitCloseBtn" GroupName="CloseBehavior" Content="EXIT" Width="96" Height="30" Margin="3,0,0,0" Style="{StaticResource PillRadioStyle}" Checked="CloseBehavior_Checked" Tag="Exit"/>
-                            </StackPanel>
-                        </Border>
-                        <TextBlock Style="{StaticResource SettingNote}" Margin="0,10,0,0"
-                                   Text="Minimize to Tray keeps fan protection running in the background, which is the recommended setting. Exit fully quits and hands fan control back to the stock BIOS curve, the same as choosing Exit from the tray menu. Minimising the window does neither: it just minimises."/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Predictive cooling" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="Ramp the fan before the heat arrives" Style="{StaticResource SettingTitle}" Margin="0,0,0,10"/>
-                        <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                CornerRadius="{DynamicResource RadiusSm}" Padding="3" HorizontalAlignment="Left">
-                            <StackPanel Orientation="Horizontal">
-                                <RadioButton x:Name="LeadOffBtn" GroupName="Lead" Content="OFF" Width="72" Height="30" Style="{StaticResource PillRadioStyle}" Checked="Lead_Checked" Tag="0"/>
-                                <RadioButton x:Name="Lead5Btn" GroupName="Lead" Content="5 S" Width="72" Height="30" Margin="3,0" Style="{StaticResource PillRadioStyle}" Checked="Lead_Checked" Tag="5"/>
-                                <RadioButton x:Name="Lead10Btn" GroupName="Lead" Content="10 S" Width="72" Height="30" Style="{StaticResource PillRadioStyle}" Checked="Lead_Checked" Tag="10"/>
-                                <RadioButton x:Name="Lead20Btn" GroupName="Lead" Content="20 S" Width="72" Height="30" Margin="3,0,0,0" Style="{StaticResource PillRadioStyle}" Checked="Lead_Checked" Tag="20"/>
-                            </StackPanel>
-                        </Border>
-                        <TextBlock Style="{StaticResource SettingNote}" Margin="0,10,0,0"
-                                   Text="Estimates where the temperature is heading and evaluates the curve against whichever is higher, the measured value or the forecast. Because it only ever takes the higher of the two, a wrong prediction can cost some extra fan noise but can never let the fan back off while the machine is hot. Takes effect on the next restart."/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Power plan" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Switch power plan with the charger" Style="{StaticResource SettingTitle}" VerticalAlignment="Center"/>
-                                    <Border x:Name="PowerPlanChip" Style="{StaticResource StatusChipStyle}">
-                                        <TextBlock x:Name="PowerPlanChipText" Style="{StaticResource StatusChipText}" Text="OFF"/>
-                                    </Border>
-                                </StackPanel>
-                                <TextBlock Style="{StaticResource SettingNote}"
-                                           Text="Creates two plans of its own -- OmniHub Performance on mains, OmniHub Battery Saver on battery -- and activates whichever matches. It never edits your existing plans, so Balanced keeps exactly the processor settings you configured. Turning this off leaves whatever plan is active alone."/>
-                            </StackPanel>
-                            <CheckBox Grid.Column="1" x:Name="PowerPlanToggle" Style="{StaticResource ToggleSwitchStyle}"
-                                      VerticalAlignment="Center" Checked="PowerPlanToggle_Changed" Unchecked="PowerPlanToggle_Changed"/>
-                        </Grid>
-                        <!-- Which plan goes on which rail. Defaults to the two OmniHub plans,
-                             but any scheme on the machine can be chosen: someone who already
-                             keeps a tuned plan of their own should be able to point the
-                             automation at it rather than be handed a second one. -->
-                        <Grid Margin="0,14,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Plugged in" VerticalAlignment="Center"
-                                       Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,12,6"/>
-                            <ComboBox Grid.Row="0" Grid.Column="1" x:Name="AcPlanCombo" Margin="0,0,0,6"
-                                      HorizontalAlignment="Left" Width="300"
-                                      SelectionChanged="PlanChoice_Changed"/>
-
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="On battery" VerticalAlignment="Center"
-                                       Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,12,0"/>
-                            <ComboBox Grid.Row="1" Grid.Column="1" x:Name="DcPlanCombo"
-                                      HorizontalAlignment="Left" Width="300"
-                                      SelectionChanged="PlanChoice_Changed"/>
-                        </Grid>
-
-                        <TextBlock x:Name="PowerPlanStatus" Style="{StaticResource SettingNote}" Margin="0,12,0,0"/>
-                        <Button x:Name="RemovePlansBtn" Content="Delete OmniHub Power Plans" Style="{StaticResource FlatButtonStyle}"
-                                HorizontalAlignment="Left" Margin="0,14,0,0" Click="RemovePlansBtn_Click"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Updates" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                <TextBlock x:Name="VersionText" Style="{StaticResource SettingTitle}" Text="OmniHub"/>
-                                <TextBlock x:Name="UpdateStatus" Style="{StaticResource SettingNote}"
-                                           Text="Checked against the releases published on GitHub. Nothing is sent -- it reads a public list."/>
-                            </StackPanel>
-                            <Button Grid.Column="1" x:Name="CheckUpdateBtn" Content="Check Now"
-                                    Style="{StaticResource FlatButtonStyle}" VerticalAlignment="Center"
-                                    Click="CheckUpdateBtn_Click"/>
-                        </Grid>
-
-                        <!-- Shown only once a newer stable release actually exists. Collapsed
-                             rather than disabled: a permanently greyed download button invites
-                             clicking to find out what it does. -->
-                        <Border x:Name="UpdateBanner" Visibility="Collapsed" Margin="0,14,0,0"
-                                Background="{StaticResource PanelAltBrush}"
-                                BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
-                                CornerRadius="{DynamicResource RadiusMd}" Padding="14">
-                            <StackPanel>
-                                <TextBlock x:Name="UpdateHeadline" Style="{StaticResource SettingTitle}"
-                                           TextWrapping="Wrap"/>
-                                <TextBlock HorizontalAlignment="Left" x:Name="UpdateNotes" Style="{StaticResource SettingNote}"
-                                           Margin="0,6,0,0" MaxWidth="640"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                    <Button x:Name="DownloadBtn" Content="Download and install"
-                                            Style="{StaticResource PrimaryButtonStyle}" Click="DownloadBtn_Click"/>
-                                    <Button x:Name="ReleasePageBtn" Content="Open Release Page"
-                                            Style="{StaticResource FlatButtonStyle}" Margin="8,0,0,0"
-                                            Click="ReleasePageBtn_Click"/>
-                                </StackPanel>
-                                <ProgressBar x:Name="DownloadProgress" Height="3" Margin="0,12,0,0"
-                                             Minimum="0" Maximum="1" Visibility="Collapsed"
-                                             Background="{StaticResource PanelBrush}"
-                                             Foreground="{StaticResource AccentBrush}" BorderThickness="0"/>
-                            </StackPanel>
-                        </Border>
-
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Theme" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
                         <StackPanel>
-                <TextBlock Text="What changed" Style="{StaticResource SectionTitle}" Margin="0,18,0,0"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-                        <TextBlock Style="{StaticResource SettingNote}" Margin="0,0,0,10"
-                                   Text="Read from the published releases themselves, so this list and the website cannot disagree about what shipped."/>
-                        <!-- No inner ScrollViewer. One nested here inside the page's own
-                             scroller swallowed the mouse wheel: with the pointer anywhere over
-                             the changelog, the Settings page stopped scrolling entirely, which
-                             is worse than a tall card. The list flows into the page instead and
-                             the page scrolls, as it already did for every other card. -->
-                        <ItemsControl x:Name="ChangelogList"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
+                            <TextBlock Text="Applies immediately, including the window title bar." Style="{StaticResource MutedText}"
+                                       FontSize="11.5" Margin="0,0,0,12"/>
+                            <ItemsControl x:Name="ThemeList">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
 
-            <StackPanel>
-                <TextBlock Text="Network" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                <TextBlock Text="Watch the connection continuously" Style="{StaticResource BodyText}"/>
-                                <TextBlock Style="{StaticResource SettingNote}"
-                                           Text="One ping every few seconds, kept as a rolling five-minute picture of latency, jitter and packet loss. It runs whether or not the Network screen is open, which is the point: the faults that ruin a match are intermittent, and by the time anyone opens a diagnostics tab the bad thirty seconds is over."/>
-                            </StackPanel>
-                            <CheckBox Grid.Column="1" x:Name="NetMonitorToggle" Style="{StaticResource ToggleSwitchStyle}"
-                                      VerticalAlignment="Center" Checked="NetMonitor_Changed" Unchecked="NetMonitor_Changed"/>
-                        </Grid>
+                            <!-- Density multiplies the palette rather than replacing it, which is why
+                                 it lives in the theme card: the two compose, and picking both is
+                                 picking both. -->
+                            <TextBlock Text="Density" Style="{StaticResource BodyText}" Margin="0,18,0,3"/>
+                            <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" MaxWidth="560" TextWrapping="Wrap"
+                                       Text="Scales the padding, the bar heights and the figure sizes this theme asks for. Normal is the theme untouched."/>
+                            <WrapPanel x:Name="DensityPills" Margin="0,8,0,0"/>
 
-                        <Grid Margin="0,16,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                <TextBlock Text="Host to watch" Style="{StaticResource BodyText}"/>
-                                <TextBlock Style="{StaticResource SettingNote}"
-                                           Text="A nearby resolver by default, because the running figure is about the shape of your connection rather than the distance to anywhere in particular. Point it at a game server to watch that path instead."/>
-                            </StackPanel>
-                            <TextBox Grid.Column="1" x:Name="NetTargetBox" Width="180" Height="36" FontSize="13"
-                                     VerticalAlignment="Center" Style="{StaticResource NumericTextBoxStyle}"
-                                     LostFocus="NetTarget_Changed"/>
-                        </Grid>
+                            <!-- Four colours, not thirty. The rest are derived and then measured: a
+                                 palette that would be unreadable is refused with the pair named, by
+                                 the same rule the eight shipped ones are audited against. -->
+                            <TextBlock Text="Build your own" Style="{StaticResource BodyText}" Margin="0,18,0,3"/>
+                            <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" MaxWidth="560" TextWrapping="Wrap"
+                                       Text="Pick the ground, the panel, the accent and the text. Everything else follows from those, and anything that would be unreadable is refused rather than saved."/>
 
-                        <Grid Margin="0,16,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                <TextBlock Text="Record a connection log" Style="{StaticResource BodyText}"/>
-                                <TextBlock Style="{StaticResource SettingNote}"
-                                           Text="Writes every probe to a daily CSV beside the thermal one, with the rolling figures alongside. A timeout is recorded as an empty round trip rather than a zero, so nothing reading the file can average a dropped packet in as a fast one."/>
-                            </StackPanel>
-                            <CheckBox Grid.Column="1" x:Name="NetLogToggle" Style="{StaticResource ToggleSwitchStyle}"
-                                      VerticalAlignment="Center" Checked="NetLog_Changed" Unchecked="NetLog_Changed"/>
-                        </Grid>
-                    </StackPanel>
-                </Grid>
-            </Border>
+                            <Grid Margin="0,10,0,0" HorizontalAlignment="Left">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-            <StackPanel>
-                <TextBlock Text="Diagnostics" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}">
-                <Grid>
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Write a thermal log" Style="{StaticResource SettingTitle}" VerticalAlignment="Center"/>
-                                    <Border x:Name="LoggingChip" Style="{StaticResource StatusChipStyle}">
-                                        <TextBlock x:Name="LoggingChipText" Style="{StaticResource StatusChipText}" Text="OFF"/>
-                                    </Border>
+                                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,14,8">
+                                    <TextBlock Text="GROUND" Style="{StaticResource MutedText}" FontSize="10"/>
+                                    <TextBox x:Name="PaletteBackgroundBox" Width="110" Margin="0,3,0,0"
+                                             Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource SettingNote}"
-                                           Text="Records temperature, both fan levels, the commanded percentage and the throttle flag every two seconds to a daily CSV. It logs the BIOS read-back next to what OmniHub asked for, so if the machine is ignoring a command you can see it. Takes effect on the next restart."/>
+                                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,14,8">
+                                    <TextBlock Text="PANEL" Style="{StaticResource MutedText}" FontSize="10"/>
+                                    <TextBox x:Name="PalettePanelBox" Width="110" Margin="0,3,0,0"
+                                             Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,14,8">
+                                    <TextBlock Text="ACCENT" Style="{StaticResource MutedText}" FontSize="10"/>
+                                    <TextBox x:Name="PaletteAccentBox" Width="110" Margin="0,3,0,0"
+                                             Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
+                                </StackPanel>
+                                <StackPanel Grid.Row="0" Grid.Column="3" Margin="0,0,0,8">
+                                    <TextBlock Text="TEXT" Style="{StaticResource MutedText}" FontSize="10"/>
+                                    <TextBox x:Name="PaletteTextBox" Width="110" Margin="0,3,0,0"
+                                             Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,14,0">
+                                    <TextBlock Text="CORNER" Style="{StaticResource MutedText}" FontSize="10"/>
+                                    <TextBox x:Name="PaletteRadiusBox" Width="110" Margin="0,3,0,0"
+                                             Style="{StaticResource NumericTextBoxStyle}" TextChanged="PaletteChanged"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button x:Name="PaletteApplyBtn" Content="USE THIS PALETTE" Height="36" MinWidth="180"
+                                        Style="{StaticResource FlatButtonStyle}" Click="PaletteApply_Click"/>
                             </StackPanel>
-                            <CheckBox Grid.Column="1" x:Name="LoggingToggle" Style="{StaticResource ToggleSwitchStyle}"
-                                      VerticalAlignment="Center" Checked="LoggingToggle_Changed" Unchecked="LoggingToggle_Changed"/>
-                        </Grid>
-                        <Button x:Name="OpenLogsBtn" Content="Open Log Folder" Style="{StaticResource FlatButtonStyle}"
-                                HorizontalAlignment="Left" Margin="0,14,0,0" Click="OpenLogsBtn_Click"/>
-                    </StackPanel>
-                </Grid>
+
+                            <TextBlock HorizontalAlignment="Left" x:Name="PaletteStatus" Style="{StaticResource MutedText}" FontSize="11"
+                                       Margin="0,8,0,0" TextWrapping="Wrap" MaxWidth="620"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Startup" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+
+                        <!-- Rows go in a StackPanel, matching every other card on this page. This
+                             card used to hold a single row directly in the Grid, which works only
+                             for one child: a Grid with no RowDefinitions puts every child in the
+                             same cell, so adding a second row drew it ON TOP of the first. -->
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Launch when you sign in" Style="{StaticResource SettingTitle}" VerticalAlignment="Center"/>
+                                        <Border x:Name="StartupChip" Style="{StaticResource StatusChipStyle}">
+                                            <TextBlock x:Name="StartupChipText" Style="{StaticResource StatusChipText}" Text="CHECKING"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Style="{StaticResource SettingNote}"
+                                               Text="Without this, closing OmniHub hands the fan back to the stock BIOS curve, including its known 0%-while-hot behaviour, until you reopen it. Uses a Task Scheduler entry rather than a registry Run key, because OmniHub needs Administrator and a Run key would not reliably auto-elevate."/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" x:Name="StartupToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center" Checked="StartupToggle_Changed" Unchecked="StartupToggle_Changed"/>
+                            </Grid>
+
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <TextBlock Text="Start hidden in the tray" Style="{StaticResource SettingTitle}"/>
+                                    <TextBlock Style="{StaticResource SettingNote}"
+                                               Text="Comes up straight to the tray icon instead of opening the window. Everything still applies at launch -- profiles, fan curve, GPU unlock -- this only decides whether you see it happen."/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" x:Name="StartMinimizedToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center" Checked="StartMinimized_Changed" Unchecked="StartMinimized_Changed"/>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Overlay" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <TextBlock Text="Always-on-top telemetry readout" Style="{StaticResource SettingTitle}"/>
+                                    <TextBlock Style="{StaticResource SettingNote}"
+                                               Text="Temperature, fans, power, clocks and what is currently limiting the machine, in a corner of the screen. Clicks pass straight through it and it stays out of Alt-Tab. It draws as an ordinary desktop window, so it shows over borderless and windowed games but not over true fullscreen exclusive ones, which composite through the display driver and need a graphics-API hook such as RTSS."/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" x:Name="OverlayToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center" Checked="OverlayToggle_Changed" Unchecked="OverlayToggle_Changed"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <TextBlock Text="Corner" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="52"/>
+                                <ComboBox x:Name="OverlayCornerPicker" MinWidth="160" VerticalAlignment="Center"
+                                          SelectionChanged="OverlayCorner_Changed"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <TextBlock Text="Opacity" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="52"/>
+                                <Slider x:Name="OverlayOpacitySlider" Width="200" Minimum="0.2" Maximum="1.0"
+                                        VerticalAlignment="Center" Style="{StaticResource OmniSliderStyle}"
+                                        ValueChanged="OverlayOpacity_Changed"/>
+                                <TextBlock x:Name="OverlayOpacityLabel" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="46"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <TextBlock Text="Size" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="52"/>
+                                <Slider x:Name="OverlayScaleSlider" Width="200" Minimum="0.7" Maximum="2.0"
+                                        VerticalAlignment="Center" Style="{StaticResource OmniSliderStyle}"
+                                        ValueChanged="OverlayScale_Changed"/>
+                                <TextBlock x:Name="OverlayScaleLabel" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0" MinWidth="46"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                <TextBlock Text="Trend" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,12,0" MinWidth="52"/>
+                                <CheckBox x:Name="OverlaySparklineToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center"
+                                          Checked="OverlaySparklines_Changed" Unchecked="OverlaySparklines_Changed"/>
+                                <TextBlock Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                           Text="A short trend line beside each number, scaled to its own recent range."/>
+                            </StackPanel>
+
+                            <TextBlock Text="What it shows" Style="{StaticResource SettingTitle}" Margin="0,16,0,2"/>
+                            <TextBlock Style="{StaticResource SettingNote}" Margin="0,0,0,8"
+                                       Text="Rows appear in the order listed here. A metric this machine cannot read shows as -- rather than vanishing, so a blank row means the reading failed, not that it was switched off."/>
+                            <WrapPanel x:Name="OverlayMetricList"/>
+
+                            <TextBlock Style="{StaticResource SettingNote}" Margin="0,12,0,0"
+                                       Text="Shortcut: Ctrl+Alt+O toggles the overlay from anywhere, including while a game has focus."/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Close behavior" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="What the window's close button does" Style="{StaticResource SettingTitle}" Margin="0,0,0,10"/>
+                            <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="TrayCloseBtn" GroupName="CloseBehavior" Content="MINIMIZE TO TRAY" Width="168" Height="30" Style="{StaticResource PillRadioStyle}" Checked="CloseBehavior_Checked" Tag="Tray"/>
+                                    <RadioButton x:Name="ExitCloseBtn" GroupName="CloseBehavior" Content="EXIT" Width="96" Height="30" Margin="3,0,0,0" Style="{StaticResource PillRadioStyle}" Checked="CloseBehavior_Checked" Tag="Exit"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource SettingNote}" Margin="0,10,0,0"
+                                       Text="Minimize to Tray keeps fan protection running in the background, which is the recommended setting. Exit fully quits and hands fan control back to the stock BIOS curve, the same as choosing Exit from the tray menu. Minimising the window does neither: it just minimises."/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Predictive cooling" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="Ramp the fan before the heat arrives" Style="{StaticResource SettingTitle}" Margin="0,0,0,10"/>
+                            <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="{DynamicResource RadiusSm}" Padding="3" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="LeadOffBtn" GroupName="Lead" Content="OFF" Width="72" Height="30" Style="{StaticResource PillRadioStyle}" Checked="Lead_Checked" Tag="0"/>
+                                    <RadioButton x:Name="Lead5Btn" GroupName="Lead" Content="5 S" Width="72" Height="30" Margin="3,0" Style="{StaticResource PillRadioStyle}" Checked="Lead_Checked" Tag="5"/>
+                                    <RadioButton x:Name="Lead10Btn" GroupName="Lead" Content="10 S" Width="72" Height="30" Style="{StaticResource PillRadioStyle}" Checked="Lead_Checked" Tag="10"/>
+                                    <RadioButton x:Name="Lead20Btn" GroupName="Lead" Content="20 S" Width="72" Height="30" Margin="3,0,0,0" Style="{StaticResource PillRadioStyle}" Checked="Lead_Checked" Tag="20"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource SettingNote}" Margin="0,10,0,0"
+                                       Text="Estimates where the temperature is heading and evaluates the curve against whichever is higher, the measured value or the forecast. Because it only ever takes the higher of the two, a wrong prediction can cost some extra fan noise but can never let the fan back off while the machine is hot. Takes effect on the next restart."/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Power plan" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Switch power plan with the charger" Style="{StaticResource SettingTitle}" VerticalAlignment="Center"/>
+                                        <Border x:Name="PowerPlanChip" Style="{StaticResource StatusChipStyle}">
+                                            <TextBlock x:Name="PowerPlanChipText" Style="{StaticResource StatusChipText}" Text="OFF"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Style="{StaticResource SettingNote}"
+                                               Text="Creates two plans of its own -- OmniHub Performance on mains, OmniHub Battery Saver on battery -- and activates whichever matches. It never edits your existing plans, so Balanced keeps exactly the processor settings you configured. Turning this off leaves whatever plan is active alone."/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" x:Name="PowerPlanToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center" Checked="PowerPlanToggle_Changed" Unchecked="PowerPlanToggle_Changed"/>
+                            </Grid>
+                            <!-- Which plan goes on which rail. Defaults to the two OmniHub plans,
+                                 but any scheme on the machine can be chosen: someone who already
+                                 keeps a tuned plan of their own should be able to point the
+                                 automation at it rather than be handed a second one. -->
+                            <Grid Margin="0,14,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Plugged in" VerticalAlignment="Center"
+                                           Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,12,6"/>
+                                <ComboBox Grid.Row="0" Grid.Column="1" x:Name="AcPlanCombo" Margin="0,0,0,6"
+                                          HorizontalAlignment="Left" Width="300"
+                                          SelectionChanged="PlanChoice_Changed"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="On battery" VerticalAlignment="Center"
+                                           Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,0,12,0"/>
+                                <ComboBox Grid.Row="1" Grid.Column="1" x:Name="DcPlanCombo"
+                                          HorizontalAlignment="Left" Width="300"
+                                          SelectionChanged="PlanChoice_Changed"/>
+                            </Grid>
+
+                            <TextBlock x:Name="PowerPlanStatus" Style="{StaticResource SettingNote}" Margin="0,12,0,0"/>
+                            <Button x:Name="RemovePlansBtn" Content="Delete OmniHub Power Plans" Style="{StaticResource FlatButtonStyle}"
+                                    HorizontalAlignment="Left" Margin="0,14,0,0" Click="RemovePlansBtn_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Updates" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <TextBlock x:Name="VersionText" Style="{StaticResource SettingTitle}" Text="OmniHub"/>
+                                    <TextBlock x:Name="UpdateStatus" Style="{StaticResource SettingNote}"
+                                               Text="Checked against the releases published on GitHub. Nothing is sent -- it reads a public list."/>
+                                </StackPanel>
+                                <Button Grid.Column="1" x:Name="CheckUpdateBtn" Content="Check Now"
+                                        Style="{StaticResource FlatButtonStyle}" VerticalAlignment="Center"
+                                        Click="CheckUpdateBtn_Click"/>
+                            </Grid>
+
+                            <!-- Shown only once a newer stable release actually exists. Collapsed
+                                 rather than disabled: a permanently greyed download button invites
+                                 clicking to find out what it does. -->
+                            <Border x:Name="UpdateBanner" Visibility="Collapsed" Margin="0,14,0,0"
+                                    Background="{StaticResource PanelAltBrush}"
+                                    BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
+                                    CornerRadius="{DynamicResource RadiusMd}" Padding="14">
+                                <StackPanel>
+                                    <TextBlock x:Name="UpdateHeadline" Style="{StaticResource SettingTitle}"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock HorizontalAlignment="Left" x:Name="UpdateNotes" Style="{StaticResource SettingNote}"
+                                               Margin="0,6,0,0" MaxWidth="640"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                        <Button x:Name="DownloadBtn" Content="Download and install"
+                                                Style="{StaticResource PrimaryButtonStyle}" Click="DownloadBtn_Click"/>
+                                        <Button x:Name="ReleasePageBtn" Content="Open Release Page"
+                                                Style="{StaticResource FlatButtonStyle}" Margin="8,0,0,0"
+                                                Click="ReleasePageBtn_Click"/>
+                                    </StackPanel>
+                                    <ProgressBar x:Name="DownloadProgress" Height="3" Margin="0,12,0,0"
+                                                 Minimum="0" Maximum="1" Visibility="Collapsed"
+                                                 Background="{StaticResource PanelBrush}"
+                                                 Foreground="{StaticResource AccentBrush}" BorderThickness="0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Text="What changed" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,16,0,4"/>
+                            <TextBlock Style="{StaticResource SettingNote}" Margin="0,0,0,10"
+                                       Text="Read from the published releases themselves, so this list and the website cannot disagree about what shipped."/>
+                            <!-- No inner ScrollViewer. One nested here inside the page's own
+                                 scroller swallowed the mouse wheel: with the pointer anywhere over
+                                 the changelog, the Settings page stopped scrolling entirely, which
+                                 is worse than a tall card. The list flows into the page instead and
+                                 the page scrolls, as it already did for every other card. -->
+                            <ItemsControl x:Name="ChangelogList"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Network" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <TextBlock Text="Watch the connection continuously" Style="{StaticResource BodyText}"/>
+                                    <TextBlock Style="{StaticResource SettingNote}"
+                                               Text="One ping every few seconds, kept as a rolling five-minute picture of latency, jitter and packet loss. It runs whether or not the Network screen is open, which is the point: the faults that ruin a match are intermittent, and by the time anyone opens a diagnostics tab the bad thirty seconds is over."/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" x:Name="NetMonitorToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center" Checked="NetMonitor_Changed" Unchecked="NetMonitor_Changed"/>
+                            </Grid>
+
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <TextBlock Text="Host to watch" Style="{StaticResource BodyText}"/>
+                                    <TextBlock Style="{StaticResource SettingNote}"
+                                               Text="A nearby resolver by default, because the running figure is about the shape of your connection rather than the distance to anywhere in particular. Point it at a game server to watch that path instead."/>
+                                </StackPanel>
+                                <TextBox Grid.Column="1" x:Name="NetTargetBox" Width="180" Height="36" FontSize="13"
+                                         VerticalAlignment="Center" Style="{StaticResource NumericTextBoxStyle}"
+                                         LostFocus="NetTarget_Changed"/>
+                            </Grid>
+
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <TextBlock Text="Record a connection log" Style="{StaticResource BodyText}"/>
+                                    <TextBlock Style="{StaticResource SettingNote}"
+                                               Text="Writes every probe to a daily CSV beside the thermal one, with the rolling figures alongside. A timeout is recorded as an empty round trip rather than a zero, so nothing reading the file can average a dropped packet in as a fast one."/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" x:Name="NetLogToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center" Checked="NetLog_Changed" Unchecked="NetLog_Changed"/>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Diagnostics" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Write a thermal log" Style="{StaticResource SettingTitle}" VerticalAlignment="Center"/>
+                                        <Border x:Name="LoggingChip" Style="{StaticResource StatusChipStyle}">
+                                            <TextBlock x:Name="LoggingChipText" Style="{StaticResource StatusChipText}" Text="OFF"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <TextBlock Style="{StaticResource SettingNote}"
+                                               Text="Records temperature, both fan levels, the commanded percentage and the throttle flag every two seconds to a daily CSV. It logs the BIOS read-back next to what OmniHub asked for, so if the machine is ignoring a command you can see it. Takes effect on the next restart."/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" x:Name="LoggingToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center" Checked="LoggingToggle_Changed" Unchecked="LoggingToggle_Changed"/>
+                            </Grid>
+                            <Button x:Name="OpenLogsBtn" Content="Open Log Folder" Style="{StaticResource FlatButtonStyle}"
+                                    HorizontalAlignment="Left" Margin="0,14,0,0" Click="OpenLogsBtn_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
             </Border>
         </StackPanel>
     </ScrollViewer>

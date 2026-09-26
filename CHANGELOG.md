@@ -226,10 +226,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   Manager reads. The clock beside it came from a field this project's own source warned "is not
   guaranteed to track the CPU's real-time dynamic (Turbo Boost) frequency", and now comes from
   the per-processor clocks, which do.
-- **The Dashboard leads with history.** With current readings above every page, it was repeating
-  itself three times over. It now reads as now, then how it got here, then detail: what is
-  limiting the machine, the telemetry chart at 210px rather than 150, and only then the four
-  cards, which previously sat above a chart pushed below the fold.
+- **Every page is a console rather than a column.** Each screen was one scrolling stack of
+  cards, and at the size the window opens at, the first screen showed two or three of them.
+  Pages are now panes — a bordered surface with its title inside — in two columns wherever there
+  is an instrument and the settings that drive it, stacking on a narrow window. The density
+  setting reaches all of it.
+- **The Dashboard is the whole machine at once.** Every reading in one table: its current value,
+  the lowest, mean and highest since launch, a trace, and where it came from. The session figures
+  keep counting while the window is in the tray, so a peak during a game is there afterwards.
+  Beside the table: the profile, what is limiting the processor, and what is in force; under it,
+  the last five minutes. Four cards that restated the bar above them are gone, and six chips that
+  duplicated controls on other pages — one of which changed the saved fan mode without the Fans
+  page finding out. The profile now says what each button sends, including that Performance pins
+  both fans at maximum.
+- **The sidebar says what is in force.** Each item carries its subject's state under its name —
+  fan mode, level and speed under Fans, charge and power source under Battery, the Windows tweaks
+  that are on under System — in place of a card that held the fan mode alone.
+- **Fans shows what the loop did.** The last twelve ticks as a table — measured, acted on,
+  commanded, and a note wherever a spike was set aside, a forecast applied or a tick failed —
+  under the curve and a column of live state. The HP 0% warning appears when BIOS mode is
+  chosen, the one mode it describes, instead of above the curve in every mode.
+- **Tabs look like tabs.** The sections of Performance, System and Diagnostics were drawn exactly
+  like the fan-mode switch below them; they are document tabs now.
 - **Where the battery's power is going is a table**: the processor, the discrete GPU and the
   remainder, a rule, and the whole machine they come from, each beside the instrument that read
   it. It was four equal cards, which gave the subtraction the same weight as the measurement.

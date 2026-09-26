@@ -39,44 +39,42 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="32,26,32,28">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,14,18,20">
         <StackPanel>
 
             <TextBlock Text="Tuning" Style="{StaticResource PageTitle}"/>
             <TextBlock Style="{StaticResource PageLede}" Margin="0,5,0,22" MaxWidth="660" TextWrapping="Wrap"
                        Text="The full AMD SMU command set for this processor, applied through the PawnIO kernel driver. Every apply reads the hardware back afterwards and tells you whether the limits actually moved, because on this platform some of them do not."/>
 
-            <StackPanel>
-                <TextBlock Text="Processor" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="SMU" Style="{StaticResource DataLabelText}" VerticalAlignment="Center"/>
-                            <Border x:Name="SmuChip" Style="{StaticResource StatusChipStyle}">
-                                <TextBlock x:Name="SmuChipText" Style="{StaticResource StatusChipText}" Text="CHECKING"/>
-                            </Border>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Processor" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="SMU" Style="{StaticResource DataLabelText}" VerticalAlignment="Center"/>
+                                <Border x:Name="SmuChip" Style="{StaticResource StatusChipStyle}">
+                                    <TextBlock x:Name="SmuChipText" Style="{StaticResource StatusChipText}" Text="CHECKING"/>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock x:Name="SmuTitle" Style="{StaticResource BigNumberText}" FontSize="20" Text="--" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="SmuDetail" Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
-                        <TextBlock x:Name="SmuTitle" Style="{StaticResource BigNumberText}" FontSize="20" Text="--" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                        <TextBlock x:Name="SmuDetail" Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Grid>
+                    </Grid>
+                </StackPanel>
             </Border>
 
-            <StackPanel>
-                <TextBlock Text="Live" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <StackPanel x:Name="LiveRows"/>
-                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="620" TextWrapping="Wrap"
-                                   Text="Read from the SMU power-management table, not estimated. The limits shown are what the processor is enforcing right now, which is not always what was last requested."/>
-                    </StackPanel>
-                </Grid>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Live" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <StackPanel x:Name="LiveRows"/>
+                            <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" MaxWidth="620" TextWrapping="Wrap"
+                                       Text="Read from the SMU power-management table, not estimated. The limits shown are what the processor is enforcing right now, which is not always what was last requested."/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
             </Border>
 
             <!-- The same five numbers as LIVE above, but as a fraction of each limit, which is
@@ -84,203 +82,188 @@
                  dashboard because it talks about the knobs directly below it, and because on the
                  dashboard it meant a synchronous SMU read on the UI thread every time that tab
                  was opened. It is fed by the live timer, which already reads off-thread. -->
-            <StackPanel>
-                <TextBlock Text="What is limiting the processor" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border x:Name="LimitsCard" Visibility="Collapsed"
-                    Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock HorizontalAlignment="Left" x:Name="LimitsHeadline" Style="{StaticResource MutedText}" FontSize="11.5"
-                                   TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,10"/>
-                        <StackPanel x:Name="LimitRows"/>
-                    </StackPanel>
-                </Grid>
+            <!-- The title is inside the pane, so it hides with it: as a heading above a collapsed
+                 card it used to stand alone on the page, a section with nothing in it. -->
+            <Border x:Name="LimitsCard" Visibility="Collapsed" Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="What is limiting the processor" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <TextBlock HorizontalAlignment="Left" x:Name="LimitsHeadline" Style="{StaticResource MutedText}" FontSize="11.5"
+                               TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,10"/>
+                    <StackPanel x:Name="LimitRows"/>
+                </StackPanel>
             </Border>
 
-            <StackPanel>
-                <TextBlock Text="Presets" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="Loads the sliders below and applies them in one step."
-                                   Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                        <WrapPanel x:Name="PresetRow"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                            <TextBox x:Name="PresetNameBox" MinWidth="180" VerticalAlignment="Center"
-                                     ToolTip="Name for a profile saved from the sliders below."/>
-                            <Button x:Name="SavePresetBtn" Content="Save current" Style="{StaticResource FlatButtonStyle}"
-                                    Margin="8,0,0,0" Click="SavePreset_Click"/>
-                            <Button x:Name="DeletePresetBtn" Content="Delete" Style="{StaticResource FlatButtonStyle}"
-                                    Margin="8,0,0,0" Click="DeletePreset_Click"
-                                    ToolTip="Removes the saved profile whose name is in the box."/>
-                        </StackPanel>
-                        <TextBlock x:Name="PresetStatus" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Per-game profiles" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="Applies a profile while a named process is running, and restores the power-source profile when it exits. Use the name as it appears in Task Manager, without .exe."
-                                   Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                        <StackPanel x:Name="GameSwitchRow"/>
-                        <StackPanel x:Name="GameBody">
-                            <StackPanel Orientation="Horizontal">
-                                <ComboBox x:Name="GameProcessPicker" MinWidth="200" VerticalAlignment="Center" IsEditable="True"
-                                          ToolTip="Pick a running process, or type a name."/>
-                                <ComboBox x:Name="GameProfilePicker" MinWidth="150" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <Button x:Name="AddGameRuleBtn" Content="Add" Style="{StaticResource FlatButtonStyle}"
-                                        Margin="8,0,0,0" Click="AddGameRule_Click"/>
-                                <Button x:Name="RefreshProcessesBtn" Content="Refresh" Style="{StaticResource FlatButtonStyle}"
-                                        Margin="8,0,0,0" Click="RefreshProcesses_Click"/>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Presets" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="Loads the sliders below and applies them in one step."
+                                       Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <WrapPanel x:Name="PresetRow"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <TextBox x:Name="PresetNameBox" MinWidth="180" VerticalAlignment="Center"
+                                         ToolTip="Name for a profile saved from the sliders below."/>
+                                <Button x:Name="SavePresetBtn" Content="Save current" Style="{StaticResource FlatButtonStyle}"
+                                        Margin="8,0,0,0" Click="SavePreset_Click"/>
+                                <Button x:Name="DeletePresetBtn" Content="Delete" Style="{StaticResource FlatButtonStyle}"
+                                        Margin="8,0,0,0" Click="DeletePreset_Click"
+                                        ToolTip="Removes the saved profile whose name is in the box."/>
                             </StackPanel>
-                            <ItemsControl x:Name="GameRuleList" Margin="0,12,0,0"/>
+                            <TextBlock x:Name="PresetStatus" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
-                        <TextBlock x:Name="GameRuleStatus" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Grid>
+                    </Grid>
+                </StackPanel>
             </Border>
 
-            <StackPanel>
-                <TextBlock Text="Power limits" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel x:Name="PowerRows"/>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Thermal" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel x:Name="ThermalRows"/>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Graphics and voltage" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <StackPanel x:Name="GfxRows"/>
-                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,0" MaxWidth="620" TextWrapping="Wrap"
-                                   Text="Curve Optimizer lowers core voltage at the same clock, which on a chassis whose power limits are locked is the only remaining way to buy performance: less voltage means less heat, and this machine is limited by heat rather than by watts. Nothing reads the applied offset back, so move it a few counts at a time and judge it by stability, not by the message this app prints."/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Adaptive" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="Walks the sustained limit up and down to hold a temperature target instead of pinning one number. Stops itself if the firmware ignores the writes."
-                                   Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                        <StackPanel x:Name="AdaptiveSwitchRow"/>
-                        <StackPanel x:Name="AdaptiveBody">
-                            <StackPanel x:Name="AdaptiveRows"/>
-                            <StackPanel x:Name="AdaptiveButtonRow" Orientation="Horizontal" Margin="0,10,0,0"/>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Per-game profiles" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="Applies a profile while a named process is running, and restores the power-source profile when it exits. Use the name as it appears in Task Manager, without .exe."
+                                       Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <StackPanel x:Name="GameSwitchRow"/>
+                            <StackPanel x:Name="GameBody">
+                                <StackPanel Orientation="Horizontal">
+                                    <ComboBox x:Name="GameProcessPicker" MinWidth="200" VerticalAlignment="Center" IsEditable="True"
+                                              ToolTip="Pick a running process, or type a name."/>
+                                    <ComboBox x:Name="GameProfilePicker" MinWidth="150" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                    <Button x:Name="AddGameRuleBtn" Content="Add" Style="{StaticResource FlatButtonStyle}"
+                                            Margin="8,0,0,0" Click="AddGameRule_Click"/>
+                                    <Button x:Name="RefreshProcessesBtn" Content="Refresh" Style="{StaticResource FlatButtonStyle}"
+                                            Margin="8,0,0,0" Click="RefreshProcesses_Click"/>
+                                </StackPanel>
+                                <ItemsControl x:Name="GameRuleList" Margin="0,12,0,0"/>
+                            </StackPanel>
+                            <TextBlock x:Name="GameRuleStatus" Style="{StaticResource MutedText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
-                    </StackPanel>
-                </Grid>
+                    </Grid>
+                </StackPanel>
             </Border>
 
-            <StackPanel>
-                <TextBlock Text="Auto eco" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="OMEN Gaming Hub's Eco mode, engaged automatically. Drops the panel refresh rate and applies a profile when triggered, and puts both back when the trigger clears. On this machine the refresh drop is the part that saves real power, since the firmware ignores CPU power limits."
-                                   Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                        <StackPanel x:Name="AutoEcoSwitchRow"/>
-                        <StackPanel x:Name="AutoEcoRows"/>
-                        <TextBlock x:Name="AutoEcoStatus" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,10,0,0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Grid>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Power limits" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel x:Name="PowerRows"/>
+                    </Grid>
+                </StackPanel>
             </Border>
 
-            <StackPanel>
-                <TextBlock Text="On startup" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="Applied as soon as OmniHub launches. With Launch when you sign in enabled on the Settings tab, that means at boot."
-                                   Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                        <StackPanel x:Name="StartupRows"/>
-                        <TextBlock x:Name="StartupStatus" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,10,0,0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Grid>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Thermal" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel x:Name="ThermalRows"/>
+                    </Grid>
+                </StackPanel>
             </Border>
 
-            <StackPanel>
-                <TextBlock Text="On charge and on battery" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="Applies a profile automatically when the charger goes in or comes out."
-                                   Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                        <StackPanel x:Name="PowerSourceSwitchRow"/>
-                        <StackPanel x:Name="PowerSourceRows"/>
-                        <TextBlock x:Name="PowerSourceStatus" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,10,0,0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Apply" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <StackPanel x:Name="ApplyRow" Orientation="Horizontal"/>
-                        <TextBlock x:Name="ResultText" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,12,0,0" TextWrapping="Wrap"/>
-                        <ItemsControl x:Name="StepList" Margin="0,10,0,0"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="What this firmware accepts" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="What this firmware actually does with each command, rather than what the chip is nominally capable of. The baseline below was measured on this model; press Re-test to ask your machine directly. Re-testing is a no-op: every knob is re-sent the value it already holds, so nothing changes."
-                                   Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                        <StackPanel x:Name="CapabilityRows"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                            <Button x:Name="ProbeCapsBtn" Content="Re-test on this machine" Width="196" Height="36"
-                                    Style="{StaticResource FlatButtonStyle}" Click="ProbeCaps_Click"/>
-                            <TextBlock x:Name="CapabilityStatus" Style="{StaticResource MutedText}" FontSize="11"
-                                       VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"/>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Graphics and voltage" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <StackPanel x:Name="GfxRows"/>
+                            <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,10,0,0" MaxWidth="620" TextWrapping="Wrap"
+                                       Text="Curve Optimizer lowers core voltage at the same clock, which on a chassis whose power limits are locked is the only remaining way to buy performance: less voltage means less heat, and this machine is limited by heat rather than by watts. Nothing reads the applied offset back, so move it a few counts at a time and judge it by stability, not by the message this app prints."/>
                         </StackPanel>
-                    </StackPanel>
-                </Grid>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Adaptive" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="Walks the sustained limit up and down to hold a temperature target instead of pinning one number. Stops itself if the firmware ignores the writes."
+                                       Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <StackPanel x:Name="AdaptiveSwitchRow"/>
+                            <StackPanel x:Name="AdaptiveBody">
+                                <StackPanel x:Name="AdaptiveRows"/>
+                                <StackPanel x:Name="AdaptiveButtonRow" Orientation="Horizontal" Margin="0,10,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Auto eco" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="OMEN Gaming Hub's Eco mode, engaged automatically. Drops the panel refresh rate and applies a profile when triggered, and puts both back when the trigger clears. On this machine the refresh drop is the part that saves real power, since the firmware ignores CPU power limits."
+                                       Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <StackPanel x:Name="AutoEcoSwitchRow"/>
+                            <StackPanel x:Name="AutoEcoRows"/>
+                            <TextBlock x:Name="AutoEcoStatus" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="On startup" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="Applied as soon as OmniHub launches. With Launch when you sign in enabled on the Settings tab, that means at boot."
+                                       Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <StackPanel x:Name="StartupRows"/>
+                            <TextBlock x:Name="StartupStatus" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="On charge and on battery" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="Applies a profile automatically when the charger goes in or comes out."
+                                       Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <StackPanel x:Name="PowerSourceSwitchRow"/>
+                            <StackPanel x:Name="PowerSourceRows"/>
+                            <TextBlock x:Name="PowerSourceStatus" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Apply" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <StackPanel x:Name="ApplyRow" Orientation="Horizontal"/>
+                            <TextBlock x:Name="ResultText" Style="{StaticResource MutedText}" FontSize="11.5" Margin="0,12,0,0" TextWrapping="Wrap"/>
+                            <ItemsControl x:Name="StepList" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="What this firmware accepts" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock Text="What this firmware actually does with each command, rather than what the chip is nominally capable of. The baseline below was measured on this model; press Re-test to ask your machine directly. Re-testing is a no-op: every knob is re-sent the value it already holds, so nothing changes."
+                                       Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <StackPanel x:Name="CapabilityRows"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                <Button x:Name="ProbeCapsBtn" Content="Re-test on this machine" Width="196" Height="36"
+                                        Style="{StaticResource FlatButtonStyle}" Click="ProbeCaps_Click"/>
+                                <TextBlock x:Name="CapabilityStatus" Style="{StaticResource MutedText}" FontSize="11"
+                                           VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
             </Border>
 
         </StackPanel>

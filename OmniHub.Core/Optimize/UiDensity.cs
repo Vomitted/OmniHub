@@ -59,6 +59,13 @@ public static class Density
     public static double FontSize(double baseSize, UiDensity density) =>
         Math.Max(MinimumFontSize, baseSize * Scale(density));
 
+    /// <summary>Shortest table row that still holds a line of 12px text without clipping it.</summary>
+    public const double MinimumRowHeight = 18;
+
+    /// <summary>Scales a table row, never below the height its text needs.</summary>
+    public static double RowHeight(double baseHeight, UiDensity density) =>
+        Math.Max(MinimumRowHeight, baseHeight * Scale(density));
+
     /// <summary>Scales a track height, never below where it stops being visible.</summary>
     public static double TrackHeight(double baseHeight, UiDensity density) =>
         baseHeight <= 0 ? baseHeight : Math.Max(MinimumTrackHeight, baseHeight * Scale(density));

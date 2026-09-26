@@ -45,25 +45,13 @@
                 <StackPanel x:Name="NavItems"/>
                 </Grid>
 
+                <!-- The ACTIVE MODE card that sat here held one fact, the fan mode. Each item above
+                     now carries the state of its own subject on a second line, the fan mode among
+                     them (NavSummary), so the card said less than the list beside it. -->
                 <StackPanel DockPanel.Dock="Bottom" Margin="14,0,14,10">
                     <Button x:Name="EditLayoutBtn" Content="EDIT LAYOUT" Height="36"
                             Style="{StaticResource FlatButtonStyle}" Click="EditLayoutBtn_Click"/>
                 </StackPanel>
-
-                <!-- Active mode readout. Left accent rail instead of a gradient outline:
-                     it matches the selected nav item's rail, so the sidebar reads as one
-                     system rather than two unrelated highlight treatments. -->
-                <Border DockPanel.Dock="Bottom" Margin="14,0,14,18" CornerRadius="{DynamicResource RadiusMd}"
-                        Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
-                    <Grid>
-                        <Border Width="2.5" HorizontalAlignment="Left" Background="{StaticResource AccentBrush}" CornerRadius="2,0,0,2"/>
-                        <StackPanel Margin="13,11,12,11">
-                            <TextBlock Text="ACTIVE MODE" Style="{StaticResource SubHeadingText}" Margin="0,0,0,5"/>
-                            <TextBlock x:Name="ActiveModeLabel" Text="Auto (Curve)" Foreground="{StaticResource TextPrimaryBrush}"
-                                       FontFamily="{StaticResource UiFont}" FontWeight="SemiBold" FontSize="13.5"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
             </DockPanel>
         </Border>
 

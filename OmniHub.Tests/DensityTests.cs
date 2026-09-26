@@ -62,6 +62,16 @@ public class DensityTests
     }
 
     [Fact]
+    public void ATableRowScalesButNeverClipsItsText()
+    {
+        // Roomy is the owner's setting, and the sensor table has to honour it like every card
+        // does; Compact must not squeeze a 12px line below the height it needs.
+        Assert.Equal(27.5, Density.RowHeight(22, UiDensity.Roomy), 3);
+        Assert.Equal(22, Density.RowHeight(22, UiDensity.Normal));
+        Assert.Equal(Density.MinimumRowHeight, Density.RowHeight(22, UiDensity.Compact));
+    }
+
+    [Fact]
     public void PaddingCanReachZeroButNotGoBelow()
     {
         // Unlike a figure, a tight card is not unreadable, so padding has no floor -- but a

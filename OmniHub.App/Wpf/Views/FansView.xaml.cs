@@ -51,6 +51,7 @@ public partial class FansView : UserControl
             + "and is what the manual calibration below steps through.";
 
         InitialiseBandEditor();
+        BuildLoopTable();
 
         // The rail selector, and the curve for whichever rail is being edited.
         _suppressModeEvent = true;
@@ -69,7 +70,12 @@ public partial class FansView : UserControl
             ctx.OnReading += OnHardwareReading;
             service.OnTick -= OnServiceTick;
             service.OnTick += OnServiceTick;
+
+            // The service kept recording while this page was away, so the table is whole on arrival.
+            RefreshLoop();
         };
+
+        SizeChanged += (_, e) => Reflow(e.NewSize.Width);
         Unloaded += (_, _) =>
         {
             ctx.OnReading -= OnHardwareReading;
@@ -159,22 +165,153 @@ public partial class FansView : UserControl
         ModeValue.Text = mode switch
         {
             FanControlMode.Auto => "Curve",
-            FanControlMode.BiosDefault => "BIOS Auto",
-            FanControlMode.Max => "Max Fan",
+            FanControlMode.BiosDefault => "BIOS",
+            FanControlMode.Max => "Maximum",
             _ => "--",
         };
         ModeFoot.Text = mode switch
         {
             FanControlMode.Auto => "FLOOR-PROTECTED, RE-APPLIED EVERY TICK",
-            FanControlMode.BiosDefault => "MAY IDLE AT 0% WHILE HOT",
+            FanControlMode.BiosDefault => "THE FIRMWARE'S OWN TABLE",
             FanControlMode.Max => "PINNED TO MAXIMUM",
             _ => "",
         };
 
-        // BIOS mode is the one that carries the known defect, so its footer is the one place
-        // this card is allowed to use the warning colour.
-        ModeFoot.Foreground = (Brush)FindResource(
-            mode == FanControlMode.BiosDefault ? "WarnBrush" : "TextFaintBrush");
+        // The defect BIOS mode carries is explained in its own note above the curve, marked by a
+        // coloured rule. The footer used to say it in the warning colour instead, and this
+        // application does not colour words.
+        BiosNote.Visibility = mode == FanControlMode.BiosDefault ? Visibility.Visible : Visibility.Collapsed;
+        RefreshLoopMeta();
+    }
+
+    // ---------------------------------------------------------------- the loop, as a table
+
+    /// <summary>How many of the recorded ticks the table shows: half a minute at the loop's pace.</summary>
+    private const int LoopRows = 12;
+
+    private readonly List<(Border Surface, TextBlock Time, TextBlock Measured, TextBlock ActedOn, TextBlock Level, TextBlock Note)> _loopRows = new();
+
+    /// <summary>
+    /// Builds the table once; afterwards only its text changes. Twelve rows of five cells, every
+    /// tick, is cheap to update and would not be cheap to rebuild.
+    /// </summary>
+    private void BuildLoopTable()
+    {
+        LoopTable.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(78) });
+        foreach (double width in new[] { 84.0, 84, 64 })
+            LoopTable.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width) });
+        LoopTable.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        LoopTable.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        string[] titles = { "TIME", "MEASURED", "ACTED ON", "LEVEL", "NOTE" };
+        for (int column = 0; column < titles.Length; column++)
+        {
+            bool figure = column is >= 1 and <= 3;
+            var header = new TextBlock
+            {
+                Text = titles[column],
+                Style = (Style)FindResource("DataLabelText"),
+                Foreground = (Brush)FindResource("TextFaintBrush"),
+                HorizontalAlignment = figure ? System.Windows.HorizontalAlignment.Right : System.Windows.HorizontalAlignment.Left,
+                Margin = new Thickness(column == 0 ? 2 : 0, 0, figure ? 14 : 0, 6),
+            };
+            Place(LoopTable, header, 0, column);
+        }
+        var rule = new Border { Height = 1, Background = (Brush)FindResource("BorderBrush"), VerticalAlignment = VerticalAlignment.Bottom };
+        Grid.SetColumnSpan(rule, titles.Length);
+        Place(LoopTable, rule, 0, 0);
+
+        for (int i = 0; i < LoopRows; i++)
+        {
+            LoopTable.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            int row = i + 1;
+
+            // The row's height comes from the density setting, like every table's.
+            var surface = new Border();
+            surface.SetResourceReference(HeightProperty, "TableRowHeight");
+            Grid.SetColumnSpan(surface, titles.Length);
+            Place(LoopTable, surface, row, 0);
+
+            TextBlock Cell(string style, int column, bool figure)
+            {
+                var text = new TextBlock
+                {
+                    Style = (Style)FindResource(style),
+                    Margin = new Thickness(column == 0 ? 2 : 0, 0, figure ? 14 : 0, 0),
+                };
+                Place(LoopTable, text, row, column);
+                return text;
+            }
+
+            _loopRows.Add((surface, Cell("CellFigureMuted", 0, false), Cell("CellFigure", 1, true), Cell("CellFigure", 2, true),
+                           Cell("CellFigure", 3, true), Cell("CellNote", 4, false)));
+            _loopRows[^1].Time.HorizontalAlignment = System.Windows.HorizontalAlignment.Left;
+        }
+
+        RefreshLoopMeta();
+    }
+
+    /// <summary>Fills the table from the service's record, newest first.</summary>
+    private void RefreshLoop()
+    {
+        var recent = _service.Recent.Newest();
+
+        for (int i = 0; i < _loopRows.Count; i++)
+        {
+            var (surface, time, measured, actedOn, level, note) = _loopRows[i];
+
+            // A row with no tick behind it collapses rather than standing empty: before the curve
+            // has run, twelve blank rows were a third of a screen of nothing.
+            surface.Visibility = i < recent.Count ? Visibility.Visible : Visibility.Collapsed;
+            if (i >= recent.Count)
+            {
+                time.Text = measured.Text = actedOn.Text = level.Text = note.Text = "";
+                continue;
+            }
+
+            var (at, tick) = recent[i];
+            time.Text = at.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+            measured.Text = Degrees(tick.MeasuredC);
+            actedOn.Text = Degrees(tick.EffectiveC);
+            level.Text = tick.HasCommanded ? $"{tick.CommandedPercent}%" : "--";
+
+            // The rows where the loop did something other than follow the curve are the ones
+            // worth reading, so their note is set in the primary text colour and the rest stay
+            // quiet. Brightness, not hue: nothing here is a warning colour.
+            note.Text = tick.Note();
+            note.Foreground = (Brush)FindResource(note.Text.Length > 0 ? "TextPrimaryBrush" : "TextFaintBrush");
+        }
+
+        RefreshLoopMeta();
+    }
+
+    private static string Degrees(double celsius) =>
+        celsius.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "°";
+
+    private void RefreshLoopMeta()
+    {
+        if (LoopMeta is null) return;   // UpdateStatusTile runs before the table is built
+
+        LoopMeta.Text = _settings.FanControlMode == FanControlMode.Auto
+            ? $"newest first · {Math.Min(_service.Recent.Newest().Count, LoopRows)} of the last {_service.Recent.Capacity} ticks"
+            : "the curve is not running · its last ticks before it stopped";
+    }
+
+    private static void Place(Grid grid, UIElement element, int row, int column)
+    {
+        Grid.SetRow(element, row);
+        Grid.SetColumn(element, column);
+        grid.Children.Add(element);
+    }
+
+    /// <summary>
+    /// Two columns where there is room, one where there is not: below the width the curve needs
+    /// beside its side panes, the panes go underneath rather than squeezing the chart.
+    /// </summary>
+    private void Reflow(double width)
+    {
+        ColumnReflow.Apply(width, below: 780, TopGutter, TopSide, sideWidth: 250, NowPane);
+        ColumnReflow.Apply(width, below: 780, EditGutter, EditSide, sideWidth: 300, EditSidePanes);
     }
 
     /// <summary>
@@ -286,6 +423,7 @@ public partial class FansView : UserControl
         if (!_settings.SeparateBatteryCurve && !_settings.SeparateFan2Curve)
         {
             RailNote.Text = "One curve, applied to both fans on both power rails.";
+            CurveMeta.Text = "one curve · both fans · both rails";
             return;
         }
 
@@ -305,6 +443,11 @@ public partial class FansView : UserControl
             : "";
 
         RailNote.Text = $"Editing {editing}.{inForce}";
+
+        // The chart draws the curve being edited, which is not always the one in force -- tuning
+        // the battery curve while plugged in is the normal case -- so its header says which.
+        bool editingInForce = !_settings.SeparateBatteryCurve || _editingBattery == onBattery;
+        CurveMeta.Text = $"{editing[4..]}{(editingInForce ? " · in force" : " · not in force now")}";
     }
 
     /// <summary>Loads whichever rail's stored curve into the editor.</summary>
@@ -534,7 +677,9 @@ public partial class FansView : UserControl
         // fan curve.
         Dispatcher.BeginInvoke(() =>
         {
-            SetTemperature(r.TemperatureC, r.Throttling == true);
+            // In Auto the curve's own tick sets the temperature it acted on; here only outside it.
+            if (_settings.FanControlMode != FanControlMode.Auto)
+                SetTemperature(r.TemperatureC, r.Throttling == true);
             RefreshSensorNote();
 
             if (_settings.FanControlMode != FanControlMode.Auto)
@@ -590,38 +735,38 @@ public partial class FansView : UserControl
         Dispatcher.BeginInvoke(() =>
         {
             if (_settings.FanControlMode != FanControlMode.Auto) return;
-            SetTemperature((int)Math.Round(tempC), throttling: false);
+
+            var tick = _service.LastTick;
+            SetTemperature((int)Math.Round(tempC), throttling: false,
+                           foot: tick.FilteredC is { } filtered && Math.Abs(filtered - tick.MeasuredC) >= 0.05
+                               ? $"ACTED ON {filtered.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} C, THE MEDIAN OF FIVE"
+                               : null);
             LevelValue.Text = levelPercent.ToString();
             Chart.SetLive(tempC, levelPercent);
 
-            // Everything the tick decided, in a sentence. The service has recorded the measured
-            // temperature, the temperature the curve was actually evaluated against, which
-            // sensor answered and whether it was on its ceiling since the day it was written,
-            // and nothing has ever read one of them -- so the predictive lead, which is a
-            // setting the user can change, has had no observable effect but the fan noise.
-            TickNote.Text = _service.LastTick.Describe();
+            // Everything the tick decided, in a sentence, over the table of the ticks before it.
+            TickNote.Text = tick.Describe();
+            RefreshLoop();
 
             // "COMMANDED BY CURVE" was all this said, which told you nothing you could act on.
             // The reading handler fills in measured versus target RPM on its own tick.
         });
     }
 
-    // Same thresholds as the Dashboard's thermal card, so the two screens can never disagree
-    // about what counts as hot.
-    private void SetTemperature(int tempC, bool throttling)
+    // Hot at 80, the threshold the sensor table and the overlay use, so no two screens disagree
+    // about what counts as hot. No amber tier: a warning colour that is on through the machine's
+    // whole normal range stops being a warning.
+    //
+    // The colour is on the figure only. "THROTTLING NOW" used to turn red with it, and this
+    // application does not colour words; the figure going red beside it says the same thing.
+    private void SetTemperature(int tempC, bool throttling, string? foot = null)
     {
         TempValue.Text = tempC.ToString();
-        TempFoot.Text = throttling ? "THROTTLING NOW" : "NOMINAL";
+        TempFoot.Text = throttling ? "THROTTLING NOW" : foot ?? "NOMINAL";
 
-        // No amber tier -- see ThermalBrushFor in DashboardView. A warning colour that is on
-        // through the machine's whole normal range stops being a warning.
-        var brush = (Brush)FindResource(
-            throttling || tempC >= 80 ? "DangerBrush"
-            : "TextPrimaryBrush");
-
+        var brush = (Brush)FindResource(throttling || tempC >= 80 ? "DangerBrush" : "TextPrimaryBrush");
         TempValue.Foreground = brush;
         TempUnit.Foreground = brush;
-        TempFoot.Foreground = throttling ? brush : (Brush)FindResource("TextFaintBrush");
     }
 
     // Same candidate levels and rationale as Program.cs's CLI -Calibrate mode: this

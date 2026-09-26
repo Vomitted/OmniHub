@@ -180,6 +180,20 @@ public static class ThemeManager
         if (palette["MetricValueSize"] is double figure)
             scaled["MetricValueSize"] = Density.FontSize(figure, density);
 
+        // The panes and tables take their geometry from Theme.xaml rather than from the palette,
+        // and the same multiplier: a density that reached the cards and not the tables would be
+        // Roomy on half the screen.
+        var shared = merged.FirstOrDefault(d => d.Contains("PanePadding"));
+        if (shared?["PanePadding"] is Thickness pane)
+        {
+            scaled["PanePadding"] = new Thickness(
+                Density.Padding(pane.Left, density), Density.Padding(pane.Top, density),
+                Density.Padding(pane.Right, density), Density.Padding(pane.Bottom, density));
+        }
+
+        if (shared?["TableRowHeight"] is double row)
+            scaled["TableRowHeight"] = Density.RowHeight(row, density);
+
         if (scaled.Count == 0) return;
 
         // Last wins for a duplicate key, which is the whole mechanism.

@@ -15,6 +15,7 @@ rather than edited, and not committed.
 | [Technical document v2](TECHNICAL-v2.md) | The specification for the Instrument release |
 | [Interface, version 3](TECHNICAL-v3-ui.md) | The structural half of the interface: headings, page structure, the instrument bar |
 | [Version 4](TECHNICAL-v4.md) | What is on screen and what it costs off screen: the rendering defects, the hidden-window cost, the open stall measurement |
+| [Interface, version 5](TECHNICAL-v5-ui.md) | The console: each page's subject above the fold, every reading with its history, the sidebar as an index of what is in force |
 | [Snapshot tool](../tools/snapshot/README.md) | Rendering the real windows from a sandbox, and why it cannot touch the machine |
 | [Graph report](../graphify-out/GRAPH_REPORT.md) | graphify's own summary: hubs, communities, surprising connections |
 

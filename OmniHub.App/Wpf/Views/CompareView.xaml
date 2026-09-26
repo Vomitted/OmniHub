@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BackgroundBrush}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,20,26,24">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,14,18,20">
         <StackPanel>
             <StackPanel Margin="0,0,0,16">
                 <TextBlock Text="Compare" Style="{StaticResource PageTitle}"/>
@@ -55,29 +55,27 @@
                 </Grid>
             </Border>
 
-            <StackPanel>
-                <TextBlock Text="Verdict" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock HorizontalAlignment="Left" x:Name="Verdict" Style="{StaticResource BodyText}" FontSize="13"
-                                   TextWrapping="Wrap" MaxWidth="760" Text="Choose a window to begin."/>
-                        <TextBlock HorizontalAlignment="Left" x:Name="IntervalNote" Style="{StaticResource MutedText}" FontSize="11.5"
-                                   Margin="0,10,0,0" TextWrapping="Wrap" MaxWidth="760"/>
-                    </StackPanel>
-                </Grid>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Verdict" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock HorizontalAlignment="Left" x:Name="Verdict" Style="{StaticResource BodyText}" FontSize="13"
+                                       TextWrapping="Wrap" MaxWidth="760" Text="Choose a window to begin."/>
+                            <TextBlock HorizontalAlignment="Left" x:Name="IntervalNote" Style="{StaticResource MutedText}" FontSize="11.5"
+                                       Margin="0,10,0,0" TextWrapping="Wrap" MaxWidth="760"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
             </Border>
 
-            <StackPanel>
-                <TextBlock Text="What was measured" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}">
-                <Grid>
-                    <StackPanel x:Name="MetricRows"/>
-                </Grid>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="What was measured" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <Grid>
+                        <StackPanel x:Name="MetricRows"/>
+                    </Grid>
+                </StackPanel>
             </Border>
         </StackPanel>
     </ScrollViewer>

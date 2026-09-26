@@ -47,8 +47,17 @@ public sealed record MetricDefinition(
     string Source = "",
 
     double? WarnAt = null,
-    double? HotAt = null)
+    double? HotAt = null,
+
+    /// <summary>
+    /// The reading's name in a sentence-case table row, where the monospace capitals the
+    /// instrument bar and the overlay use would make fourteen rows of shouting.
+    /// </summary>
+    string? Title = null)
 {
+    /// <summary>The name for a table row: <see cref="Title"/>, or the label where there is none.</summary>
+    public string Name => Title ?? Label;
+
     /// <summary>
     /// The name to use where there is no room for the full one.
     ///
@@ -84,51 +93,51 @@ public static class Metrics
     {
         new MetricDefinition("cpu",     "CPU",       "°", "0.0",
                              Source: "SMU die temperature, or the ACPI thermal zone when the SMU is unavailable",
-                             WarnAt: 80, HotAt: 90),
+                             WarnAt: 80, HotAt: 90, Title: "CPU temperature"),
 
         new MetricDefinition("gpu",     "GPU",       "°", "0",
                              Source: "NVIDIA driver, through NVML or nvidia-smi",
-                             WarnAt: 80, HotAt: 87),
+                             WarnAt: 80, HotAt: 87, Title: "GPU temperature"),
 
         new MetricDefinition("fan",     "FAN",       " RPM",   "0",
-                             Source: "vendor BIOS fan readback, scaled from the measured band"),
+                             Source: "vendor BIOS fan readback, scaled from the measured band", Title: "Fan 1"),
 
         new MetricDefinition("fan2",    "FAN 2",     " RPM",   "0",
-                             Source: "vendor BIOS fan readback, scaled from the measured band"),
+                             Source: "vendor BIOS fan readback, scaled from the measured band", Title: "Fan 2"),
 
         new MetricDefinition("pkg",     "PACKAGE",   "W",      "0.0", ShortLabel: "PKG",
-                             Source: "SMU power table, sustained (STAPM) figure"),
+                             Source: "SMU power table, sustained (STAPM) figure", Title: "Package power"),
 
         new MetricDefinition("gpuw",    "GPU POWER", "W",      "0.0", ShortLabel: "GPU W",
-                             Source: "NVIDIA driver, refused above the board's own power ceiling"),
+                             Source: "NVIDIA driver, refused above the board's own power ceiling", Title: "GPU power"),
 
         new MetricDefinition("gpuclk",  "GPU CLOCK", "MHz",    "0",   ShortLabel: "GPU MHz",
-                             Source: "NVIDIA driver, shader clock"),
+                             Source: "NVIDIA driver, shader clock", Title: "GPU clock"),
 
         new MetricDefinition("gpuload", "GPU LOAD",  "%",      "0",   ShortLabel: "GPU %",
-                             Source: "NVIDIA driver, or the Windows performance counters without it"),
+                             Source: "NVIDIA driver, or the Windows performance counters without it", Title: "GPU load"),
 
         new MetricDefinition("limit",   "LIMIT",     "%",      "0",
                              Source: "SMU power table, the tightest of five constraints as a share of its own limit",
-                             WarnAt: LimitHistory.BindingPercent, HotAt: 99),
+                             WarnAt: LimitHistory.BindingPercent, HotAt: 99, Title: "Binding limit"),
 
         new MetricDefinition("cpuload", "CPU LOAD",  "%",      "0",   ShortLabel: "CPU %",
-                             Source: "kernel tick counters (GetSystemTimes), since this reader's previous call"),
+                             Source: "kernel tick counters (GetSystemTimes), since this reader's previous call", Title: "CPU load"),
 
         new MetricDefinition("cpuclk",  "CPU CLOCK", "GHz",    "0.00", ShortLabel: "CPU GHz",
-                             Source: "per-processor clocks from the power-information call, peak across cores"),
+                             Source: "per-processor clocks from the power-information call, peak across cores", Title: "CPU clock"),
 
         new MetricDefinition("mem",     "MEMORY",    "GB",     "0.0", ShortLabel: "MEM",
-                             Source: "GlobalMemoryStatusEx, total less available"),
+                             Source: "GlobalMemoryStatusEx, total less available", Title: "Memory in use"),
 
         // What this application costs the machine it is measuring. A tool for finding what drains
         // a laptop should be willing to say what it draws itself, and on this machine it has been
         // suspected of both drain and hangs more than once.
         new MetricDefinition("selfcpu", "OMNIHUB CPU", "%",   "0.0", ShortLabel: "OWN %",
-                             Source: "this process's own processor time, as a share of one core"),
+                             Source: "this process's own processor time, as a share of one core", Title: "OmniHub's own CPU"),
 
         new MetricDefinition("selfmem", "OMNIHUB RAM", "MB",  "0",   ShortLabel: "OWN MB",
-                             Source: "this process's working set, the figure Task Manager shows"),
+                             Source: "this process's working set, the figure Task Manager shows", Title: "OmniHub's own memory"),
     };
 
     public static MetricDefinition? Find(string key)

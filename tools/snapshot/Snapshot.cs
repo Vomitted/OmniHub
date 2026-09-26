@@ -200,6 +200,10 @@ internal static class Snapshot
     /// <summary>Checks the tab of a grouped page (Performance, System, Diagnostics) whose caption matches.</summary>
     static bool SelectTab(Window win, string caption)
     {
+        // The plan reaches this process on a command line, where a space ends the argument, so a
+        // caption such as "App GPU routing" is written App_GPU_routing.
+        caption = caption.Replace('_', ' ');
+
         static IEnumerable<DependencyObject> Walk(DependencyObject d)
         {
             yield return d;

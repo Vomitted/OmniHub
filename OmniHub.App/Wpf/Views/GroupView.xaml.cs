@@ -34,22 +34,17 @@ public partial class GroupView : UserControl, IDisposable
         InitializeComponent();
         _sections = sections.ToList();
 
-        bool first = true;
         foreach (var (label, _) in _sections)
         {
-            var pill = new RadioButton
+            var tab = new RadioButton
             {
-                Content = label.ToUpperInvariant(),
+                Content = label,
                 GroupName = "GroupSection",
-                Height = 32,
-                MinWidth = 120,
-                Margin = new Thickness(first ? 0 : 3, 0, 0, 0),
-                Style = (Style)FindResource("PillRadioStyle"),
+                Style = (Style)FindResource("TabBarRadioStyle"),
                 Tag = label,
             };
-            pill.Checked += SectionChecked;
-            Selector.Children.Add(pill);
-            first = false;
+            tab.Checked += SectionChecked;
+            Selector.Children.Add(tab);
         }
 
         // Show the first section. Setting IsChecked raises Checked, which does the work.

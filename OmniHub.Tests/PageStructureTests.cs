@@ -80,7 +80,7 @@ public class PageStructureTests
         };
 
         var shouted = TextBlocks(Read(file))
-            .Where(t => t.Contains("SectionTitle") || t.Contains("PageTitle"))
+            .Where(t => t.Contains("SectionTitle") || t.Contains("PageTitle") || t.Contains("PaneTitle"))
             .Select(TextOf)
             .Where(text => text is not null
                            && text.Split(' ', '/')
@@ -137,13 +137,18 @@ public class PageStructureTests
     private static bool Pins(string? alignment) => alignment is { Length: > 0 } a && a != "Stretch";
 
     /// <summary>Keys of styles that pin horizontal alignment, and every style that caps width without doing so.</summary>
+    /// <remarks>
+    /// Every style in every file, not only the shared dictionary's. A view's own local style caps
+    /// width exactly as a shared one does, and SettingsView's SettingNote centred every note on the
+    /// Settings page for that reason while this check, reading Styles.xaml alone, passed.
+    /// </remarks>
     private static (HashSet<string> Pinning, List<string> Unpinned) StyleAlignment()
     {
         var pinning = new HashSet<string>(StringComparer.Ordinal);
         var unpinned = new List<string>();
 
-        foreach (var style in XDocument.Load(Path.Combine(WpfTestHost.WpfDir, "Styles.xaml"))
-                                       .Descendants().Where(e => e.Name.LocalName == "Style"))
+        foreach (string file in Directory.EnumerateFiles(WpfTestHost.WpfDir, "*.xaml", SearchOption.AllDirectories))
+        foreach (var style in XDocument.Load(file).Descendants().Where(e => e.Name.LocalName == "Style"))
         {
             string? Setter(string property) => style.Elements()
                 .FirstOrDefault(s => s.Name.LocalName == "Setter" && (string?)s.Attribute("Property") == property)
@@ -151,7 +156,7 @@ public class PageStructureTests
 
             string key = (string?)style.Attribute(X + "Key") ?? $"(implicit {(string?)style.Attribute("TargetType")})";
             if (Pins(Setter("HorizontalAlignment"))) pinning.Add(key);
-            else if (Setter("MaxWidth") is not null) unpinned.Add(key);
+            else if (Setter("MaxWidth") is not null) unpinned.Add($"{Path.GetFileName(file)}: {key}");
         }
 
         return (pinning, unpinned);
@@ -171,7 +176,7 @@ public class PageStructureTests
     public void EveryWidthCapSaysWhichSideItKeepsTo()
     {
         var (pinning, unpinnedStyles) = StyleAlignment();
-        var offenders = new List<string>(unpinnedStyles.Select(k => $"Styles.xaml: style {k} caps width without pinning alignment"));
+        var offenders = new List<string>(unpinnedStyles.Select(k => $"style {k} caps width without pinning alignment"));
         int caps = 0;
 
         foreach (var file in Directory.EnumerateFiles(WpfTestHost.WpfDir, "*.xaml", SearchOption.AllDirectories))
@@ -234,7 +239,8 @@ public class PageStructureTests
     public void NoLabelOrHeadingIsColoured(string file)
     {
         string[] labelStyles = { "TileLabel", "DataLabelText", "CardTagText", "SubHeadingText", "SectionHeadingText",
-                                 "SectionTitle", "PageTitle", "MetricTitle", "SubLabel" };
+                                 "SectionTitle", "PageTitle", "MetricTitle", "SubLabel",
+                                 "PaneTitle", "PaneMeta", "CellLabel", "CellNote", "NavStatusText" };
         string[] textColours = { "TextPrimaryBrush", "TextMutedBrush", "TextFaintBrush" };
 
         var coloured = Regex.Matches(Read(file), @"<TextBlock\b(?:\s+[\w:.]+\s*=\s*""[^""]*"")*\s*/?>")
@@ -248,6 +254,23 @@ public class PageStructureTests
 
         Assert.True(coloured.Count == 0,
             $"{file} colours these labels: {string.Join(", ", coloured)}. Put the colour in a mark beside the words, not in them.");
+    }
+
+    /// <summary>
+    /// A tab is never drawn as a hardware switch.
+    ///
+    /// The section selector over Performance, System and Diagnostics used the segmented control
+    /// the fan mode and the power profile use, so "which screen am I on" and "what are the fans
+    /// doing" looked identical, one above the other. A tab changes what is shown and never what the
+    /// hardware does; TabBarRadioStyle draws it as one.
+    /// </summary>
+    [Fact]
+    public void NavigationIsNotDrawnAsAHardwareSwitch()
+    {
+        string group = File.ReadAllText(Path.Combine(ViewsDir, "GroupView.xaml.cs"));
+
+        Assert.Contains("TabBarRadioStyle", group);
+        Assert.DoesNotContain("PillRadioStyle", group);
     }
 
     /// <summary>The object initializer containing <paramref name="at"/>: from its unmatched '{' to the matching '}'.</summary>

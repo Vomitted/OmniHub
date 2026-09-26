@@ -3,18 +3,18 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:OmniHub.App.Wpf.Controls"
              Background="{StaticResource BackgroundBrush}">
-    <UserControl.Resources>
-        <!-- Same metric-tile vocabulary as the Dashboard, now shared from Styles.xaml. It used
-             to live here on the grounds that this view wants different sizes, but the four
-             definitions were byte-identical to PowerView's, so the sizes were never actually
-             different and both copies were maintaining the same numbers twice. A view that does
-             want its own size overrides one Setter with BasedOn instead. -->
-    </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,20,26,24">
+    <!-- The curve and the loop (technical/TECHNICAL-v5-ui.md, 3.3).
+
+         The page opened on a banner describing a BIOS defect whatever the mode, then three tiles
+         holding one number each, and the top half of the curve. Now the curve in force and the
+         state beside it fill the first screen, and under them the loop's last decisions as a
+         table: the sawtooth the spike filter fixed was only ever visible by replaying the log
+         offline, and a table of ticks shows that kind of thing as it happens. -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,14,18,20">
         <StackPanel>
 
-            <Grid Margin="0,0,0,16">
+            <Grid Margin="0,0,0,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -34,251 +34,249 @@
                 </Border>
             </Grid>
 
-            <!-- Left accent bar rather than a tinted fill: a warm wash behind text is nearly
-                 invisible on a true-black ground, so the rule carries the emphasis instead. -->
-            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
-                    BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}" Margin="0,0,0,18">
+            <!-- The HP defect, shown when BIOS mode is the one chosen: it describes what the fans
+                 will do in that mode and in no other, so above the curve in Auto it was noise. -->
+            <Border x:Name="BiosNote" Visibility="Collapsed" Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
                 <Grid>
-                    <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource WarnBrush}" CornerRadius="5,0,0,5"/>
-                    <StackPanel Margin="17,13,14,13">
-                        <TextBlock Text="KNOWN HP ISSUE" Style="{StaticResource TileLabel}" Margin="0,0,0,5"/>
-                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap" MaxWidth="700"
-                                   Text="On Default/Balanced BIOS mode the fan table can hit a 0% idle entry while the laptop is still genuinely hot. Auto (Curve) fixes this with a safety floor, so the fan is never allowed to fully stop once you are past the floor temperature."/>
-                    </StackPanel>
+                    <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource WarnBrush}" Margin="-6,0,0,0"/>
+                    <TextBlock HorizontalAlignment="Left" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap" MaxWidth="760" Margin="8,0,0,0"
+                               Text="In BIOS mode the firmware's own table runs the fans, and on this board it can reach a 0% idle entry while the machine is still genuinely hot. Auto runs the curve with a safety floor, so the fans never stop once the floor temperature is passed."/>
                 </Grid>
             </Border>
 
-            <!-- Live readouts -->
-            <Grid Margin="0,0,0,18">
+            <!-- The curve in force, and the state beside it. -->
+            <Grid x:Name="TopColumns" Margin="0,0,0,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition x:Name="TopGutter" Width="10"/>
+                    <ColumnDefinition x:Name="TopSide" Width="250"/>
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="0,0,7,0">
-                    <Grid>
-                        <StackPanel>
-                            <TextBlock x:Name="TempLabel" Text="TEMPERATURE" Style="{StaticResource TileLabel}"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock x:Name="TempValue" Style="{StaticResource TileValue}" Text="--"/>
-                                <TextBlock x:Name="TempUnit" Text="&#176;C" Style="{StaticResource TileUnit}"/>
-                            </StackPanel>
-                            <TextBlock x:Name="TempFoot" Style="{StaticResource TileFoot}"/>
-                        </StackPanel>
-                    </Grid>
+                <Border Grid.Column="0" Style="{StaticResource PaneStyle}">
+                    <DockPanel>
+                        <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                            <TextBlock Text="The curve in force" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left"/>
+                            <TextBlock x:Name="CurveMeta" Style="{StaticResource PaneMeta}"/>
+                        </Grid>
+                        <controls:FanCurveChart x:Name="Chart" Height="232"/>
+                    </DockPanel>
                 </Border>
 
-                <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0">
-                    <Grid>
-                        <StackPanel>
-                            <TextBlock Text="FAN LEVEL" Style="{StaticResource TileLabel}"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock x:Name="LevelValue" Style="{StaticResource TileValue}" Text="--"/>
-                                <TextBlock Text="%" Style="{StaticResource TileUnit}"/>
-                            </StackPanel>
-                            <TextBlock x:Name="LevelFoot" Style="{StaticResource TileFoot}"/>
-                            <!-- Collapsed until the board declines a reading at least once, so a
-                                 machine that never does it never sees a line about it. -->
-                            <TextBlock x:Name="SensorNote" Style="{StaticResource TileFoot}"
-                                       Foreground="{StaticResource TextFaintBrush}"
-                                       TextWrapping="Wrap" Margin="0,3,0,0" Visibility="Collapsed"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
+                <Border x:Name="NowPane" Grid.Column="2" Style="{StaticResource PaneStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Now" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
 
-                <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="16,13" Margin="7,0,0,0">
-                    <Grid>
-                        <StackPanel>
-                            <TextBlock Text="MODE" Style="{StaticResource TileLabel}"/>
-                            <!-- Smaller than the numeric tiles: this value is a word, and
-                                 "BIOS Default" at 34px is exactly what clipped in the old
-                                 fixed-width StatTile. -->
-                            <TextBlock x:Name="ModeValue" Style="{StaticResource TileValue}" FontSize="24" Text="--" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                            <TextBlock x:Name="ModeFoot" Style="{StaticResource TileFoot}"/>
+                        <TextBlock x:Name="TempLabel" Text="Temperature" Style="{StaticResource CellNote}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
+                            <TextBlock x:Name="TempValue" Style="{StaticResource BigNumberText}" FontSize="24" Text="--"/>
+                            <TextBlock x:Name="TempUnit" Text="&#176;C" Style="{StaticResource TileUnit}" Margin="4,0,0,4"/>
                         </StackPanel>
-                    </Grid>
+                        <TextBlock x:Name="TempFoot" Style="{StaticResource TileFoot}" Margin="0,2,0,0"/>
+
+                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,10,0,9"/>
+
+                        <TextBlock Text="Fan level" Style="{StaticResource CellNote}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
+                            <TextBlock x:Name="LevelValue" Style="{StaticResource BigNumberText}" FontSize="24" Text="--"/>
+                            <TextBlock Text="%" Style="{StaticResource TileUnit}" Margin="4,0,0,4"/>
+                        </StackPanel>
+                        <TextBlock x:Name="LevelFoot" Style="{StaticResource TileFoot}" Margin="0,2,0,0"/>
+                        <!-- Collapsed until the board declines a reading at least once, so a
+                             machine that never does it never sees a line about it. -->
+                        <TextBlock x:Name="SensorNote" Style="{StaticResource TileFoot}"
+                                   TextWrapping="Wrap" Margin="0,3,0,0" Visibility="Collapsed"/>
+
+                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,10,0,9"/>
+
+                        <TextBlock Text="Mode" Style="{StaticResource CellNote}"/>
+                        <TextBlock x:Name="ModeValue" Style="{StaticResource BodyText}" FontSize="15" FontWeight="SemiBold" Text="--" Margin="0,2,0,0"/>
+                        <TextBlock x:Name="ModeFoot" Style="{StaticResource TileFoot}" Margin="0,3,0,0"/>
+                    </StackPanel>
                 </Border>
             </Grid>
 
-            <StackPanel>
-                <TextBlock Text="Curve / temperature to fan level" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Height="248" Margin="0,0,0,10">
-                <controls:FanCurveChart x:Name="Chart"/>
+            <!-- The loop's last decisions. -->
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <Grid Margin="0,0,0,6">
+                        <TextBlock Text="What the loop did" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left"/>
+                        <TextBlock x:Name="LoopMeta" Style="{StaticResource PaneMeta}"/>
+                    </Grid>
+                    <TextBlock HorizontalAlignment="Left" x:Name="TickNote" Style="{StaticResource MutedText}" FontSize="12"
+                               TextWrapping="Wrap" MaxWidth="760" Margin="0,0,0,8"
+                               Text="Waiting for the first tick."/>
+                    <Grid x:Name="LoopTable"/>
+                </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="WHAT THE CURVE JUST DID" Style="{StaticResource DataLabelText}" Margin="0,0,0,8"/>
-                        <TextBlock HorizontalAlignment="Left" x:Name="TickNote" Style="{StaticResource BodyText}" FontSize="12"
-                                   TextWrapping="Wrap" MaxWidth="760"
-                                   Text="Waiting for the first tick."/>
-                    </StackPanel>
-                </Grid>
-            </Border>
+            <!-- The curve's points, and the choices that decide which curve they are. -->
+            <Grid x:Name="EditColumns" Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition x:Name="EditGutter" Width="10"/>
+                    <ColumnDefinition x:Name="EditSide" Width="300"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-            <StackPanel>
-                <TextBlock Text="Safety floor" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
+                <Border Grid.Column="0" Style="{StaticResource PaneStyle}">
                     <StackPanel>
-                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640" Margin="0,0,0,12"
-                                   Text="The fix for the 0% bug. Past this temperature the curve is never allowed to command less than this level, whatever the table says."/>
-                        <WrapPanel VerticalAlignment="Center">
-                            <TextBlock Text="Above" Style="{StaticResource BodyText}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBox x:Name="FloorTempBox" Width="62" Style="{StaticResource NumericTextBoxStyle}" Margin="0,0,6,0"/>
-                            <TextBlock Text="&#176;C, never drop below" Style="{StaticResource BodyText}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBox x:Name="FloorLevelBox" Width="62" Style="{StaticResource NumericTextBoxStyle}" Margin="0,0,6,0"/>
-                            <TextBlock Text="%" Style="{StaticResource BodyText}" Margin="0,0,16,0" VerticalAlignment="Center"/>
-                            <Button Content="Apply Floor" Width="112" Height="36" Style="{StaticResource FlatButtonStyle}" Click="ApplyFloorBtn_Click"/>
+                        <TextBlock Text="Curve points" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                        <WrapPanel x:Name="EditingRailPills" Margin="0,0,0,4"/>
+                        <WrapPanel x:Name="EditingFanPills" Margin="0,0,0,6"/>
+                        <TextBlock HorizontalAlignment="Left" x:Name="RailNote" Style="{StaticResource MutedText}" FontSize="11"
+                                   Margin="0,0,0,8" TextWrapping="Wrap" MaxWidth="700"/>
+
+                        <DataGrid x:Name="CurveGrid" Style="{StaticResource OmniDataGridStyle}" Height="212" Margin="0,0,0,10"
+                                  CanUserAddRows="True" CanUserDeleteRows="True" CanUserResizeRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="TEMP (C)" Binding="{Binding TempC}" Width="*"/>
+                                <DataGridTextColumn Header="LEVEL (%)" Binding="{Binding LevelPercent}" Width="*"/>
+                                <!-- Derived, not stored: percent is what the curve holds, RPM is
+                                     what you actually hear. Read-only because editing it would be
+                                     a second way to write the same number. -->
+                                <DataGridTextColumn Header="TARGET RPM" Binding="{Binding TargetRpm}" Width="*" IsReadOnly="True"/>
+                                <DataGridTextColumn Header="RAW" Binding="{Binding RawLevel}" Width="0.6*" IsReadOnly="True"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <TextBlock x:Name="CurveScaleNote" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                        <WrapPanel>
+                            <Button Content="Apply Curve" Width="122" Height="36" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,10,0" Click="ApplyCurveBtn_Click"/>
+                            <Button Content="Reset to Default" Width="142" Height="36" Style="{StaticResource FlatButtonStyle}" Click="ResetCurveBtn_Click"/>
                         </WrapPanel>
                     </StackPanel>
-                </Grid>
-            </Border>
+                </Border>
 
-            <StackPanel>
-                <TextBlock Text="Curve points" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <StackPanel>
+                <StackPanel x:Name="EditSidePanes" Grid.Column="2">
+
+                    <!-- The fix for the 0% defect, beside the points it protects. -->
+                    <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                        <StackPanel>
+                            <TextBlock Text="Safety floor" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,6"/>
+                            <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,10"
+                                       Text="Past this temperature the curve never commands less than this level, whatever the points say."/>
+                            <WrapPanel VerticalAlignment="Center">
+                                <TextBlock Text="Above" Style="{StaticResource BodyText}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBox x:Name="FloorTempBox" Width="54" Style="{StaticResource NumericTextBoxStyle}" Margin="0,0,5,0"/>
+                                <TextBlock Text="&#176;C, at least" Style="{StaticResource BodyText}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBox x:Name="FloorLevelBox" Width="54" Style="{StaticResource NumericTextBoxStyle}" Margin="0,0,5,0"/>
+                                <TextBlock Text="%" Style="{StaticResource BodyText}" VerticalAlignment="Center"/>
+                            </WrapPanel>
+                            <Button Content="Apply Floor" Width="112" Height="36" Margin="0,10,0,0" HorizontalAlignment="Left"
+                                    Style="{StaticResource FlatButtonStyle}" Click="ApplyFloorBtn_Click"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Two rails are two different problems: on mains the trade is noise against
                          headroom, on battery every fan watt is a watt not going into runtime. One
                          curve has to compromise between them, and the compromise is worse than
                          either answer. Off by default, so one curve stays one curve. -->
-                    <Grid Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                            <TextBlock Text="A separate curve on battery" Style="{StaticResource BodyText}"/>
-                            <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" MaxWidth="560" TextWrapping="Wrap"
-                                       Text="When this is off there is one curve and it applies on both. When it is on, the curve below switches with the charger."/>
-                        </StackPanel>
-                        <CheckBox Grid.Column="1" x:Name="SeparateCurveToggle" Style="{StaticResource ToggleSwitchStyle}"
-                                  VerticalAlignment="Center" Checked="SeparateCurveToggle_Changed" Unchecked="SeparateCurveToggle_Changed"/>
-                    </Grid>
+                    <Border Style="{StaticResource PaneStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Which curves" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
 
-                    <!-- The second fan. Whether this board honours two different levels is a
-                         measurement, not an assumption, which is what the button below runs. -->
-                    <Grid Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                            <TextBlock Text="A separate curve for the second fan" Style="{StaticResource BodyText}"/>
-                            <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,3,0,0" MaxWidth="560" TextWrapping="Wrap"
-                                       Text="Both fans run the same curve when this is off. The firmware itself runs them two units apart, so the hardware can do it; whether it lets this application do it is what the check below asks."/>
-                        </StackPanel>
-                        <CheckBox Grid.Column="1" x:Name="SeparateFan2Toggle" Style="{StaticResource ToggleSwitchStyle}"
-                                  VerticalAlignment="Center" Checked="SeparateFan2Toggle_Changed" Unchecked="SeparateFan2Toggle_Changed"/>
-                    </Grid>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                    <TextBlock Text="A separate curve on battery" Style="{StaticResource BodyText}" FontSize="12.5"/>
+                                    <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap"
+                                               Text="Off: one curve on both. On: the curve switches with the charger."/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" x:Name="SeparateCurveToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center" Checked="SeparateCurveToggle_Changed" Unchecked="SeparateCurveToggle_Changed"/>
+                            </Grid>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                        <Button x:Name="SplitProbeBtn" Content="CHECK THE FANS MOVE SEPARATELY" Height="36" MinWidth="280"
-                                Style="{StaticResource FlatButtonStyle}" Click="SplitProbeBtn_Click"/>
-                        <TextBlock HorizontalAlignment="Left" x:Name="SplitProbeNote" Style="{StaticResource MutedText}" FontSize="11"
-                                   VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap" MaxWidth="420"
-                                   Text="Holds the two fans 20 raw units apart for 40 seconds and reads them back. Audible, and it pauses the curve while it runs."/>
+                            <!-- The second fan. Whether this board honours two different levels is a
+                                 measurement, not an assumption, which is what the button below runs. -->
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                    <TextBlock Text="A separate curve for fan 2" Style="{StaticResource BodyText}" FontSize="12.5"/>
+                                    <TextBlock Style="{StaticResource MutedText}" FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap"
+                                               Text="The firmware runs the fans two units apart itself; the check below asks whether it lets this application do it."/>
+                                </StackPanel>
+                                <CheckBox Grid.Column="1" x:Name="SeparateFan2Toggle" Style="{StaticResource ToggleSwitchStyle}"
+                                          VerticalAlignment="Center" Checked="SeparateFan2Toggle_Changed" Unchecked="SeparateFan2Toggle_Changed"/>
+                            </Grid>
+
+                            <Button x:Name="SplitProbeBtn" Content="Check the fans move separately" Height="36" HorizontalAlignment="Left"
+                                    Padding="14,0" Style="{StaticResource FlatButtonStyle}" Click="SplitProbeBtn_Click"/>
+                            <TextBlock HorizontalAlignment="Left" x:Name="SplitProbeNote" Style="{StaticResource MutedText}" FontSize="11"
+                                       Margin="0,8,0,0" TextWrapping="Wrap"
+                                       Text="Holds the two fans 20 raw units apart for 40 seconds and reads them back. Audible, and it pauses the curve while it runs."/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <!-- Rarely used, so last: finding this unit's real ceiling, and handing everything back. -->
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Manual calibration" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,6"/>
+                    <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,12"
+                               Text="Steps the fan through raw speed levels one at a time so you can listen for where it stops getting louder. That is your unit&apos;s real ceiling, which may not match the 10-56 band measured on the board this app was written against."/>
+                    <StackPanel x:Name="CalibrateIdlePanel">
+                        <Button Content="Start Calibration" Width="162" Height="36" Style="{StaticResource FlatButtonStyle}" HorizontalAlignment="Left" Click="StartCalibrate_Click"/>
+                    </StackPanel>
+                    <StackPanel x:Name="CalibrateActivePanel" Visibility="Collapsed">
+                        <TextBlock x:Name="CalibrateStatusText" Style="{StaticResource BigNumberText}" FontSize="22" Margin="0,0,0,12"/>
+                        <WrapPanel>
+                            <Button Content="Next Level" Width="122" Height="36" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,10,0" Click="NextCalibrate_Click"/>
+                            <Button Content="Stop &amp; Restore" Width="142" Height="36" Style="{StaticResource FlatButtonStyle}" Click="StopCalibrate_Click"/>
+                        </WrapPanel>
                     </StackPanel>
 
-                    <WrapPanel x:Name="EditingRailPills" Margin="0,0,0,4"/>
-                    <WrapPanel x:Name="EditingFanPills" Margin="0,0,0,8"/>
-                    <TextBlock HorizontalAlignment="Left" x:Name="RailNote" Style="{StaticResource MutedText}" FontSize="11"
-                               Margin="0,0,0,10" TextWrapping="Wrap" MaxWidth="700"/>
+                    <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,16,0,12"/>
 
-                    <DataGrid x:Name="CurveGrid" Style="{StaticResource OmniDataGridStyle}" Height="212" Margin="0,0,0,12"
-                              CanUserAddRows="True" CanUserDeleteRows="True" CanUserResizeRows="False">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="TEMP (C)" Binding="{Binding TempC}" Width="*"/>
-                            <DataGridTextColumn Header="LEVEL (%)" Binding="{Binding LevelPercent}" Width="*"/>
-                            <!-- Derived, not stored: percent is what the curve holds, RPM is
-                                 what you actually hear. Read-only because editing it would be
-                                 a second way to write the same number. -->
-                            <DataGridTextColumn Header="TARGET RPM" Binding="{Binding TargetRpm}" Width="*" IsReadOnly="True"/>
-                            <DataGridTextColumn Header="RAW" Binding="{Binding RawLevel}" Width="0.6*" IsReadOnly="True"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    <TextBlock x:Name="CurveScaleNote" Style="{StaticResource MutedText}" FontSize="11" Margin="0,0,0,10" TextWrapping="Wrap"/>
-                    <WrapPanel>
-                        <Button Content="Apply Curve" Width="122" Height="36" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,10,0" Click="ApplyCurveBtn_Click"/>
-                        <Button Content="Reset to Default" Width="142" Height="36" Style="{StaticResource FlatButtonStyle}" Click="ResetCurveBtn_Click"/>
+                    <TextBlock Text="SAVE THIS BAND" Style="{StaticResource DataLabelText}" Margin="0,0,0,6"/>
+                    <TextBlock HorizontalAlignment="Left" x:Name="ProfileIntro" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,12"/>
+
+                    <WrapPanel Margin="0,0,0,10">
+                        <StackPanel Margin="0,0,14,0">
+                            <TextBlock Text="FLOOR" Style="{StaticResource TileFoot}"/>
+                            <TextBox x:Name="BandMinBox" Width="70" Style="{StaticResource NumericTextBoxStyle}"/>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,14,0">
+                            <TextBlock Text="FAN 1 CEILING" Style="{StaticResource TileFoot}"/>
+                            <TextBox x:Name="BandMax1Box" Width="70" Style="{StaticResource NumericTextBoxStyle}"/>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,14,0">
+                            <TextBlock Text="FAN 2 CEILING" Style="{StaticResource TileFoot}"/>
+                            <TextBox x:Name="BandMax2Box" Width="70" Style="{StaticResource NumericTextBoxStyle}"/>
+                        </StackPanel>
+                        <Button x:Name="SaveBandBtn" Content="Save profile" Width="130" Height="36" VerticalAlignment="Bottom"
+                                Style="{StaticResource FlatButtonStyle}" Click="SaveBandBtn_Click"/>
                     </WrapPanel>
+
+                    <TextBlock HorizontalAlignment="Left" x:Name="ProfileStatus" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" MaxWidth="700"/>
                 </StackPanel>
             </Border>
 
-            <StackPanel>
-                <TextBlock Text="Manual calibration" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640" Margin="0,0,0,12"
-                                   Text="Steps the fan through raw speed levels one at a time so you can listen for where it stops getting louder. That is your unit&apos;s real ceiling, which may not match the 10-56 band measured on the board this app was written against."/>
-                        <StackPanel x:Name="CalibrateIdlePanel">
-                            <Button Content="Start Calibration" Width="162" Height="36" Style="{StaticResource FlatButtonStyle}" HorizontalAlignment="Left" Click="StartCalibrate_Click"/>
-                        </StackPanel>
-                        <StackPanel x:Name="CalibrateActivePanel" Visibility="Collapsed">
-                            <TextBlock x:Name="CalibrateStatusText" Style="{StaticResource BigNumberText}" FontSize="22" Margin="0,0,0,12"/>
-                            <WrapPanel>
-                                <Button Content="Next Level" Width="122" Height="36" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,10,0" Click="NextCalibrate_Click"/>
-                                <Button Content="Stop &amp; Restore" Width="142" Height="36" Style="{StaticResource FlatButtonStyle}" Click="StopCalibrate_Click"/>
-                            </WrapPanel>
-                        </StackPanel>
-
-                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,18,0,14"/>
-
-                        <TextBlock Text="SAVE THIS BAND" Style="{StaticResource DataLabelText}" Margin="0,0,0,6"/>
-                        <TextBlock HorizontalAlignment="Left" x:Name="ProfileIntro" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="640" Margin="0,0,0,12"/>
-
-                        <WrapPanel Margin="0,0,0,10">
-                            <StackPanel Margin="0,0,14,0">
-                                <TextBlock Text="FLOOR" Style="{StaticResource TileFoot}"/>
-                                <TextBox x:Name="BandMinBox" Width="70" Style="{StaticResource NumericTextBoxStyle}"/>
-                            </StackPanel>
-                            <StackPanel Margin="0,0,14,0">
-                                <TextBlock Text="FAN 1 CEILING" Style="{StaticResource TileFoot}"/>
-                                <TextBox x:Name="BandMax1Box" Width="70" Style="{StaticResource NumericTextBoxStyle}"/>
-                            </StackPanel>
-                            <StackPanel Margin="0,0,14,0">
-                                <TextBlock Text="FAN 2 CEILING" Style="{StaticResource TileFoot}"/>
-                                <TextBox x:Name="BandMax2Box" Width="70" Style="{StaticResource NumericTextBoxStyle}"/>
-                            </StackPanel>
-                            <Button x:Name="SaveBandBtn" Content="Save profile" Width="130" Height="36" VerticalAlignment="Bottom"
-                                    Style="{StaticResource FlatButtonStyle}" Click="SaveBandBtn_Click"/>
-                        </WrapPanel>
-
-                        <TextBlock HorizontalAlignment="Left" x:Name="ProfileStatus" Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" MaxWidth="640"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <StackPanel>
-                <TextBlock Text="Return to stock" Style="{StaticResource SectionTitle}" Margin="0,18,0,8"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <Border Style="{StaticResource CardBorderStyle}">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,12"
-                                   Text="Hands the fans back to the BIOS, releases the timer and composition priority, clears the GPU unlock latch and returns the Windows power plan, then reports what could not be undone without a restart. Use it when you want this application ruled out of a problem: one click and a reading, instead of stopping services and rebooting."/>
-                        <WrapPanel>
-                            <Button x:Name="StockBtn" Content="Return to stock" Width="160" Height="36"
-                                    Style="{StaticResource FlatButtonStyle}" Click="StockBtn_Click"/>
-                        </WrapPanel>
-                        <TextBlock HorizontalAlignment="Left" x:Name="StockSummary" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap"
-                                   MaxWidth="700" Margin="0,12,0,0"/>
-                        <StackPanel x:Name="StockRows" Margin="0,8,0,0"/>
-                    </StackPanel>
-                </Grid>
+            <Border Style="{StaticResource PaneStyle}">
+                <StackPanel>
+                    <TextBlock Text="Return to stock" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,6"/>
+                    <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11.5" TextWrapping="Wrap" MaxWidth="700" Margin="0,0,0,12"
+                               Text="Hands the fans back to the BIOS, releases the timer and composition priority, clears the GPU unlock latch and returns the Windows power plan, then reports what could not be undone without a restart. Use it when you want this application ruled out of a problem: one click and a reading, instead of stopping services and rebooting."/>
+                    <WrapPanel>
+                        <Button x:Name="StockBtn" Content="Return to stock" Width="160" Height="36"
+                                Style="{StaticResource FlatButtonStyle}" Click="StockBtn_Click"/>
+                    </WrapPanel>
+                    <TextBlock HorizontalAlignment="Left" x:Name="StockSummary" Style="{StaticResource BodyText}" FontSize="12" TextWrapping="Wrap"
+                               MaxWidth="700" Margin="0,12,0,0"/>
+                    <StackPanel x:Name="StockRows" Margin="0,8,0,0"/>
+                </StackPanel>
             </Border>
         </StackPanel>
     </ScrollViewer>

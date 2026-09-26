@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="{StaticResource BackgroundBrush}">
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="26,20,26,24">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,14,18,20">
         <StackPanel>
             <StackPanel Margin="0,0,0,16">
                 <TextBlock Text="Stability" Style="{StaticResource PageTitle}"/>
@@ -11,41 +11,38 @@
                            Text="Every time this machine stopped without shutting down, reconstructed from Windows&apos; own records and from this application&apos;s thermal trace. It reports what happened and when. It does not say why, because nothing here knows why."/>
             </StackPanel>
 
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="SUMMARY" Style="{StaticResource DataLabelText}" Margin="0,0,0,8"/>
-                        <TextBlock HorizontalAlignment="Left" x:Name="Summary" Style="{StaticResource BodyText}" FontSize="12.5"
-                                   TextWrapping="Wrap" MaxWidth="760"/>
-                        <WrapPanel Margin="0,12,0,0">
-                            <Button x:Name="RefreshBtn" Content="Refresh" Width="110" Height="36"
-                                    Style="{StaticResource FlatButtonStyle}" Click="RefreshBtn_Click"/>
-                        </WrapPanel>
-                        <TextBlock x:Name="ReadError" Style="{StaticResource MutedText}" FontSize="11"
-                                   Margin="0,10,0,0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Grid>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Summary" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <TextBlock HorizontalAlignment="Left" x:Name="Summary" Style="{StaticResource BodyText}" FontSize="12.5"
+                               TextWrapping="Wrap" MaxWidth="760"/>
+                    <WrapPanel Margin="0,12,0,0">
+                        <Button x:Name="RefreshBtn" Content="Refresh" Width="110" Height="36"
+                                Style="{StaticResource FlatButtonStyle}" Click="RefreshBtn_Click"/>
+                    </WrapPanel>
+                    <TextBlock x:Name="ReadError" Style="{StaticResource MutedText}" FontSize="11"
+                               Margin="0,10,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,18">
-                <Grid>
-                    <StackPanel>
-                        <TextBlock Text="HOLDING THIS MACHINE AWAKE, RIGHT NOW" Style="{StaticResource DataLabelText}" Margin="0,0,0,8"/>
-                        <TextBlock HorizontalAlignment="Left" x:Name="AwakeSummary" Style="{StaticResource BodyText}" FontSize="12.5"
-                                   TextWrapping="Wrap" MaxWidth="760"/>
-                        <StackPanel x:Name="AwakeRequests" Margin="0,10,0,0"/>
-                        <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,12,0,0"
-                                   TextWrapping="Wrap" MaxWidth="760"
-                                   Text="Read from Windows&apos; own power-request list. A request here is not a fault: audio playback, a file copy and a presentation all hold one legitimately. It answers why the machine did not sleep, not whether it should have."/>
-                    </StackPanel>
-                </Grid>
+            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Holding this machine awake, right now" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <TextBlock HorizontalAlignment="Left" x:Name="AwakeSummary" Style="{StaticResource BodyText}" FontSize="12.5"
+                               TextWrapping="Wrap" MaxWidth="760"/>
+                    <StackPanel x:Name="AwakeRequests" Margin="0,10,0,0"/>
+                    <TextBlock HorizontalAlignment="Left" Style="{StaticResource MutedText}" FontSize="11" Margin="0,12,0,0"
+                               TextWrapping="Wrap" MaxWidth="760"
+                               Text="Read from Windows&apos; own power-request list. A request here is not a fault: audio playback, a file copy and a presentation all hold one legitimately. It answers why the machine did not sleep, not whether it should have."/>
+                </StackPanel>
             </Border>
 
-            <StackPanel>
-                <TextBlock Text="Incidents" Style="{StaticResource SectionTitle}"/>
-                <Border Style="{StaticResource SectionRule}"/>
-            </StackPanel>
-            <StackPanel x:Name="Incidents"/>
+            <Border Style="{StaticResource PaneStyle}">
+                <StackPanel>
+                    <TextBlock Text="Incidents" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                    <StackPanel x:Name="Incidents"/>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

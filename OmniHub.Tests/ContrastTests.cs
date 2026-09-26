@@ -82,9 +82,11 @@ public class ContrastTests
             if (merged[key] is Color c)
                 yield return (key, c);
 
+        // Over the window ground too: the selected sidebar item paints AccentSoft over a sidebar
+        // that fades from Panel to Background, and it now carries a faint second line of state.
         if (merged["AccentSoftColor"] is Color soft)
         {
-            foreach (string under in new[] { "PanelColor", "PanelAltColor" })
+            foreach (string under in new[] { "BackgroundColor", "PanelColor", "PanelAltColor" })
                 if (merged[under] is Color bg)
                     yield return ($"AccentSoft over {under}", Composite(soft, bg));
         }

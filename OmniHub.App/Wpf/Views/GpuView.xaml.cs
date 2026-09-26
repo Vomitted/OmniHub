@@ -23,12 +23,16 @@ public partial class GpuView : UserControl
     private readonly System.Windows.Threading.DispatcherTimer _telemetryTimer =
         new() { Interval = TimeSpan.FromSeconds(2) };
 
-    public GpuView(HardwareContext ctx, AppSettings settings)
+    public GpuView(HardwareContext ctx, AppSettings settings, MetricSource metrics)
     {
         InitializeComponent();
         _ctx = ctx;
         _settings = settings;
         ModeCombo.ItemsSource = new[] { GpuMode.Hybrid, GpuMode.Discrete, GpuMode.Optimus };
+
+        // The card's readings, from the one shared source every table reads.
+        SensorsHost.Content = new Controls.SensorTable(metrics, new[] { "gpu", "gpuclk", "gpuload", "gpuw" });
+        SizeChanged += (_, e) => ColumnReflow.Apply(e.NewSize.Width, below: 780, Gutter, SideColumn, sideWidth: 250, Side);
 
         // Paired on Loaded/Unloaded, as DashboardView and FansView are, and for the same reason:
         // navigating away detaches the control and a constructor-time subscription would be
@@ -327,7 +331,6 @@ public partial class GpuView : UserControl
         {
             GpuNameText.Text = "No discrete GPU reading";
             GpuSourceText.Text = "";
-            GpuTempText.Text = GpuPowerText.Text = GpuClockText.Text = GpuLoadText.Text = "--";
 
             // Distinguishes the two reasons for a blank, because they call for different actions:
             // one is a policy this application applies deliberately, the other is a card or driver
@@ -339,12 +342,7 @@ public partial class GpuView : UserControl
         }
 
         GpuNameText.Text = gpu.Name;
-        GpuSourceText.Text = SourceName(gpu.Source).ToUpperInvariant();
-
-        GpuTempText.Text = gpu.TempC is { } t ? $"{Math.Round(t):0}\u00b0" : "--";
-        GpuPowerText.Text = gpu.PowerWatts is { } w ? $"{w:0.0}W" : "--";
-        GpuClockText.Text = gpu.ClockMhz is { } c ? $"{c}" : "--";
-        GpuLoadText.Text = gpu.UtilisationPercent is { } u ? $"{u}%" : "--";
+        GpuSourceText.Text = $"read via {SourceName(gpu.Source)}";
 
         GpuLiveFoot.Text = gpu.Source == GpuSource.WindowsCounters
             ? "UTILISATION ONLY - THE WINDOWS COUNTERS DO NOT REPORT TEMPERATURE, POWER OR CLOCK"

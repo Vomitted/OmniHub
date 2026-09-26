@@ -145,4 +145,10 @@
          caller accepts is not a default, it is a second value to keep in sync. -->
     <Thickness x:Key="CardPaddingTight">16,13</Thickness>
 
+    <!-- The console geometry: a pane's padding and a table row's height. Shared by every palette,
+         and scaled by the density setting exactly as CardPadding is (ThemeManager.ApplyDensity),
+         so Roomy is roomy in a table as well as in a card. -->
+    <Thickness x:Key="PanePadding">14,10,14,12</Thickness>
+    <sys:Double x:Key="TableRowHeight" xmlns:sys="clr-namespace:System;assembly=mscorlib">22</sys:Double>
+
 </ResourceDictionary>
