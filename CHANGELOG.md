@@ -239,6 +239,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   duplicated controls on other pages — one of which changed the saved fan mode without the Fans
   page finding out. The profile now says what each button sends, including that Performance pins
   both fans at maximum.
+- **Readings are drawn, not only written.** The Dashboard leads with four widgets: the processor
+  and the graphics card as temperature rings, the fans as an impeller that turns faster when they
+  do, the power as the battery filled to its charge, each with bars filled against the real limit
+  of what they measure — the SMU's sustained limit for package power, the driver's enforced limit
+  for GPU power, the fan band's measured maximum, the memory installed. A reading with no real
+  limit gets no bar. The Fans, Graphics and Battery pages draw theirs the same way.
 - **The sidebar says what is in force.** Each item carries its subject's state under its name —
   fan mode, level and speed under Fans, charge and power source under Battery, the Windows tweaks
   that are on under System — in place of a card that held the fan mode alone.

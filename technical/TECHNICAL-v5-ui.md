@@ -214,3 +214,38 @@ seen to fail against the defect.
 
 Each injection was reverted byte for byte, checked by hash. Suite: 919 before this change, 945
 after, green.
+
+## 7. Widgets: the same information, drawn
+
+The console was answered "sure its nice, but its just pure text, i want widgets, graphics,
+something actually pleasing to look at". The tables stay as the detail layer; the headline is now
+drawn.
+
+| Widget | Draws | Full scale |
+| --- | --- | --- |
+| `RingGauge` | a temperature as a 240° arc, figure in the middle, label in the arc's open bottom | the reading's own hot point (`Metrics.FullScale`) |
+| `Meter` | a figure over a gradient bar | 100% for a load; the SMU's sustained limit for package power; NVML's enforced limit for GPU power; the fan band's measured maximum; installed memory |
+| `FanGlyph` | an eleven-blade impeller that turns faster when the fans do | — (the real rpm is printed beside it) |
+| `BatteryGlyph` | the pack filled to its charge, a bolt while charging | 100% |
+
+**No scale, no gauge.** `Gauge.Fraction` returns null for a missing reading or a missing scale, and
+a null draws the track alone with the figure beside it. Package power on a machine without an SMU
+is a number, not an arc against an invented maximum. The two new scales are read, not assumed:
+`MetricSource.PackageLimitWatts` comes from the same power-table read as the package figure, and
+`Nvml.KnownPowerCeilingWatts` is the limit NVML already reported for its own plausibility check.
+
+**The fan's rate is legible, not literal.** A fan at 5,600 rpm turns 93 times a second, which drawn
+literally is a blur or a wheel crawling backwards against the frame rate. `Gauge.SecondsPerTurn`
+maps speed to one turn per second at 3,000 rpm, clamped between 0.4 s and 8 s, and a stopped fan is
+drawn still. The spin is an endless animation, so it starts and stops on visibility like every
+other; `AmbientMotionTests` failed naming `Widgets.cs … in Spin` when the gate was removed.
+
+**Where they are.** The Dashboard leads with four widget cards — processor, graphics, cooling,
+power — over the chart, the profile and the limits, with the sensor table last. The Fans page's
+live column is a temperature ring beside the turning fan; the GPU page draws the card's ring and
+bars; the Battery page draws the pack. Cockpit's dials now share `Arc` with the rings rather than
+keeping a copy.
+
+**Open, not addressed here.** Switching theme live leaves the gradient accents — rings, fan, bars,
+traces — in the previous palette until restart; the palette swap does not reach brushes whose stops
+are dynamic references. It predates this work and is visible only after a live switch.

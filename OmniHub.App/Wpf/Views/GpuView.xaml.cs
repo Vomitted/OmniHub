@@ -30,8 +30,11 @@ public partial class GpuView : UserControl
         _settings = settings;
         ModeCombo.ItemsSource = new[] { GpuMode.Hybrid, GpuMode.Discrete, GpuMode.Optimus };
 
-        // The card's readings, from the one shared source every table reads.
+        // The card's readings, from the one shared source every table reads, and drawn from the same.
         SensorsHost.Content = new Controls.SensorTable(metrics, new[] { "gpu", "gpuclk", "gpuload", "gpuw" });
+        _metrics = metrics;
+        Loaded += (_, _) => { metrics.Updated -= ShowGauges; metrics.Updated += ShowGauges; ShowGauges(); };
+        Unloaded += (_, _) => metrics.Updated -= ShowGauges;
         SizeChanged += (_, e) => ColumnReflow.Apply(e.NewSize.Width, below: 780, Gutter, SideColumn, sideWidth: 250, Side);
 
         // Paired on Loaded/Unloaded, as DashboardView and FansView are, and for the same reason:
@@ -347,6 +350,22 @@ public partial class GpuView : UserControl
         GpuLiveFoot.Text = gpu.Source == GpuSource.WindowsCounters
             ? "UTILISATION ONLY - THE WINDOWS COUNTERS DO NOT REPORT TEMPERATURE, POWER OR CLOCK"
             : "";
+    }
+
+    private readonly MetricSource _metrics;
+
+    /// <summary>The card drawn: temperature as a ring, load and power as bars against their real limits.</summary>
+    private void ShowGauges()
+    {
+        GpuRing.ShowTemperature(_metrics, "gpu");
+
+        double? load = _metrics.Value("gpuload"), watts = _metrics.Value("gpuw"), limit = Nvml.KnownPowerCeilingWatts;
+        GpuLoadMeter.Show(load is { } l ? FormattableString.Invariant($"{l:0}%") : "--",
+                          OmniHub.Core.Telemetry.Gauge.Fraction(load, 100));
+        GpuPowerMeter.Show(watts is not { } w ? "--"
+                           : limit is { } c ? FormattableString.Invariant($"{w:0.0} / {c:0} W")
+                           : FormattableString.Invariant($"{w:0.0} W"),
+                           OmniHub.Core.Telemetry.Gauge.Fraction(watts, limit));
     }
 
     private static string SourceName(GpuSource source) => source switch

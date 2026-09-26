@@ -230,8 +230,8 @@ public sealed class CockpitView : AlternateInterface
         var host = new Grid { Width = diameter, Height = diameter + 24, HorizontalAlignment = HorizontalAlignment.Center };
 
         var canvas = new Canvas { Width = diameter, Height = diameter, VerticalAlignment = VerticalAlignment.Top };
-        canvas.Children.Add(ArcPath(diameter, 1.0, Brush("TrackBrush"), 7));   // the full sweep, so the value reads as a proportion
-        var value = ArcPath(diameter, 0.0, Brush("AccentGradientBrush"), 7);
+        canvas.Children.Add(Controls.Arc.Path(diameter, 1.0, Brush("TrackBrush"), 7));   // the full sweep, so the value reads as a proportion
+        var value = Controls.Arc.Path(diameter, 0.0, Brush("AccentGradientBrush"), 7);
         canvas.Children.Add(value);
         host.Children.Add(canvas);
 
@@ -261,45 +261,7 @@ public sealed class CockpitView : AlternateInterface
         return host;
     }
 
-    internal static Path ArcPath(double diameter, double fraction, Brush stroke, double thickness) => new()
-    {
-        Stroke = stroke,
-        StrokeThickness = thickness,
-        StrokeStartLineCap = PenLineCap.Round,
-        StrokeEndLineCap = PenLineCap.Round,
-        Data = ArcGeometry(diameter, fraction),
-    };
-
-    /// <summary>
-    /// A 240 degree arc, open at the bottom, filled to <paramref name="fraction"/>.
-    ///
-    /// Open at the bottom because a closed ring has no start, and a gauge whose zero is ambiguous
-    /// is decoration. This starts bottom left and sweeps clockwise, the convention every physical
-    /// instrument it is imitating already uses.
-    /// </summary>
-    internal static Geometry ArcGeometry(double diameter, double fraction)
-    {
-        const double startDeg = 150, totalDeg = 240;
-        double r = (diameter / 2) - 5;
-        double cx = diameter / 2, cy = diameter / 2;
-
-        fraction = Math.Clamp(fraction, 0, 1);
-        if (fraction <= 0.001) return Geometry.Empty;
-
-        double sweep = totalDeg * fraction;
-        Point At(double deg) => new(
-            cx + r * Math.Cos(deg * Math.PI / 180),
-            cy + r * Math.Sin(deg * Math.PI / 180));
-
-        var figure = new PathFigure { StartPoint = At(startDeg), IsClosed = false };
-        figure.Segments.Add(new ArcSegment(
-            At(startDeg + sweep), new Size(r, r), 0,
-            isLargeArc: sweep > 180, SweepDirection.Clockwise, isStroked: true));
-
-        var g = new PathGeometry();
-        g.Figures.Add(figure);
-        return g;
-    }
+    // The arc these dials draw is Controls.Arc, shared with the Dashboard's ring gauges.
 
     private UIElement StripCell(MetricDefinition m)
     {
@@ -343,7 +305,7 @@ public sealed class CockpitView : AlternateInterface
             // would make 46% fan and 90 C look equally serious.
             arc.Data = v is null || Ceiling(m) is not { } ceiling
                 ? Geometry.Empty
-                : ArcGeometry(diameter, v.Value / ceiling);
+                : Controls.Arc.Geometry(diameter, v.Value / ceiling);
         }
 
         foreach ((MetricDefinition m, TextBlock value) in _strip)
@@ -444,8 +406,8 @@ public sealed class CockpitBand : AlternateInterface
         var host = new Grid { Width = diameter, Height = diameter + 14, Margin = new Thickness(0, 0, 14, 0) };
 
         var canvas = new Canvas { Width = diameter, Height = diameter, VerticalAlignment = VerticalAlignment.Top };
-        canvas.Children.Add(CockpitView.ArcPath(diameter, 1.0, Brush("TrackBrush"), 5));
-        var arc = CockpitView.ArcPath(diameter, 0.0, Brush("AccentGradientBrush"), 5);
+        canvas.Children.Add(Controls.Arc.Path(diameter, 1.0, Brush("TrackBrush"), 5));
+        var arc = Controls.Arc.Path(diameter, 0.0, Brush("AccentGradientBrush"), 5);
         canvas.Children.Add(arc);
         host.Children.Add(canvas);
 
@@ -510,7 +472,7 @@ public sealed class CockpitBand : AlternateInterface
             figure.Foreground = FigureBrush(m);
             arc.Data = v is null || Ceiling(m) is not { } ceiling
                 ? Geometry.Empty
-                : CockpitView.ArcGeometry(diameter, v.Value / ceiling);
+                : Controls.Arc.Geometry(diameter, v.Value / ceiling);
         }
 
         foreach ((MetricDefinition m, TextBlock value) in _figures)

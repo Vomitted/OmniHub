@@ -1,6 +1,7 @@
 <UserControl x:Class="OmniHub.App.Wpf.Views.GpuView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:OmniHub.App.Wpf.Controls"
              Background="{StaticResource BackgroundBrush}">
     <!-- The local TileLabel, TileValue and TileFoot copies that sat here are gone. The TileLabel
          copy shadowed the application's own without the text colour the shared one gained, so its
@@ -45,6 +46,15 @@
                 <Border x:Name="Side" Grid.Column="2" Style="{StaticResource PaneStyle}" VerticalAlignment="Top">
                     <StackPanel>
                         <TextBlock Text="State" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+
+                        <!-- The card drawn: its temperature against its own hot point, its load and its
+                             power against the limit the driver says it is held to. -->
+                        <controls:RingGauge x:Name="GpuRing" Diameter="108" Caption="temperature" HorizontalAlignment="Center"/>
+                        <controls:Meter x:Name="GpuLoadMeter" Label="Load" Margin="0,8,0,0"/>
+                        <controls:Meter x:Name="GpuPowerMeter" Label="Power" Margin="0,7,0,0"/>
+
+                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,12,0,9"/>
+
                         <TextBlock Text="Graphics mode" Style="{StaticResource CellNote}"/>
                         <TextBlock x:Name="ModeText" Style="{StaticResource BodyText}" FontSize="17" FontWeight="SemiBold" Text="--" Margin="0,2,0,0"/>
                         <TextBlock x:Name="ModeFoot" Style="{StaticResource TileFoot}" Text="READING..."/>

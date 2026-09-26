@@ -81,6 +81,11 @@ public partial class PowerView : UserControl, IDisposable
                 ChargeValue.Text = b.ChargePercent.ToString();
                 ChargeFoot.Text = b.Status.ToUpperInvariant();
 
+                // Whether it is charging comes from Windows' own power status, the same answer the
+                // Dashboard's battery gives, rather than from parsing the status wording above.
+                BatteryShape.Show(b.ChargePercent, System.Windows.Forms.SystemInformation.PowerStatus.BatteryChargeStatus
+                                                       .HasFlag(System.Windows.Forms.BatteryChargeStatus.Charging));
+
                 if (b.DesignCapacityMWh > 0 && b.FullChargeCapacityMWh > 0)
                 {
                     double healthPct = b.FullChargeCapacityMWh * 100.0 / b.DesignCapacityMWh;

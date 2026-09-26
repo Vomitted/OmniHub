@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Vomitted
 
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using OmniHub.Core.Fan;
 using OmniHub.Core.Hardware;
+using OmniHub.Core.Telemetry;
 using OmniHub.Core.Vendors;
 using UserControl = System.Windows.Controls.UserControl;
 namespace OmniHub.App.Wpf.Views;
@@ -132,6 +134,11 @@ public partial class DashboardView : UserControl
             ctx.OnReading -= OnReading;
             ctx.OnReading += OnReading;
 
+            // The widgets follow the shared tick, which only runs while the window is on screen.
+            _metrics.Updated -= UpdateWidgets;
+            _metrics.Updated += UpdateWidgets;
+            UpdateWidgets();
+
             // Re-read what the poll does not drive, so returning to the tab shows current state
             // rather than state from launch.
             RefreshGpuMode();
@@ -143,7 +150,11 @@ public partial class DashboardView : UserControl
             // that lost the race with PawnIO's service, and never correct itself.
             BuildReadiness();
         };
-        Unloaded += (_, _) => ctx.OnReading -= OnReading;
+        Unloaded += (_, _) =>
+        {
+            ctx.OnReading -= OnReading;
+            _metrics.Updated -= UpdateWidgets;
+        };
 
         SizeChanged += (_, e) => Reflow(e.NewSize.Width);
     }
@@ -159,8 +170,75 @@ public partial class DashboardView : UserControl
     /// display scaling a laptop screen is 1280 px wide, and the window's minimum is narrower
     /// than the two columns need.
     /// </summary>
-    private void Reflow(double width) =>
+    private void Reflow(double width)
+    {
         ColumnReflow.Apply(width, below: 830, GutterColumn, SideColumn, sideWidth: 300, Side);
+
+        // A widget needs about 190 px to hold its ring and its bars; below four of those, two by two.
+        Hero.Columns = width < 820 ? 2 : 4;
+    }
+
+    // ---------------------------------------------------------------- the widgets
+
+    /// <summary>
+    /// Redraws the four widgets from the shared readings.
+    ///
+    /// Every gauge and bar is drawn against the limit its hardware actually holds it to, read from
+    /// that hardware: the thermal thresholds the readings define, 100% for a load, the fan band's
+    /// measured maximum, the SMU's sustained limit, NVML's enforced power limit, the memory
+    /// installed. Where no such limit is known the figure stands alone and no bar is drawn.
+    /// </summary>
+    private void UpdateWidgets()
+    {
+        double? maxRpm = _ctx.FanBackend.Calibration.MaxRpm;
+
+        CpuRing.ShowTemperature(_metrics, "cpu");
+        GpuRing.ShowTemperature(_metrics, "gpu");
+        CpuClockMeta.Text = Fig(_metrics.Value("cpuclk"), "0.00", " GHz");
+        GpuClockMeta.Text = Fig(_metrics.Value("gpuclk"), "0", " MHz");
+
+        double? cpuLoad = _metrics.Value("cpuload"), gpuLoad = _metrics.Value("gpuload");
+        CpuLoadMeter.Show(Fig(cpuLoad, "0", "%"), Gauge.Fraction(cpuLoad, 100));
+        GpuLoadMeter.Show(Fig(gpuLoad, "0", "%"), Gauge.Fraction(gpuLoad, 100));
+
+        double? pkg = _metrics.Value("pkg"), pkgLimit = _metrics.PackageLimitWatts;
+        CpuPowerMeter.Show(Of(pkg, pkgLimit, "0.0", "W"), Gauge.Fraction(pkg, pkgLimit));
+        double? gpuW = _metrics.Value("gpuw"), gpuLimit = Nvml.KnownPowerCeilingWatts;
+        GpuPowerMeter.Show(Of(gpuW, gpuLimit, "0.0", "W"), Gauge.Fraction(gpuW, gpuLimit));
+
+        double? fan1 = _metrics.Value("fan"), fan2 = _metrics.Value("fan2");
+        Fan.SetSpeed(fan1);
+        FanRpmText.Text = Fig(fan1, "0", "");
+        Fan1Meter.Show(Fig(fan1, "0", " rpm"), Gauge.Fraction(fan1, maxRpm));
+        Fan2Meter.Show(Fig(fan2, "0", " rpm"), Gauge.Fraction(fan2, maxRpm));
+
+        double? mem = _metrics.Value("mem"), memTotal = _metrics.MemoryTotalGB;
+        MemMeter.Show(Of(mem, memTotal, "0.0", "GB"), Gauge.Fraction(mem, memTotal));
+
+        // Windows' own battery status: no WMI and no driver, so nothing here can wait.
+        var power = System.Windows.Forms.SystemInformation.PowerStatus;
+        bool battery = !power.BatteryChargeStatus.HasFlag(System.Windows.Forms.BatteryChargeStatus.NoSystemBattery)
+                       && power.BatteryLifePercent <= 1f;   // 255 over 100 is Windows for "unknown"
+        double? charge = battery ? Math.Round(power.BatteryLifePercent * 100) : null;
+        Battery.Show(charge, power.BatteryChargeStatus.HasFlag(System.Windows.Forms.BatteryChargeStatus.Charging));
+        ChargeText.Text = Fig(charge, "0", "");
+        PowerSourceMeta.Text = power.PowerLineStatus switch
+        {
+            System.Windows.Forms.PowerLineStatus.Online => "on AC",
+            System.Windows.Forms.PowerLineStatus.Offline => "on battery",
+            _ => "",
+        };
+    }
+
+    private static string Fig(double? value, string format, string unit) =>
+        value is { } v ? v.ToString(format, CultureInfo.InvariantCulture) + unit : Metrics.Unavailable;
+
+    /// <summary>"19.3 / 25 W" against a known limit, "19.3 W" without one.</summary>
+    private static string Of(double? value, double? limit, string format, string unit) =>
+        value is not { } v ? Metrics.Unavailable
+        : limit is { } l && l > 0
+            ? $"{v.ToString(format, CultureInfo.InvariantCulture)} / {l.ToString("0", CultureInfo.InvariantCulture)} {unit}"
+            : $"{v.ToString(format, CultureInfo.InvariantCulture)} {unit}";
 
     // ---------------------------------------------------------------- session figures
 
@@ -636,8 +714,8 @@ public partial class DashboardView : UserControl
     }
 
     /// <summary>
-    /// The fans in one line: who is steering, what was asked for, what the tachometer says, and
-    /// whether the firmware reports throttling.
+    /// The cooling card's words: who is steering, what the curve last asked for, and whether the
+    /// firmware reports throttling. The speed itself is the fan and the bars above.
     /// </summary>
     private void ShowFans(Reading r)
     {
@@ -645,7 +723,7 @@ public partial class DashboardView : UserControl
         {
             _settings.FanControlMode switch
             {
-                FanControlMode.Auto => _service.IsRunning ? "Curve" : "Curve, stopped",
+                FanControlMode.Auto => _service.IsRunning ? "On the curve" : "Curve stopped",
                 FanControlMode.BiosDefault => "BIOS in control",
                 FanControlMode.Max => "Held at maximum",
                 _ => "--",
@@ -655,12 +733,18 @@ public partial class DashboardView : UserControl
         if (_settings.FanControlMode == FanControlMode.Auto && _service.IsRunning && _service.HasCommanded)
             parts.Add($"{_service.LastCommandedLevelPercent}% asked");
 
-        // A level the board did not report reads as unavailable, never as a fan at 0 RPM, which
-        // on a hot machine is indistinguishable from the fault this application exists to catch.
-        parts.Add(r.FanLevel1 is { } ? $"{_ctx.FanBackend.Calibration.RpmText(r.FanLevel1)} rpm" : "speed not reported");
-
+        // A level the board did not report is said, never drawn as a fan at 0 RPM, which on a hot
+        // machine is indistinguishable from the fault this application exists to catch.
+        if (r.FanLevel1 is null) parts.Add("speed not reported");
         if (r.Throttling == true) parts.Add("firmware reports throttling");
 
         FansText.Text = string.Join(" · ", parts);
+        FanModeMeta.Text = _settings.FanControlMode switch
+        {
+            FanControlMode.Auto => "auto",
+            FanControlMode.BiosDefault => "BIOS",
+            FanControlMode.Max => "max",
+            _ => "",
+        };
     }
 }

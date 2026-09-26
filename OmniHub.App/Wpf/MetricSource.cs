@@ -139,6 +139,15 @@ public sealed class MetricSource : IDisposable
     /// </summary>
     public string? BindingLimitName { get; private set; }
 
+    /// <summary>
+    /// The processor's sustained power limit, from the same power-table read as the package figure:
+    /// the full scale for a package-power gauge. Null without an SMU.
+    /// </summary>
+    public double? PackageLimitWatts { get; private set; }
+
+    /// <summary>Installed memory, the full scale for a memory gauge. Null until the first read.</summary>
+    public double? MemoryTotalGB { get; private set; }
+
     private void Set(string key, double? value)
     {
         _values[key] = value;
@@ -207,6 +216,8 @@ public sealed class MetricSource : IDisposable
                 // null rather than holding its last value, so a dead reading cannot sit on screen
                 // looking live.
                 BindingLimitName = binding?.Name;
+                PackageLimitWatts = power is { StapmLimitWatts: > 0 } p ? p.StapmLimitWatts : null;
+                if (perf is { MemoryTotalGB: > 0 } m) MemoryTotalGB = m.MemoryTotalGB;
 
                 Set("pkg", power?.StapmWatts);
                 Set("limit", binding?.Percent);

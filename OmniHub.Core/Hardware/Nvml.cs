@@ -225,6 +225,15 @@ public static class Nvml
     private static double? _ceilingWatts;
     private static bool _ceilingRead;
 
+    /// <summary>
+    /// The card's enforced power limit, once a power reading has asked the driver for it; null
+    /// before that, or where the driver will not say.
+    ///
+    /// The full scale for a GPU power gauge: the limit the card is actually held to, read from the
+    /// card, rather than a rated figure from somebody's datasheet.
+    /// </summary>
+    public static double? KnownPowerCeilingWatts => _ceilingRead ? _ceilingWatts : null;
+
     private static double? PowerCeilingWatts(IntPtr device)
     {
         if (_ceilingRead) return _ceilingWatts;

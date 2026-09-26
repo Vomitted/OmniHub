@@ -680,6 +680,7 @@ public partial class FansView : UserControl
             // In Auto the curve's own tick sets the temperature it acted on; here only outside it.
             if (_settings.FanControlMode != FanControlMode.Auto)
                 SetTemperature(r.TemperatureC, r.Throttling == true);
+            SetFanSpeed(r.FanLevel1);
             RefreshSensorNote();
 
             if (_settings.FanControlMode != FanControlMode.Auto)
@@ -761,12 +762,24 @@ public partial class FansView : UserControl
     // application does not colour words; the figure going red beside it says the same thing.
     private void SetTemperature(int tempC, bool throttling, string? foot = null)
     {
-        TempValue.Text = tempC.ToString();
         TempFoot.Text = throttling ? "THROTTLING NOW" : foot ?? "NOMINAL";
 
-        var brush = (Brush)FindResource(throttling || tempC >= 80 ? "DangerBrush" : "TextPrimaryBrush");
-        TempValue.Foreground = brush;
-        TempUnit.Foreground = brush;
+        // Against the processor's own hot threshold, the same full scale the Dashboard's ring uses.
+        bool hot = throttling || tempC >= 80;
+        TempRing.Show(
+            OmniHub.Core.Telemetry.Gauge.Fraction(tempC,
+                OmniHub.Core.Telemetry.Metrics.FullScale(OmniHub.Core.Telemetry.Metrics.Find("cpu")!, null)),
+            tempC.ToString(System.Globalization.CultureInfo.InvariantCulture), "°C",
+            (Brush)FindResource(hot ? "DangerBrush" : "AccentGradientBrush"),
+            (Brush)FindResource(hot ? "DangerBrush" : "TextPrimaryBrush"));
+    }
+
+    /// <summary>The drawn fan follows the first fan's tachometer; a board that did not report stands it still.</summary>
+    private void SetFanSpeed(byte? raw)
+    {
+        int? rpm = raw is { } r ? _ctx.FanBackend.Calibration.RawToRpm(r) : null;
+        FanSpin.SetSpeed(rpm);
+        FanRpmNow.Text = rpm?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "--";
     }
 
     // Same candidate levels and rationale as Program.cs's CLI -Calibrate mode: this
