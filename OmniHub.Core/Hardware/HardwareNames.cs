@@ -43,6 +43,28 @@ public static partial class HardwareNames
         return Tidy(name);
     }
 
+    /// <summary>
+    /// The machine's name for a small label: "HP Victus 15-fb2xxx" from a product string of
+    /// "Victus by HP Gaming Laptop 15-fb2xxx". The maker's name once, at the front -- its first word,
+    /// so "Dell Inc." does not print as a company registration -- and the marketing class dropped;
+    /// the model number that identifies the board stays.
+    /// </summary>
+    public static string? ShortModel(string? manufacturer, string? product)
+    {
+        string maker = (manufacturer ?? "").Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+        if (string.IsNullOrWhiteSpace(product)) return Tidy(maker);
+
+        string name = product;
+        if (!string.IsNullOrWhiteSpace(manufacturer))
+            name = name.Replace($" by {manufacturer.Trim()}", " ", StringComparison.OrdinalIgnoreCase);
+        foreach (var noise in new[] { "Gaming Laptop", "Laptop PC", "Notebook PC", "Laptop" })
+            name = name.Replace(noise, " ", StringComparison.OrdinalIgnoreCase);
+
+        string? tidy = Tidy(name);
+        if (tidy is null) return Tidy(maker);
+        return maker.Length == 0 || tidy.StartsWith(maker, StringComparison.OrdinalIgnoreCase) ? tidy : $"{maker} {tidy}";
+    }
+
     private static string Cut(string name, params string[] from)
     {
         foreach (var marker in from)

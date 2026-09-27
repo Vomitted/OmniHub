@@ -40,6 +40,8 @@ public static class ThemeManager
     {
         new ThemeDefinition("Midnight", "Midnight", "Near-black, mint into cyan, a colour per component.",
             "Wpf/Palettes/Midnight.xaml"),
+        new ThemeDefinition("MidnightBlue", "Midnight Blue", "The previous Midnight: blue-tinted black, blue into cyan.",
+            "Wpf/Palettes/MidnightBlue.xaml"),
         new ThemeDefinition("OledBlack", "OLED Black", "True #000000, sharp and tight. Pixels off on an OLED panel.",
             "Wpf/Palettes/OledBlack.xaml"),
         new ThemeDefinition("Graphite", "Graphite", "Neutral grey, steel accent. Readings are the only colour.",

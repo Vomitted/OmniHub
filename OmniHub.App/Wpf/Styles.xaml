@@ -246,6 +246,43 @@
         </Setter>
     </Style>
 
+    <!-- The console's sidebar item, as the reference draws it: one line, the name in the monospace
+         face, and the selected item lifted as a neutral grey pill rather than tinted with the
+         accent. No rail and nothing that moves; the pill says which page this is. -->
+    <Style x:Key="ConsoleNavStyle" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid>
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource RadiusSm}" Margin="10,2"
+                                BorderThickness="1" BorderBrush="Transparent"/>
+                        <ContentPresenter Margin="22,6,12,6" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource PanelAltBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource PanelHoverBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- The small spaced capitals the reference puts over every figure: LOAD, PACKAGE, TOTAL. -->
     <Style x:Key="CapsLabel" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>

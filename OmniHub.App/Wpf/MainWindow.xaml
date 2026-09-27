@@ -18,11 +18,23 @@
              main thing making the window look like a skin rather than a tool. -->
         <Border x:Name="Sidebar" Grid.Column="0" Background="{StaticResource SidebarGradient}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
             <DockPanel LastChildFill="False">
-                <StackPanel DockPanel.Dock="Top" Margin="0,22,0,22">
+                <StackPanel x:Name="ClassicHeader" DockPanel.Dock="Top" Margin="0,22,0,22">
                     <TextBlock Text="OMNIHUB" FontFamily="{StaticResource MonoFont}" FontSize="15" FontWeight="Bold"
                                Foreground="{StaticResource TextPrimaryBrush}" Margin="24,0,0,0"/>
                     <TextBlock x:Name="ModelLabel" Text="" FontFamily="{StaticResource UiFont}" FontSize="11"
                                Foreground="{StaticResource TextFaintBrush}" Margin="24,5,16,0" TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <!-- The console's mark: a pale rounded square with the application's glyph, and the
+                     name beside it, as the reference heads its sidebar. -->
+                <StackPanel x:Name="ConsoleHeader" DockPanel.Dock="Top" Orientation="Horizontal" Margin="22,24,0,26" Visibility="Collapsed">
+                    <Border Width="32" Height="32" CornerRadius="{DynamicResource RadiusSm}" Background="{StaticResource TextPrimaryBrush}">
+                        <Path Data="M8,1.5 L14,5 L14,11 L8,14.5 L2,11 L2,5 Z M2,5 L8,8.5 L14,5 M8,8.5 L8,14.5"
+                              Stroke="{StaticResource BackgroundBrush}" StrokeThickness="1.4" StrokeLineJoin="Round"
+                              Width="17" Height="17" Stretch="Uniform"/>
+                    </Border>
+                    <TextBlock Text="OmniHub" FontFamily="{StaticResource UiFontSemibold}" FontSize="16" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="11,0,0,1"/>
                 </StackPanel>
 
                 <Grid DockPanel.Dock="Top">
@@ -48,9 +60,32 @@
                 <!-- The ACTIVE MODE card that sat here held one fact, the fan mode. Each item above
                      now carries the state of its own subject on a second line, the fan mode among
                      them (NavSummary), so the card said less than the list beside it. -->
-                <StackPanel DockPanel.Dock="Bottom" Margin="14,0,14,10">
+                <StackPanel DockPanel.Dock="Bottom" Margin="14,0,14,12">
                     <Button x:Name="EditLayoutBtn" Content="EDIT LAYOUT" Height="36"
                             Style="{StaticResource FlatButtonStyle}" Click="EditLayoutBtn_Click"/>
+
+                    <!-- The console's foot, where the reference keeps a user card: this machine, and
+                         who is steering its fans. -->
+                    <Border x:Name="ConsoleFooter" Visibility="Collapsed" Margin="0,10,0,0" Padding="10,9"
+                            Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="{DynamicResource RadiusMd}">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Left" Width="30" Height="30" CornerRadius="{DynamicResource RadiusSm}"
+                                    Background="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center">
+                                <Path Data="M2,3 H14 V10.5 H2 Z M5.5,13.5 H10.5 M8,10.5 V13.5" Stroke="{StaticResource BackgroundBrush}"
+                                      StrokeThickness="1.4" StrokeLineJoin="Round" Width="15" Height="15" Stretch="Uniform"/>
+                            </Border>
+                            <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock x:Name="FooterMachine" FontFamily="{StaticResource MonoFont}" FontSize="11.5" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                    <Ellipse x:Name="FooterDot" Width="6" Height="6" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock x:Name="FooterStatus" FontFamily="{StaticResource MonoFont}" FontSize="9.5"
+                                               Foreground="{StaticResource TextFaintBrush}" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
                 </StackPanel>
             </DockPanel>
         </Border>

@@ -49,6 +49,7 @@ public static class ThemeBrushes
         ("SidebarGradient", ["PanelColor", "BackgroundColor"]),
         ("CardGradientBrush", ["PanelAltColor", "PanelColor"]),
         ("PaneEdgeBrush", ["CardTopHighlightColor", "BorderColor"]),
+        ("DialGradientBrush", ["AccentColor", "AccentColor2"]),
         ("AccentGradientBrush", ["AccentColor", "AccentColor2"]),
         ("PressureGradientBrush", ["GoodColor", "WarnColor"]),
         ("CriticalGradientBrush", ["WarnColor", "DangerColor"]),

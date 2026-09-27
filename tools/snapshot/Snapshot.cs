@@ -199,6 +199,13 @@ internal static class Snapshot
         var tail = lines.Skip(Math.Max(1, lines.Length - 900)).Select(l => l.Trim().Split(',')).ToArray();
         if (tail.Length > 0 && Stamp(tail[^1]) is { } newest)
         {
+            // Fresh series first: whatever the sandbox read live before this (NVML answers there) is
+            // newer than every replayed row, and appending the log after it left the series out of
+            // time order -- a filled curve then folded back on itself and drew as a sliver. A second
+            // replay in one run would do the same.
+            foreach (var (key, _) in Row(tail[^1], null))
+                recent[key] = new OmniHub.Core.Telemetry.RecentSeries(((OmniHub.Core.Telemetry.RecentSeries)recent[key]!).Span);
+
             TimeSpan shift = DateTime.UtcNow - newest;
             foreach (var r in tail)
             {
@@ -303,6 +310,8 @@ internal static class Snapshot
         var layout = (OmniHub.Core.Workspaces.WorkspaceLayout)Field(win, "_layout")!;
         string theme = settings.ThemeName ?? "theme";
         string iface = settings.Interface.ToString();
+        int scroll = 0;
+        string look = "";
 
         void Capture(int i, string? tab = null)
         {
@@ -311,17 +320,38 @@ internal static class Snapshot
             if (tab is not null && !SelectTab(win, tab)) Say($"no tab named {tab} on workspace {i}");
             if (tab is not null) Pump(900);
             if (replay is { Length: > 0 }) { Replay(win, replay); Pump(300); }
+            if (scroll > 0)
+            {
+                // Every scroller in the window: a page's lower half is below the fold at any
+                // window the screen allows.
+                var pending = new Stack<DependencyObject>(new[] { (DependencyObject)win });
+                while (pending.TryPop(out var d))
+                {
+                    if (d is System.Windows.Controls.ScrollViewer sv) sv.ScrollToVerticalOffset(scroll);
+                    for (int c = 0; c < VisualTreeHelper.GetChildrenCount(d); c++) pending.Push(VisualTreeHelper.GetChild(d, c));
+                }
+                Pump(400);
+            }
             string name = new(layout.Workspaces[i].Name.Where(char.IsLetterOrDigit).ToArray());
-            string suffix = tab is null ? "" : "-" + new string(tab.Where(char.IsLetterOrDigit).ToArray());
+            string suffix = (tab is null ? "" : "-" + new string(tab.Where(char.IsLetterOrDigit).ToArray()))
+                          + (scroll > 0 ? $"-s{scroll}" : "") + (look != "" ? "-" + look : "");
             SavePng(win, Path.Combine(outDir, $"{iface}-{theme}-{i}-{name}{suffix}.png"));
         }
 
         // Steps, comma separated: "ws" for every workspace, a number for one, "5/History" for a tab
-        // inside a grouped page, "theme=Midnight", "iface=Cockpit". Order matters: a step applies
-        // to everything after it.
+        // inside a grouped page, "theme=Midnight", "iface=Cockpit", "look=Previous", "scroll=600"
+        // (pixels down each page before it is captured). Order matters: a step applies to
+        // everything after it.
         foreach (string step in plan.Split(','))
         {
             if (step.StartsWith("theme=")) { theme = step[6..]; OmniHub.App.Wpf.ThemeManager.Apply(theme); Pump(500); }
+            else if (step.StartsWith("scroll=")) scroll = int.Parse(step[7..]);
+            else if (step.StartsWith("look="))
+            {
+                win.SetLook(Enum.Parse<OmniHub.App.UiLook>(step[5..]));
+                look = step[5..];
+                Pump(700);
+            }
             else if (step.StartsWith("iface="))
             {
                 var mode = Enum.Parse<OmniHub.App.InterfaceMode>(step[6..]);

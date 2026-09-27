@@ -96,10 +96,11 @@ public class PageStructureTests
     [MemberData(nameof(Views))]
     public void APageHasOneTitleAndOneSentenceSayingWhatItIsFor(string file)
     {
-        // Two views legitimately have neither. DashboardView is the landing screen and opens on
-        // the machine's live state rather than on a heading about it; GroupView is not a page at
-        // all, but the container holding a sub-selector over several of them.
-        if (file is "DashboardView.xaml" or "GroupView.xaml") return;
+        // Two views legitimately have neither. The Dashboard is the landing screen and opens on the
+        // machine's live state rather than on a heading about it -- DashboardClassicView is the same
+        // screen under the previous look; GroupView is not a page at all, but the container holding
+        // a sub-selector over several of them.
+        if (file is "DashboardView.xaml" or "DashboardClassicView.xaml" or "GroupView.xaml") return;
 
         string xaml = Read(file);
         int titles = Regex.Matches(xaml, @"StaticResource PageTitle\}").Count;

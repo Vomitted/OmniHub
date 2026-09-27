@@ -53,6 +53,22 @@
                         </Border>
                         <TextBlock Style="{StaticResource SettingNote}"
                                    Text="Workspaces is the sidebar of arrangeable screens, and the default. Instrument puts every reading on one screen at once, each with its source named. Cockpit is an instrument cluster: one large arc for the die temperature with the fan and GPU flanking it. Editorial reads like a written report, narrow measure and small multiples. Command is one number, a few bars, and Ctrl+K for the rest. Switching is immediate and changes nothing about the hardware."/>
+
+                        <!-- How Workspaces is dressed. The previous look stays whole behind this, so a
+                             redesign never leaves somebody without the version they were used to. -->
+                        <TextBlock Text="LOOK" Style="{StaticResource DataLabelText}" Margin="0,16,0,0"/>
+                        <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3"
+                                HorizontalAlignment="Left" Margin="0,7,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="ConsoleLookBtn" GroupName="Look" Content="CONSOLE" Width="118" Height="30"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Console"/>
+                                <RadioButton x:Name="PreviousLookBtn" GroupName="Look" Content="PREVIOUS" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Previous"/>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Style="{StaticResource SettingNote}"
+                                   Text="Console is built to the reference: a dial for the die temperature with a card per component either side, one live chart, a sparse top bar and a one-line sidebar. Previous is the look before it: the widget row, the four history strips, the readout bar and the two-line sidebar. For the previous colours as well, choose Midnight Blue under Theme."/>
                     </StackPanel>
                 </StackPanel>
             </Border>

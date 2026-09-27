@@ -37,6 +37,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Added
 
+- **The previous interface, one setting away.** Settings → Look switches between the console and
+  the interface before it — the instrument bar across the top, the two-line sidebar, the four
+  gauges and the four history strips — live, without a restart. Its colours are a theme of their
+  own, **Midnight Blue**.
 - **A vendor seam, so support can widen past HP.** The cooling loop, the fan band, the
   throttling answer, the temperature reader and the optimisation code no longer name an HP type.
   What stays HP-shaped is the HP screens and the HP commands, which is where it belongs.
@@ -246,9 +250,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 - **The Dashboard is built around a centre**: a card per component down each side — the
   processor, memory, the graphics card, cooling — each in its own colour on a stripe along its
   edge, its icon and its bars, its name as the part's own ("Ryzen 5 8645HS"), one large figure and
-  two small ones; and between them a dial for the die temperature against its hot point, with its
-  status and the fan and package readings beneath. The presets sit at the top as one control, with
-  what the selected one sends written under it.
+  two small ones, the figure at the card's foot; and between them, twice a card's width, a dial for
+  the die temperature against its hot point, with a thin amber redline where warm begins, its
+  status, and the fan and package readings across its foot. Under them one live chart —
+  temperature, load or power over five minutes, the two components as smooth banded curves against
+  their real scale. The presets sit at the top as one control, with what the selected one sends
+  written under it; across the very top, a status pill and three readings; down the side, one line
+  per page and a card naming this machine.
 - **Midnight is the default look**: near-black, mint running into cyan, and a colour per component
   that means that component everywhere — cards, history, tiles. The whole interface is lit: panes
   with a highlighted top edge, a glow on arcs and bars in their own colour, a fan lit only while it
@@ -299,6 +307,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Fixed
 
+- **Bars are bars again.** Every bar — the cards', the meters', the limit strip's — drew thick in
+  the middle and pointed at both ends: its rounding asked for a radius longer than the bar, and
+  WPF answers that by stretching each corner along the bar. The ends are now rounded to half the
+  bar's own height.
 - **Switching theme repaints everything at once.** A live switch used to move the pane surfaces
   and leave the window background, the sidebar, the muted text and every gradient — rings, fan,
   bars, chart lines — in the previous theme until a restart. A test now holds the list of what a

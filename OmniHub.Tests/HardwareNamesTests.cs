@@ -24,6 +24,14 @@ public class HardwareNamesTests
         Assert.Equal(expected, HardwareNames.ShortGpu(reported));
 
     [Theory]
+    [InlineData("HP", "Victus by HP Gaming Laptop 15-fb2xxx", "HP Victus 15-fb2xxx")]
+    [InlineData("LENOVO", "Legion 5 15ACH6H", "LENOVO Legion 5 15ACH6H")]
+    [InlineData("Dell Inc.", "Dell G15 5520", "Dell G15 5520")]
+    [InlineData("HP", null, "HP")]
+    public void AMachineIsItsMakerAndModel(string? maker, string? product, string expected) =>
+        Assert.Equal(expected, HardwareNames.ShortModel(maker, product));
+
+    [Theory]
     [InlineData(null)]
     [InlineData("   ")]
     public void NothingReportedIsNothing(string? reported)

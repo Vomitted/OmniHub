@@ -31,8 +31,7 @@ public partial class DashboardView : UserControl
     private bool _suppressPresetEvent;
 
     // The cards' bars, made once and filled on every reading.
-    private readonly Controls.Meter _cpuLoad, _memUsed, _gpuLoad, _curve, _fan2;
-    private readonly Controls.FanGlyph _fanIcon = new() { ColourKey = "MetricFanBrush" };
+    private readonly Controls.Meter _cpuLoad, _memUsed, _gpuLoad, _cpuTemp, _gpuTemp;
 
     // What the poll last said that the shared readings do not carry: whether the firmware reports
     // throttling.
@@ -56,8 +55,6 @@ public partial class DashboardView : UserControl
         "mem", "selfcpu", "selfmem",
     };
 
-    private readonly Controls.ChartStack _history;
-
     public DashboardView(HardwareContext ctx, FanService service, AppSettings settings, MetricSource metrics)
     {
         InitializeComponent();
@@ -71,31 +68,22 @@ public partial class DashboardView : UserControl
         CpuCard.IconData = Controls.ComponentCard.Icons.Processor;
         GpuCard.IconData = Controls.ComponentCard.Icons.Graphics;
         MemCard.IconData = Controls.ComponentCard.Icons.Memory;
-        CoolCard.SetIcon(_fanIcon);
+        CoolCard.IconData = Controls.ComponentCard.Icons.Thermometer;
         CpuCard.Title = HardwareNames.ShortCpu(ReadProcessorName()) ?? "Processor";
         GpuCard.Title = "Discrete GPU";
         _cpuLoad = CpuCard.AddBar("LOAD");
         _memUsed = MemCard.AddBar("IN USE");
         _gpuLoad = GpuCard.AddBar("LOAD");
-        _curve = CoolCard.AddBar("CURVE ASKS");
-        _fan2 = CoolCard.AddBar("FAN 2");
+
+        // The sensors card, as the reference's: what the fans are answering to, each temperature in a
+        // badge over a bar against its own hot point, in its component's colour.
+        _cpuTemp = CoolCard.AddBar("CPU DIE", badged: true);
+        _gpuTemp = CoolCard.AddBar("GPU", badged: true);
 
         SensorsHost.Content = new Controls.SensorTiles(metrics, SensorKeys);
         ShowSince();
 
-        // Four strips, the processor and the graphics card in their own colours in every one, so a
-        // colour means one component all the way down. Each strip shares a scale across its lines:
-        // temperatures and power from the data, the fans against their measured maximum, load
-        // against a hundred.
-        double? maxRpm = ctx.FanBackend.Calibration.MaxRpm;
-        _history = new Controls.ChartStack(metrics);
-        _history.AddStrip("TEMPERATURE", ("cpu", "CPU", "MetricCpuBrush", null, null), ("gpu", "GPU", "MetricGpuBrush", null, null));
-        _history.AddStrip("FANS", ("fan", "Fan 1", "MetricFanBrush", 0, maxRpm), ("fan2", "Fan 2", "TextMutedBrush", 0, maxRpm));
-        _history.AddStrip("POWER", ("pkg", "CPU", "MetricCpuBrush", 0, null), ("gpuw", "GPU", "MetricGpuBrush", 0, null));
-        _history.AddStrip("LOAD", ("cpuload", "CPU", "MetricCpuBrush", 0, 100), ("gpuload", "GPU", "MetricGpuBrush", 0, 100));
-        _history.SetWindow(TimeSpan.FromMinutes(5));
-        _history.HoverChanged += at => HistoryMeta.Text = at is { } t ? t.ToLocalTime().ToString("HH:mm:ss") : "live";
-        HistoryHost.Content = _history;
+        LiveHost.Content = new Controls.LiveChart(metrics);
 
         LoadBattery();
         StartPowerDrawTimer();
@@ -157,26 +145,20 @@ public partial class DashboardView : UserControl
 
     // ---------------------------------------------------------------- layout
 
-    private void HistoryWindow_Checked(object sender, RoutedEventArgs e)
-    {
-        // Checked fires during InitializeComponent for the default, before the stack exists.
-        if (sender is System.Windows.Controls.RadioButton { Tag: string tag } && int.TryParse(tag, out int minutes))
-            _history?.SetWindow(TimeSpan.FromMinutes(minutes));
-    }
-
     /// <summary>
     /// The console as the reference lays it out -- cards down each side of the dial -- where there
     /// is room for three columns, and otherwise the dial across the top with the cards two by two.
     ///
-    /// The dial's field is 380 px and a card needs about 210 to keep its figure and its stats on
-    /// their lines, so three columns want about 900 with the gaps; below that the dial would be
-    /// clipped at the sides or the cards squeezed until their names cut off.
+    /// A card needs about 210 px to keep its figure and its stats on their lines, and the centre is
+    /// twice a card, as the reference draws it -- 420, room for the 320 ring and its glow. With the
+    /// gaps that is about 900; below it the cards would squeeze until their names cut off. The
+    /// lattice behind the ring is wider than the centre and is meant to be cut by its edges.
     /// </summary>
     private void Reflow(double width)
     {
-        bool stacked = width < 960;
+        bool stacked = width < 900;
 
-        CentreColumn.Width = stacked ? new GridLength(0) : new GridLength(1.3, GridUnitType.Star);
+        CentreColumn.Width = stacked ? new GridLength(0) : new GridLength(2, GridUnitType.Star);
         RightGap.Width = stacked ? new GridLength(0) : new GridLength(14);
         StackedGap.Height = new GridLength(stacked ? 14 : 0);
 
@@ -209,8 +191,7 @@ public partial class DashboardView : UserControl
     /// </summary>
     private void UpdateWidgets()
     {
-        double? maxRpm = _ctx.FanBackend.Calibration.MaxRpm;
-        double? fan1 = _metrics.Value("fan"), fan2 = _metrics.Value("fan2");
+        double? fan1 = _metrics.Value("fan");
         double? pkg = _metrics.Value("pkg"), pkgLimit = _metrics.PackageLimitWatts;
 
         // The dial: the die temperature against its hot point, its warning stretch tinted, and what
@@ -220,12 +201,14 @@ public partial class DashboardView : UserControl
         var level = Metrics.LevelOf("cpu", temp);
         double? full = Metrics.FullScale(cpuMetric, null);
         Dial.Show(Gauge.Fraction(temp, full), temp, cpuMetric.Format, "°C",
-                  Brush(level switch { MetricLevel.Hot => "DangerBrush", MetricLevel.Warn => "WarnBrush", _ => "AccentGradientBrush" }),
+                  Brush(level switch { MetricLevel.Hot => "DangerBrush", MetricLevel.Warn => "WarnBrush", _ => "DialGradientBrush" }),
                   Brush(temp is null ? "TextFaintBrush" : level switch { MetricLevel.Hot => "DangerBrush", MetricLevel.Warn => "WarnBrush", _ => "TextPrimaryBrush" }),
                   Gauge.Fraction(cpuMetric.WarnAt, full));
+        bool nominal = !_throttling && temp is not null && level is MetricLevel.Normal or MetricLevel.Unknown;
         Dial.ShowStatus(
             _throttling ? "FIRMWARE THROTTLING" : temp is null ? "NO READING" : level switch { MetricLevel.Hot => "HOT", MetricLevel.Warn => "WARM", _ => "NOMINAL" },
-            Brush(_throttling || level == MetricLevel.Hot ? "DangerBrush" : level == MetricLevel.Warn ? "WarnBrush" : temp is null ? "TextFaintBrush" : "GoodBrush"));
+            Brush(_throttling || level == MetricLevel.Hot ? "DangerBrush" : level == MetricLevel.Warn ? "WarnBrush" : temp is null ? "TextFaintBrush" : "AccentBrush"),
+            nominal);
         Dial.ShowChips("FAN", Fig(fan1, "0", " rpm"), "PACKAGE", Fig(pkg, "0.0", " W"));
 
         // The processor: its clock large, its load, and its power against the sustained limit.
@@ -256,21 +239,18 @@ public partial class DashboardView : UserControl
             + (power.BatteryChargeStatus.HasFlag(System.Windows.Forms.BatteryChargeStatus.Charging) ? " charging" : "");
         MemCard.ShowStats("BATTERY", _chargeText, "POWER", _drawText);
 
-        // The fans: the first one's speed large and turning, what the curve is asking for, the second fan.
-        _fanIcon.SetSpeed(fan1);
-        CoolCard.ShowFigure(fan1, "0", "rpm");
+        // The sensors the fans answer to, each against its own hot point, and what the fans are doing.
+        var gpuMetric = Metrics.Find("gpu")!;
+        double? gpuTemp = _metrics.Value("gpu");
+        CoolCard.ShowBar(_cpuTemp, Fig(temp, cpuMetric.Format, " °C"), Gauge.Fraction(temp, full), "MetricCpuBrush");
+        CoolCard.ShowBar(_gpuTemp, Fig(gpuTemp, gpuMetric.Format, " °C"), Gauge.Fraction(gpuTemp, Metrics.FullScale(gpuMetric, null)), "MetricGpuBrush");
         bool commanding = _settings.FanControlMode == FanControlMode.Auto && _service.IsRunning && _service.HasCommanded;
-        CoolCard.ShowBar(_curve, commanding ? $"{_service.LastCommandedLevelPercent} %" : "not commanding",
-                         commanding ? _service.LastCommandedLevelPercent / 100.0 : null);
-        CoolCard.ShowBar(_fan2, Fig(fan2, "0", " rpm"), Gauge.Fraction(fan2, maxRpm));
-        CoolCard.ShowStats("MODE", _settings.FanControlMode switch
+        CoolCard.ShowStats("FAN SPEED", Fig(fan1, "0", " rpm"), "CURVE", commanding ? $"{_service.LastCommandedLevelPercent} %" : _settings.FanControlMode switch
                            {
-                               FanControlMode.Auto => _service.IsRunning ? "curve" : "curve stopped",
                                FanControlMode.BiosDefault => "BIOS",
                                FanControlMode.Max => "maximum",
-                               _ => Metrics.Unavailable,
-                           },
-                           "THROTTLING", _throttling ? "reported" : "none");
+                               _ => "stopped",
+                           });
     }
 
     // The battery's two lines, kept between the readings that fill them at different rates: the

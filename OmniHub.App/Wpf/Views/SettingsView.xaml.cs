@@ -32,6 +32,9 @@ public partial class SettingsView : UserControl
             default: WorkspacesUiBtn.IsChecked = true; break;
         }
 
+        if (_settings.Look == UiLook.Previous) PreviousLookBtn.IsChecked = true;
+        else ConsoleLookBtn.IsChecked = true;
+
         if (_settings.CloseBehavior == CloseBehavior.Exit) ExitCloseBtn.IsChecked = true;
         else TrayCloseBtn.IsChecked = true;
 
@@ -554,6 +557,16 @@ public partial class SettingsView : UserControl
         // to the metric feed.
         if (Window.GetWindow(this) is MainWindow main) main.SetInterfaceMode(mode);
         else { _settings.Interface = mode; _settings.Save(); }
+    }
+
+    /// <summary>The console or the previous look, applied through the window for the reason above.</summary>
+    private void Look_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_suppressEvents) return;
+        if (sender is not RadioButton { Tag: string tag } || !Enum.TryParse(tag, out UiLook look)) return;
+
+        if (Window.GetWindow(this) is MainWindow main) main.SetLook(look);
+        else { _settings.Look = look; _settings.Save(); }
     }
 
     private void CloseBehavior_Checked(object sender, RoutedEventArgs e)

@@ -69,6 +69,19 @@ internal static class Roll
 }
 
 /// <summary>
+/// Rounds a bar's ends to half its height.
+///
+/// Not the theme's RadiusPill: a Border whose radii are longer than its sides scales each axis on its
+/// own, so a 999 radius on a bar 5 px high and 100 wide gave corners 50 px long and 2.5 high -- the
+/// bar drew as a spindle, thick in the middle and pointed at both ends.
+/// </summary>
+internal static class Pill
+{
+    public static void Round(Border border) =>
+        border.SizeChanged += (_, e) => border.CornerRadius = new CornerRadius(Math.Min(e.NewSize.Width, e.NewSize.Height) / 2);
+}
+
+/// <summary>
 /// The colour a drawn reading glows in: its own, so a warning arc glows amber rather than blue.
 ///
 /// A glow is light the mark gives off, which is why it is on the arcs, the bars and the fan and
@@ -352,13 +365,31 @@ public sealed class RingGauge : Grid
 /// </summary>
 public sealed class Meter : Grid
 {
+    // The fill brightens towards its end, as the reference draws its bars: a mask rather than a
+    // second colour, so the fill stays the shared theme brush and follows a theme switch.
+    private static readonly Brush FillFade = FrozenFade();
+
+    private static Brush FrozenFade()
+    {
+        var fade = new LinearGradientBrush(Color.FromArgb(0x8C, 0, 0, 0), Color.FromArgb(0xFF, 0, 0, 0), 0);
+        fade.Freeze();
+        return fade;
+    }
+
     private readonly TextBlock _label = new();
     private readonly TextBlock _value = new() { HorizontalAlignment = HorizontalAlignment.Right };
+    private readonly Border _badge = new()
+    {
+        BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(3), Padding = new Thickness(5, 0, 5, 0),
+        HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 0, 0, 3),
+    };
     private readonly Grid _bar = new() { Margin = new Thickness(0, 4, 0, 0) };
     private readonly ColumnDefinition _filled = new() { Width = new GridLength(0, GridUnitType.Star) };
     private readonly ColumnDefinition _rest = new() { Width = new GridLength(100, GridUnitType.Star) };
-    private readonly Border _fill = new();
+    private readonly Border _fill = new() { OpacityMask = FillFade };
     private readonly DropShadowEffect _glow = Glow.Make(blur: 8, opacity: 0.55);
+    private readonly DropShadowEffect _badgeGlow = Glow.Make(blur: 10, opacity: 0.6);
+    private bool _badged;
 
     public Meter()
     {
@@ -366,6 +397,7 @@ public sealed class Meter : Grid
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         _label.SetResourceReference(StyleProperty, "CellNote");
+        _label.VerticalAlignment = VerticalAlignment.Bottom;
         _value.SetResourceReference(StyleProperty, "CellFigure");
         _value.FontSize = 11.5;
         Children.Add(_label);
@@ -377,11 +409,11 @@ public sealed class Meter : Grid
 
         var track = new Border();
         track.SetResourceReference(Border.BackgroundProperty, "BorderBrush");   // visible on a pane; see RingGauge
-        track.SetResourceReference(Border.CornerRadiusProperty, "RadiusPill");
+        Pill.Round(track);
         SetColumnSpan(track, 2);
 
         _fill.SetResourceReference(Border.BackgroundProperty, "AccentGradientBrush");
-        _fill.SetResourceReference(Border.CornerRadiusProperty, "RadiusPill");
+        Pill.Round(_fill);
         _fill.Effect = _glow;
 
         _bar.Children.Add(track);
@@ -394,6 +426,41 @@ public sealed class Meter : Grid
     {
         get => _label.Text;
         set => _label.Text = value;
+    }
+
+    /// <summary>The label's style by key: the console's cards set theirs in small monospace capitals.</summary>
+    public string LabelStyle
+    {
+        set => _label.SetResourceReference(StyleProperty, value);
+    }
+
+    /// <summary>
+    /// The value in an outlined badge in the bar's own colour, glowing, as the reference sets its
+    /// sensor temperatures. The colour is on a figure, which is where this application allows it.
+    /// </summary>
+    public bool Badged
+    {
+        get => _badged;
+        set
+        {
+            if (_badged == value) return;
+            _badged = value;
+            if (value)
+            {
+                Children.Remove(_value);
+                _value.HorizontalAlignment = HorizontalAlignment.Center;
+                _badge.Child = _value;
+                _badge.Effect = _badgeGlow;
+                Children.Add(_badge);
+            }
+            else
+            {
+                _badge.Child = null;
+                Children.Remove(_badge);
+                _value.HorizontalAlignment = HorizontalAlignment.Right;
+                Children.Add(_value);
+            }
+        }
     }
 
     /// <summary>Shows a value; a null <paramref name="fraction"/> hides the bar rather than inventing a limit.</summary>
@@ -409,6 +476,13 @@ public sealed class Meter : Grid
         if (fill is null) _fill.SetResourceReference(Border.BackgroundProperty, "AccentGradientBrush");
         else _fill.Background = fill;
         _glow.Color = Glow.Of(_fill.Background);
+
+        if (_badged)
+        {
+            _badge.BorderBrush = _fill.Background;
+            _value.Foreground = _fill.Background;
+            _badgeGlow.Color = _glow.Color;
+        }
     }
 }
 

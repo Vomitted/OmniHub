@@ -44,6 +44,24 @@ public enum InterfaceMode
     Command,
 }
 
+/// <summary>
+/// The dress of the Workspaces interface. Kept as a choice because the user asked for the previous
+/// look to stay reachable while the new one is refined: an update that takes away the version
+/// somebody was used to, with no way back, is the redesign-out-from-under-them this application
+/// already refuses for the interfaces themselves.
+/// </summary>
+public enum UiLook
+{
+    /// <summary>
+    /// Built to the reference the user supplied: a sparse top bar, a one-line sidebar with the
+    /// machine's state at its foot, and the Dashboard's console. The default.
+    /// </summary>
+    Console,
+
+    /// <summary>The previous look: the readout bar, the two-line sidebar, the widget Dashboard.</summary>
+    Previous,
+}
+
 /// <summary>Which screen corner the telemetry overlay anchors to.</summary>
 public enum OverlayCorner { TopLeft, TopRight, BottomLeft, BottomRight }
 
@@ -170,6 +188,12 @@ public sealed class AppSettings
     /// application without them asking for it.
     /// </summary>
     public InterfaceMode Interface { get; set; } = InterfaceMode.Workspaces;
+
+    /// <summary>
+    /// How the Workspaces interface is dressed: the console built to the reference the user
+    /// supplied, or the look it had before, kept whole so it can be gone back to.
+    /// </summary>
+    public UiLook Look { get; set; } = UiLook.Console;
 
     /// <summary>
     /// The palette built in the application, as the four colours it is described by.

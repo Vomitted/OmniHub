@@ -402,3 +402,74 @@ surfaces are lighter, and `ContrastTests` put all three at 4.0 to 4.5 to 1 on th
 stacks below 960 px: the dial across the top, the cards two by two.
 
 Rendered at 1,440 and 1,180 px against the reference; 974 tests pass.
+
+## 10. Closer to the reference, and the previous look kept
+
+Section 9's Dashboard was answered "it not quite there yet, also make the previous ui be a setting".
+Asked which part, the user said all of it — the cards and numbers, the centre dial, the top bar and
+sidebar, the lower half — and chose the new console as the default, with the previous interface one
+setting away.
+
+### The setting
+
+**Settings → Look: Console | Previous.** `AppSettings.Look` (`UiLook`, default `Console`) is read by
+`MainWindow` in three places: the Dashboard it builds (`DashboardView` or `DashboardClassicView`, the
+section 8 Dashboard restored intact under its own class), the bar across the top (`ConsoleBar` or
+`InstrumentBar`), and the chrome (`ApplyLook`: the one-line sidebar with its footer card, or the
+two-line sidebar under the OMNIHUB heading). `SetLook` swaps all three live; nothing restarts. The
+previous colours are a palette of their own, **Midnight Blue**, because Midnight itself took the
+reference's neutral black in section 9 and a look is not a palette.
+
+### Measured again, this time for proportion
+
+Section 9 matched the reference's colours and its parts. What it missed was their sizes, and the
+difference was large enough to read as a different design.
+
+| | Reference | Section 9 | Now |
+| --- | --- | --- | --- |
+| Card : centre width | 1 : 2.07 | 1 : 1.3 | 1 : 2 |
+| Card shape | portrait, figure at the foot | landscape, figure under the title | taller than wide, figure at the foot |
+| Ring stroke, as a share of its diameter D | 2.2 % | 4.4 % | 2.5 % |
+| Visible gap at twelve o'clock (after the round caps) | about 3° | about 15° | about 3° |
+| Inner dashes | 0.82 D, visible beside the plate | 0.72 D, hidden behind it | 0.82 D |
+| Readout box | 0.31 D – 0.46 D below centre, the ring showing under it | covering the ring's foot | as the reference |
+| Line-work behind the ring | faint; the ring the only bright thing | as bright as the ring's track | 0.12 – 0.5 opacity |
+
+Two departures are deliberate, and both are the project's first rule outranking the image:
+
+- **The warning stretch is a redline.** The reference's ring is whole because its score is near the
+  top. This ring is a temperature against its hot point, and where warm begins is information; it is
+  now a 2 px amber arc just outside the ring rather than a band tinted into the track, which read as
+  a brown gap.
+- **The live chart draws temperature from 0 to the hot point**, the scale the dial and the sensor
+  bars already use. A scale fitted to the data made a two-degree wobble look like a cliff; the
+  reference's calm curves are what a real full scale looks like. The curves are smoothed by
+  `Spline` (Catmull-Rom with every control point clamped to its own segment, so no stretch bulges past
+  the two readings it joins — tested, and the test fails with the clamp removed), and each fill sits
+  on an opaque copy of its own shape, so the lower curve's band covers the upper one's: pink between
+  the lines, the second colour under its own, as the reference bands them.
+
+### A defect found on the way: bars drawn as spindles
+
+Every bar in the application — the cards', the meters', the limit strip's — rounded its ends with the
+theme's `RadiusPill`, 999. A WPF `Border` whose radii are longer than its sides scales each axis on its
+own, so a bar 5 px high and 100 wide got corners 50 px long and 2.5 high: thick in the middle and
+pointed at both ends. `Pill.Round` sets the radius to half the bar's actual height instead. This
+affected both looks and every theme.
+
+### The chrome
+
+`ConsoleBar` is the reference's top bar: a status pill at the left (what the fans are doing, the dot
+coloured, the words not), and three readings at the right — die temperature, GPU clock, fan speed, each
+figure in its component's colour — with the settings button after them. The sidebar is one line per
+page in the monospace face, the selected page a neutral pill, and a footer card carries this machine's
+short name (`HardwareNames.ShortModel`, tested) over the same fan status.
+
+### Verification
+
+Rendered at 1,440 and 1,180 px (three columns hold down to about 900) and compared against the
+reference crops; the Previous look rendered in Midnight and Midnight Blue. The snapshot tool gained
+two steps for this — `look=Previous` and `scroll=N`, the second because the lower half is below the
+fold at any window a screen allows — and its log replay now starts each series fresh: appending the
+log after readings the sandbox had already taken left a series out of time order, and a filled curve
+folded back on itself. 991 tests pass.

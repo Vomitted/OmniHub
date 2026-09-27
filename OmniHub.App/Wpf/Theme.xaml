@@ -79,6 +79,13 @@
         <GradientStop Color="{DynamicResource PanelColor}" Offset="1"/>
     </LinearGradientBrush>
 
+    <!-- The Dashboard dial's ring: the accent at the top right running into the second accent at the
+         bottom left, as the reference's ring runs mint into pale cyan round its left side. -->
+    <LinearGradientBrush x:Key="DialGradientBrush" StartPoint="1,0" EndPoint="0,1">
+        <GradientStop Color="{DynamicResource AccentColor}" Offset="0.2"/>
+        <GradientStop Color="{DynamicResource AccentColor2}" Offset="1"/>
+    </LinearGradientBrush>
+
     <!-- A pane's frame, lit along its top edge and settling into the border tone down the sides:
          light from above, the same light the card gradient under it describes. -->
     <LinearGradientBrush x:Key="PaneEdgeBrush" StartPoint="0,0" EndPoint="0,1">

@@ -104,7 +104,7 @@ public partial class MainWindow : Window
         // the dashboard is the landing tab, FansView drives the saved fan mode through
         // ApplySavedMode below, and GpuView's constructor applies the TGP unlock (see the
         // comment on that constructor, which relies on being built here).
-        _views["dashboard"] = new DashboardView(_ctx, _service, _settings, metrics);
+        _views["dashboard"] = CreateDashboard(metrics);
         _views["fans"] = _fansView;
 
         // Held rather than placed in _views: the GPU screen now lives inside the Performance
@@ -174,6 +174,7 @@ public partial class MainWindow : Window
         _layout = OmniHub.Core.Workspaces.WorkspaceLayout.Load();
         _currentWorkspace = 0;
         BuildWorkspaceNav();
+        ApplyLook();
 
         // The sidebar's second lines follow the same tick as every panel, which only runs while the
         // window is on screen -- so an index of the machine costs nothing while it sits in the tray.
@@ -472,9 +473,87 @@ public partial class MainWindow : Window
     private UIElement? WorkspacesChrome()
     {
         if (_metrics is not { } metrics) return null;
-        var bar = new Views.InstrumentBar(_ctx, metrics);
+
+        // Under the console look, the reference's sparse bar; under the previous look, the readout
+        // bar it had. Both are live bands the window disposes when the chrome is rebuilt.
+        Views.AlternateInterface bar = _settings.Look == UiLook.Console
+            ? new Views.ConsoleBar(_ctx, metrics, FanStatus, OpenSettings)
+            : new Views.InstrumentBar(_ctx, metrics);
         _chromeBand = bar;
-        return ChromeShell(bar, new Thickness(24, 12, 20, 11));
+        return ChromeShell(bar, _settings.Look == UiLook.Console ? new Thickness(24, 11, 18, 11) : new Thickness(24, 12, 20, 11));
+    }
+
+    // ---------------------------------------------------------------- the look
+
+    /// <summary>The Dashboard for the look in force: the console, or the previous widget page.</summary>
+    private UserControl CreateDashboard(MetricSource metrics) => _settings.Look == UiLook.Previous
+        ? new DashboardClassicView(_ctx, _service, _settings, metrics)
+        : new DashboardView(_ctx, _service, _settings, metrics);
+
+    /// <summary>
+    /// Switches between the console and the previous look, and remembers the choice. Called from
+    /// Settings; live rather than on restart, for the reason SetInterfaceMode gives -- a restart hands
+    /// the fans back to the BIOS, which is a thermal event and not something to spend on a preference.
+    /// </summary>
+    public void SetLook(UiLook look)
+    {
+        if (_settings.Look == look) return;
+
+        _settings.Look = look;
+        try { _settings.Save(); } catch { /* applied now even if it cannot be written */ }
+
+        // The Dashboard is the one view the look replaces; every other page is the same either way.
+        // Its subscriptions are tied to Loaded and Unloaded, so detaching it releases them.
+        if (_metrics is { } metrics) _views["dashboard"] = CreateDashboard(metrics);
+
+        BuildWorkspaceNav();
+        ApplyLook();
+        ApplyInterfaceMode();
+    }
+
+    /// <summary>The sidebar's head and foot, and whether the travelling rail is drawn, for the look.</summary>
+    private void ApplyLook()
+    {
+        bool console = _settings.Look == UiLook.Console;
+        ClassicHeader.Visibility = console ? Visibility.Collapsed : Visibility.Visible;
+        ConsoleHeader.Visibility = console ? Visibility.Visible : Visibility.Collapsed;
+        ConsoleFooter.Visibility = console ? Visibility.Visible : Visibility.Collapsed;
+        NavIndicator.Visibility = console ? Visibility.Collapsed : Visibility.Visible;
+        FooterMachine.Text = OmniHub.Core.Hardware.HardwareNames.ShortModel(_ctx.Model.Manufacturer, _ctx.Model.Product) ?? "This machine";
+        ConsoleFooter.ToolTip = $"{_ctx.Model.Manufacturer} {_ctx.Model.Product}".Trim();
+        UpdateNavStatus();
+    }
+
+    /// <summary>
+    /// Who is steering the fans, in a few words, and the colour of the dot beside them: green while
+    /// this application's curve is commanding them, amber while nothing of ours is, the accent while
+    /// they are held at maximum. Read from the fan service and the settings; nothing touches hardware.
+    /// </summary>
+    private (string Words, string DotKey) FanStatus()
+    {
+        bool steering = _settings.FanControlMode == FanControlMode.Auto && _service.IsRunning && _service.HasCommanded;
+        return _settings.FanControlMode switch
+        {
+            FanControlMode.Auto when steering => ($"FAN CURVE · {_service.LastCommandedLevelPercent}%", "GoodBrush"),
+            FanControlMode.Auto => ("FAN CURVE STOPPED", "WarnBrush"),
+            FanControlMode.BiosDefault => ("BIOS FAN CONTROL", "WarnBrush"),
+            FanControlMode.Max => ("FANS AT MAXIMUM", "AccentBrush"),
+            _ => ("FANS", "TextFaintBrush"),
+        };
+    }
+
+    /// <summary>The top bar's settings button: the workspace that leads with Settings.</summary>
+    private void OpenSettings()
+    {
+        for (int i = 0; i < _layout.Workspaces.Count; i++)
+        {
+            if (_layout.Workspaces[i].Panels.Count > 0 && _layout.Workspaces[i].Panels[0].Type == "settings")
+            {
+                SelectNavItem(i);
+                ShowWorkspace(i);
+                return;
+            }
+        }
     }
 
     private Border ChromeShell(UIElement content, Thickness padding) => new()
@@ -694,16 +773,25 @@ public partial class MainWindow : Window
             var status = new TextBlock { Style = (Style)FindResource("NavStatusText"), Visibility = Visibility.Collapsed };
             _navStatus.Add((workspace.Panels.Count > 0 ? workspace.Panels[0].Type : "", status));
 
+            // One line under the console look, as the reference draws its sidebar, with the state
+            // gathered into the card at the foot; two under the previous look.
+            bool console = _settings.Look == UiLook.Console;
+            if (console && row.Children.Count > 0 && row.Children[0] is FrameworkElement consoleIcon)
+            {
+                consoleIcon.VerticalAlignment = VerticalAlignment.Center;
+                consoleIcon.Margin = new Thickness(0, 0, 12, 0);
+            }
             row.Children.Add(new StackPanel
             {
                 VerticalAlignment = VerticalAlignment.Center,
-                Children = { new TextBlock { Text = workspace.Name }, status },
+                Children = { new TextBlock { Text = workspace.Name } },
             });
+            if (!console) ((StackPanel)row.Children[^1]).Children.Add(status);
 
             var item = new System.Windows.Controls.RadioButton
             {
                 GroupName = "Nav",
-                Style = (Style)FindResource("NavButtonStyle"),
+                Style = (Style)FindResource(console ? "ConsoleNavStyle" : "NavButtonStyle"),
                 Content = row,
                 Tag = index,
                 IsChecked = index == _currentWorkspace,
@@ -728,6 +816,14 @@ public partial class MainWindow : Window
     /// </summary>
     private void UpdateNavStatus()
     {
+        // The console's footer card: the same fan state the top bar's pill carries.
+        if (_settings.Look == UiLook.Console)
+        {
+            var (words, dotKey) = FanStatus();
+            FooterStatus.Text = words;
+            FooterDot.Fill = (Brush)FindResource(dotKey);
+        }
+
         if (_navStatus.Count == 0) return;
 
         var power = WinForms.SystemInformation.PowerStatus;

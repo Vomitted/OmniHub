@@ -148,12 +148,12 @@ public partial class LimitStrip : UserControl
 
         var groove = new Border();
         groove.SetResourceReference(Border.BackgroundProperty, "BorderBrush");
-        groove.SetResourceReference(Border.CornerRadiusProperty, "RadiusPill");
+        Pill.Round(groove);
         Grid.SetColumnSpan(groove, 2);
 
         var bar = new Border { Effect = Glow.Make(blur: 8, opacity: 0.55) };
         bar.SetResourceReference(Border.BackgroundProperty, "AccentGradientBrush");
-        bar.SetResourceReference(Border.CornerRadiusProperty, "RadiusPill");
+        Pill.Round(bar);
         Grid.SetColumn(bar, 0);
 
         var binding = new Grid { Margin = new Thickness(0, -2, 0, -2), IsHitTestVisible = false };
