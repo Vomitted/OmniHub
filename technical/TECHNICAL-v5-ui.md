@@ -688,3 +688,99 @@ each entrance runs and starts what it should — header, cards, dial and chart p
 sweeping (`enter` step) — and that with motion forced on, a page change starts its fade. 1,018 tests
 pass; `SurfaceAndMotionTests` fails with OLED Black's old card colour put back, and with the stagger's
 compression removed.
+
+## 13. Two looks the user chose, and a blur for every look
+
+After three rejected looks the user asked for references and "multiple candidates". Four were built as
+animated pages from real readings, each after a named, well-received design, and the user chose two:
+
+| Look | After | Its grammar |
+| --- | --- | --- |
+| **Frosted** | "Smart Home Dashboard — Designed for Modern Living", Beka Kvaratskhelia | Glass tiles over a warm, lit room; the machine drawn as the hero; soft pills; a floating dock |
+| **Dot matrix** | "New Nothing OS 4.0 Concept", Slava Kornilov for Geex Arts | Greys and one red; huge figures drawn in dots; history as lit columns; round buttons, a capsule, light tiles |
+
+And, verbatim, "i want that blur too, applied by toggle to every look". Both looks are options under
+**Settings → Look**, beside Studio, Console and Classic.
+
+### The blur
+
+**Settings → Frosted glass**, off by default, on every look. It is the real material, not a painted
+imitation: `DwmTheme.SetAcrylic` asks Windows for its transient backdrop (`DWMWA_SYSTEMBACKDROP_TYPE`
+= 3, acrylic), extends the frame over the whole client area, clears WPF's own clear colour to
+transparent, and hands the caption back to the system so the title bar shows the material too. What
+blurs is whatever is behind the window. Windows draws it only while the window has focus, and only
+from Windows 11 22H2; where it is refused, `SetAcrylic` returns false, the surfaces stay solid, and the
+setting's note says why nothing changed.
+
+The surfaces then turn translucent over it: the ground at 70 % of its own colour, every panel tone at
+88 % — a look's lighter tones made solid over its dark glass first, so a raised panel stays raised.
+Those two figures are what the contrast tests allowed. The acrylic's real range on this machine has
+not been measured, so the tests hold every text colour over an envelope wider than Windows' documented
+dark acrylic: from `#000000` to `#6A6A6A` behind the window. The first figures tried, 45 % and 80 %,
+failed there — faint text and the palettes' reds fell to 3.3 : 1 — which is why the blur is quieter than
+the reference's.
+
+### A look decides its materials
+
+Studio decides type and shape over the palette (section 12). Frosted and Dot matrix go one step
+further and decide the *materials* — the ground, the panel and border tones, the corners — so every
+page, not only the Dashboard, is made of the same stuff. The values live in Core (`LookSurfaces`).
+
+| Material | Frosted | Dot matrix |
+| --- | --- | --- |
+| Ground | a warm room lit from the upper right, `#26221E` into `#161412` | `#0A0A0A` |
+| Panel | white glass, 7 % / 10 % / 13 % for panel, raised, hover | `#1A1A1A`, `#222222`, `#2A2A2A` |
+| Corners | 26, small 14 | 30, small 18 |
+| Text | its own warm whites | its own greys |
+| Accent | the palette's | a red legible as text, `#FF6166`; the drawn red `#E8262C` for dots only |
+
+Everything a look does not set is the palette's — but a look's glass is lighter than any palette's
+panel, and a palette's red that reads at 5 : 1 on near-black fell to 3.5 on it. So
+`LookSurfaces.Overrides` lifts each text colour toward white, in the steps a custom palette already
+uses (`CustomPalette.Readable`), until it reads on the lightest surface the setting can put under it:
+the palette's hue, changed only as far as the glass requires. A lifted accent takes its gradient
+partner with it, and the text on the accent is chosen again.
+
+`Overrides` is the one function the window applies and the one the tests read, so the two cannot
+drift apart. `LookSurfaceTests` holds every text colour on every surface — ground, the three panel
+tones, the soft accent under the active chips — for every palette, under no look, Frosted and Dot
+matrix, with the blur off and on; the drawn red at the 3 : 1 a graphic needs on the tiles its dots sit
+on; and the tray flyout's and overlay's cards. Those two float over the desktop and over games, so
+glass there would be glass over anything: `FloatingCardBrush` and `FloatingOverlayBrush` are the
+panel made solid over the look's ground whenever a look or the blur makes panels translucent.
+
+The widened test earned its keep on the first run: Frosted's first materials put the palettes' greens,
+ambers and faint greys between 2.8 and 4.4 : 1 on its lighter glass. The room and the glass were
+darkened and the lift added until every case passed; with the lift disabled, twelve fail.
+
+### The shell
+
+Both looks put the navigation in a rail of round buttons in a floating dock (`RailNavStyle`), so the
+page takes the width: the mark alone at the top, the workspace's name in each button's tooltip with its
+number key and in its accessible name, the chosen one filled with the accent and its icon drawn in the
+colour made for text on the accent. Who is steering the fans stays in the top bar.
+
+### The Dashboards
+
+`FrostedDashboardView` and `DotMatrixDashboardView`, over a shared `LookDashboard` (the readings on the
+shared tick while shown, the throttling flag from the poll, presets, fan modes, battery, entrance):
+
+- **Frosted** — the laptop drawn with the die temperature on its screen, its state and what holds it
+  back beneath, the graphics, fan and power readings beside it; fans with the turning fan and
+  Auto/BIOS/Max; the three presets, each saying what it sends, and what the processor answers to;
+  processor and graphics tiles tinted in their colours with their five minutes; processor power
+  against the SMU's sustained limit as a ring; memory; battery.
+- **Dot matrix** — the die temperature drawn in dots sixteen pixels apart (`DotText`, from the 5 × 7
+  `DotFont` in Core) and a bar of dots against its hot point, the last lit dot red; five minutes as
+  columns of lit dots, the newest red; the binding limit on a light tile; fans; power as a capsule
+  against the sustained limit; graphics; the presets as round buttons; memory as a grid of dots; the
+  battery on a light tile; the processor's clock.
+
+Every scale is one the reading already has — a temperature against its own hot point, a load against a
+hundred, memory against what is installed, power against the SMU's limit — and a reading without one is
+the figure alone. A fan mode chosen on either goes through the Fans page as the tray's does, so there is
+one path to the hardware, and a mode changed elsewhere is shown without being sent again. Presets moved
+out of `DashboardView` into `PresetActions`, so all three Dashboards that offer them send the same
+writes; none touches the Windows power plan. Motion follows section 12: the tiles enter inside the
+budget, Frosted's lid opens and its curves draw in, Dot matrix's fields light column by column, and
+the loops — the live dots, the screen's glow, the fans — run only while shown.

@@ -37,8 +37,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Added
 
-- **Studio, and every earlier look one setting away.** Settings → Look chooses between three,
-  live, without a restart:
+- **Studio, two new looks, and every earlier look one setting away.** Settings → Look chooses
+  between five, live, without a restart:
   - **Studio**, the default: the console arranged for the window it is in — on a wide screen the
     four cards and the dial in one row, every card portrait — with each card's last five minutes
     drawn against the same scale as its bar, six readings with traces across the top, each page's
@@ -46,9 +46,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
     a fan view, a 5, 15 or 30-minute window and its values and times labelled. Headings are set in a
     sans, corners are rounded and bars are heavier whatever the theme, and each card's stripe glows
     inside it in the component's colour.
+  - **Frosted**, after Beka Kvaratskhelia's "Smart Home Dashboard": glass tiles over a warm, lit
+    room, the laptop drawn as the hero with the die temperature on its screen and its readings
+    beside it, pills for the fan modes and the presets, and the workspaces as round buttons in a
+    floating dock.
+  - **Dot matrix**, after Slava Kornilov's "Nothing OS 4.0" concept: greys and one red, the
+    readings drawn in dots, the last five minutes as columns of lit dots, round buttons, and the
+    binding limit and the battery on light tiles.
   - **Console**: the reference layout as first built, kept as it was.
   - **Classic**: the instrument bar, the two-line sidebar, the four gauges and the four history
     strips. Its colours are a theme of their own, **Midnight Blue**.
+
+  Frosted and Dot matrix set their own materials over the theme, so every page is made of them,
+  not only the Dashboard. The theme's colours stay; any that would fall below 4.5 : 1 on a look's
+  lighter glass are lifted toward white just far enough to read.
+- **Frosted glass, on every look.** Settings → Frosted glass puts Windows 11's own acrylic behind
+  the window — the desktop shows through the page, blurred — and turns the panels to glass over
+  it. They stay solid enough that every colour still reads at 4.5 : 1 over the darkest and the
+  lightest the material can be, and the tray flyout and the overlay, which float over the
+  desktop and over games, keep solid cards. Windows draws the material only while the window has
+  focus, and only from Windows 11 22H2; elsewhere the setting says so and nothing changes.
 - **A vendor seam, so support can widen past HP.** The cooling loop, the fan band, the
   throttling answer, the temperature reader and the optimisation code no longer name an HP type.
   What stays HP-shaped is the HP screens and the HP commands, which is where it belongs.

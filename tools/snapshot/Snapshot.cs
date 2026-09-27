@@ -405,6 +405,13 @@ internal static class Snapshot
                 Pump(300);
                 Say($"clock probe: opacity {probe.Opacity:0.00} after {(DateTime.UtcNow - started).TotalMilliseconds:0} ms (a ticking clock reads about 0.70)");
             }
+            else if (step == "glass")
+            {
+                // The blur's surfaces. The acrylic itself is the desktop window manager's and this
+                // desktop is never shown, so what is captured is the translucent page over nothing.
+                Say($"frosted glass: {(win.SetFrostedGlass(true) ? "acrylic accepted" : "acrylic refused here; surfaces solid")}");
+                Pump(500);
+            }
             else if (step.StartsWith("look="))
             {
                 win.SetLook(Enum.Parse<OmniHub.App.UiLook>(step[5..]));

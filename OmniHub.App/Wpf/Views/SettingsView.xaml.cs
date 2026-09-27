@@ -36,8 +36,11 @@ public partial class SettingsView : UserControl
         {
             UiLook.Classic => ClassicLookBtn,
             UiLook.Console => ConsoleLookBtn,
+            UiLook.Frosted => FrostedLookBtn,
+            UiLook.DotMatrix => DotMatrixLookBtn,
             _ => StudioLookBtn,
         }).IsChecked = true;
+        FrostedGlassToggle.IsChecked = _settings.FrostedGlass;
 
         if (_settings.CloseBehavior == CloseBehavior.Exit) ExitCloseBtn.IsChecked = true;
         else TrayCloseBtn.IsChecked = true;
@@ -571,6 +574,23 @@ public partial class SettingsView : UserControl
 
         if (Window.GetWindow(this) is MainWindow main) main.SetLook(look);
         else { _settings.Look = look; _settings.Save(); }
+    }
+
+    /// <summary>
+    /// The acrylic behind the window, through the window, which knows whether this Windows has it.
+    /// Where it does not, the setting is kept and the note says why nothing changed.
+    /// </summary>
+    private void FrostedGlass_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_suppressEvents) return;
+        bool on = FrostedGlassToggle.IsChecked == true;
+
+        if (Window.GetWindow(this) is MainWindow main)
+        {
+            if (!main.SetFrostedGlass(on) && on)
+                FrostedGlassNote.Text = "This build of Windows did not accept the acrylic, so the window stays solid. It needs Windows 11 22H2 or later; the setting is kept for when it has it.";
+        }
+        else { _settings.FrostedGlass = on; _settings.Save(); }
     }
 
     private void CloseBehavior_Checked(object sender, RoutedEventArgs e)

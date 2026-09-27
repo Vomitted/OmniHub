@@ -11,7 +11,7 @@
          readings was always going to do that: a theme changing its card padding, a longer
          fan-mode name, or a reading gaining a digit are all enough. SizeToContent removes
          the class of bug rather than buying a few more pixels of headroom. -->
-    <Border Style="{StaticResource CardBorderStyle}" Padding="18">
+    <Border Style="{StaticResource CardBorderStyle}" Background="{DynamicResource FloatingCardBrush}" Padding="18">
         <Border.Effect>
             <DropShadowEffect Color="Black" Opacity="0.4" BlurRadius="24" ShadowDepth="6" Direction="270"/>
         </Border.Effect>

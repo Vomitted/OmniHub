@@ -67,6 +67,15 @@ public enum UiLook
     /// option: a sparse top bar, a one-line sidebar, two cards either side of the dial.
     /// </summary>
     Console = 2,
+
+    /// <summary>
+    /// One soft frosted window of widgets over a warm, lit room, after the design chosen from four
+    /// candidates; navigation in a floating dock. (TECHNICAL-v5-ui.md, section 13.)
+    /// </summary>
+    Frosted = 3,
+
+    /// <summary>Greys and one red, figures drawn in dots, round buttons; navigation in a rail of them.</summary>
+    DotMatrix = 4,
 }
 
 /// <summary>Which screen corner the telemetry overlay anchors to.</summary>
@@ -201,6 +210,12 @@ public sealed class AppSettings
     /// or the look before it -- each kept whole so it can be gone back to.
     /// </summary>
     public UiLook Look { get; set; } = UiLook.Studio;
+
+    /// <summary>
+    /// The Windows 11 acrylic behind the window, on whichever look is chosen. Off by default: it is a
+    /// material the desktop behind the window shows through, and not everybody wants that.
+    /// </summary>
+    public bool FrostedGlass { get; set; }
 
     /// <summary>
     /// The palette built in the application, as the four colours it is described by.

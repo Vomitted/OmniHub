@@ -60,17 +60,37 @@
                         <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3"
                                 HorizontalAlignment="Left" Margin="0,7,0,0">
-                            <StackPanel Orientation="Horizontal">
+                            <WrapPanel Orientation="Horizontal">
                                 <RadioButton x:Name="StudioLookBtn" GroupName="Look" Content="STUDIO" Width="118" Height="30"
                                              Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Studio"/>
+                                <RadioButton x:Name="FrostedLookBtn" GroupName="Look" Content="FROSTED" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Frosted"/>
+                                <RadioButton x:Name="DotMatrixLookBtn" GroupName="Look" Content="DOT MATRIX" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="DotMatrix"/>
                                 <RadioButton x:Name="ConsoleLookBtn" GroupName="Look" Content="CONSOLE" Width="118" Height="30" Margin="3,0,0,0"
                                              Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Console"/>
                                 <RadioButton x:Name="ClassicLookBtn" GroupName="Look" Content="CLASSIC" Width="118" Height="30" Margin="3,0,0,0"
                                              Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Classic"/>
-                            </StackPanel>
+                            </WrapPanel>
                         </Border>
                         <TextBlock Style="{StaticResource SettingNote}"
-                                   Text="Studio arranges the console for the window it is in — on a wide screen the cards and the dial in one row — and gives every card its last five minutes, with a sans for headings whatever the theme. Console is the reference layout as first built: two cards either side of the dial. Classic is the look before both: the widget row, the four history strips, the readout bar and the two-line sidebar; for its colours as well, choose Midnight Blue under Theme."/>
+                                   Text="Studio arranges the console for the window it is in — on a wide screen the cards and the dial in one row — and gives every card its last five minutes, with a sans for headings whatever the theme. Frosted is glass tiles over a warm, lit room, the machine drawn as the hero with its readings beside it. Dot matrix is greys and one red, every figure drawn in dots and five minutes of history as lit columns. Both navigate by a rail of round buttons and keep the theme's colours for the readings, lifting any that would not read on their surfaces. Console is the reference layout as first built: two cards either side of the dial. Classic is the look before all of them: the widget row, the four history strips, the readout bar and the two-line sidebar; for its colours as well, choose Midnight Blue under Theme."/>
+
+                        <!-- The blur, on whichever look: Windows' own acrylic behind the window. -->
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                <TextBlock Text="Frosted glass" Style="{StaticResource SettingTitle}"/>
+                                <TextBlock x:Name="FrostedGlassNote" Style="{StaticResource SettingNote}"
+                                           Text="Puts Windows' own acrylic behind the window, on every look: the desktop shows through the page, blurred, and the panels turn to glass over it. The panels stay solid enough that every colour still reads at 4.5 to 1 whatever is behind them. Windows draws the material only while the window has focus, and only from Windows 11 22H2."/>
+                            </StackPanel>
+                            <CheckBox Grid.Column="1" x:Name="FrostedGlassToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                      VerticalAlignment="Center" Checked="FrostedGlass_Changed" Unchecked="FrostedGlass_Changed"
+                                      AutomationProperties.Name="Frosted glass"/>
+                        </Grid>
                     </StackPanel>
                 </StackPanel>
             </Border>
