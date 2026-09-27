@@ -34,8 +34,8 @@
 
     <Color x:Key="MetricCpuColor">#FF88C0D0</Color>
     <Color x:Key="MetricMemColor">#FFA3BE8C</Color>
-    <Color x:Key="MetricGpuColor">#FF8FBCBB</Color>
-    <Color x:Key="MetricFanColor">#FFD08770</Color>
+    <Color x:Key="MetricGpuColor">#FFC3A0BD</Color>
+    <Color x:Key="MetricFanColor">#FFDC9A82</Color>
 
     <Color x:Key="CardTopHighlightColor">#12FFFFFF</Color>
     <Color x:Key="GridLineColor">#FF1A212A</Color>

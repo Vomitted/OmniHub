@@ -29,26 +29,28 @@ namespace OmniHub.App.Wpf.Controls;
 public sealed class LiveChart : UserControl
 {
     private const double PlotHeight = 132, Inset = 8;
-    private static readonly TimeSpan Window = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan SlowGap = TimeSpan.FromSeconds(95);
-    private static readonly HashSet<string> FastKeys = new() { "cpu", "fan", "fan2" };
 
-    private sealed record Subject(string Name, (string Key, string Label, string BrushKey)[] Series, double? Min, double? Max);
+    private sealed record Subject(string Name, (string Key, string Label, string BrushKey)[] Series, double? Min, double? Max, string Unit);
 
     private static readonly Subject[] Subjects =
     {
         // Against the hot points, as the dial and the sensor bars draw them: a scale hugging the data
         // turned a two-degree wobble into a cliff.
         new("TEMPERATURE", new[] { ("cpu", "CPU", "MetricCpuBrush"), ("gpu", "GPU", "MetricGpuBrush") },
-            0, new[] { "cpu", "gpu" }.Max(k => Metrics.FullScale(Metrics.Find(k)!, null))),
-        new("LOAD", new[] { ("cpuload", "CPU", "MetricCpuBrush"), ("gpuload", "GPU", "MetricGpuBrush") }, 0, 100),
-        new("POWER", new[] { ("pkg", "CPU", "MetricCpuBrush"), ("gpuw", "GPU", "MetricGpuBrush") }, 0, null),
+            0, new[] { "cpu", "gpu" }.Max(k => Metrics.FullScale(Metrics.Find(k)!, null)), "°C"),
+        new("LOAD", new[] { ("cpuload", "CPU", "MetricCpuBrush"), ("gpuload", "GPU", "MetricGpuBrush") }, 0, 100, "%"),
+        new("POWER", new[] { ("pkg", "CPU", "MetricCpuBrush"), ("gpuw", "GPU", "MetricGpuBrush") }, 0, null, "W"),
     };
 
     private readonly MetricSource _source;
+    private readonly Subject[] _subjects;
+    private readonly bool _detailed;
     private int _subject;
+    private TimeSpan _window = Curves.Window;
 
     private readonly Canvas _plot = new() { Height = PlotHeight, ClipToBounds = true, Background = System.Windows.Media.Brushes.Transparent };
+    private readonly Canvas _grid = new() { IsHitTestVisible = false };
+    private readonly Canvas _times = new() { Height = 18, IsHitTestVisible = false };
     private readonly Path[] _areas = { new() { IsHitTestVisible = false }, new() { IsHitTestVisible = false } };
     private readonly Path[] _bases = { new() { IsHitTestVisible = false }, new() { IsHitTestVisible = false } };
     private readonly Path[] _lines = { new() { StrokeThickness = 2, IsHitTestVisible = false }, new() { StrokeThickness = 2, IsHitTestVisible = false } };
@@ -63,9 +65,20 @@ public sealed class LiveChart : UserControl
     private double _lo, _hi = 1;
     private DateTime _from, _to;
 
-    public LiveChart(MetricSource source)
+    /// <param name="detailed">
+    /// Studio's chart: the fans as a fourth subject, the last 5, 15 or 30 minutes (all that is kept),
+    /// and the values and times labelled -- what the classic look's four strips carried, and the
+    /// console's chart did not.
+    /// </param>
+    /// <param name="fanTop">The fan band's measured maximum, the fans' real full scale, where known.</param>
+    public LiveChart(MetricSource source, bool detailed = false, double? fanTop = null)
     {
         _source = source;
+        _detailed = detailed;
+        _subjects = detailed
+            ? Subjects.Append(new Subject("FANS", new[] { ("fan", "FAN 1", "MetricFanBrush"), ("fan2", "FAN 2", "TextMutedBrush") },
+                                          0, fanTop, "rpm")).ToArray()
+            : Subjects;
 
         var header = new Grid { Margin = new Thickness(0, 0, 0, 10) };
         var title = new StackPanel { Orientation = Orientation.Horizontal };
@@ -76,11 +89,11 @@ public sealed class LiveChart : UserControl
         name.SetResourceReference(StyleProperty, "PaneTitle");
         title.Children.Add(name);
 
-        for (int i = 0; i < Subjects.Length; i++)
+        for (int i = 0; i < _subjects.Length; i++)
         {
             var tab = new RadioButton
             {
-                Content = Subjects[i].Name, Tag = i, GroupName = "LiveSubject", Height = 24, MinWidth = 64,
+                Content = _subjects[i].Name, Tag = i, GroupName = "LiveSubject", Height = 24, MinWidth = 64,
                 Margin = new Thickness(0, 0, 2, 0), IsChecked = i == 0, FontSize = 9.5,
             };
             tab.SetResourceReference(StyleProperty, "PillRadioStyle");
@@ -93,6 +106,26 @@ public sealed class LiveChart : UserControl
         header.Children.Add(title);
 
         var legend = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+        if (detailed)
+        {
+            foreach (int minutes in new[] { 5, 15, 30 })
+            {
+                var pill = new RadioButton
+                {
+                    Content = $"{minutes} MIN", Tag = minutes, GroupName = "LiveWindow", Height = 24, MinWidth = 56,
+                    Margin = new Thickness(2, 0, 0, 0), IsChecked = minutes == 5, FontSize = 9.5,
+                };
+                pill.SetResourceReference(StyleProperty, "PillRadioStyle");
+                pill.Checked += (sender, _) =>
+                {
+                    if (sender is RadioButton { Tag: int m }) { _window = TimeSpan.FromMinutes(m); Refresh(); }
+                };
+                legend.Children.Add(pill);
+            }
+            var divider = new Border { Width = 1, Height = 16, Margin = new Thickness(14, 0, 0, 0) };
+            divider.SetResourceReference(Border.BackgroundProperty, "BorderBrush");
+            legend.Children.Add(divider);
+        }
         foreach (var (swatch, label) in _legend)
         {
             swatch.Width = 12;
@@ -115,6 +148,8 @@ public sealed class LiveChart : UserControl
             _plot.Children.Add(_bases[i]);
             _plot.Children.Add(_areas[i]);
         }
+        // The rules and their labels over the fills (whose bases are opaque) and under the lines.
+        _plot.Children.Add(_grid);
         foreach (var line in _lines) _plot.Children.Add(line);
         _cross.SetResourceReference(Shape.StrokeProperty, "TextFaintBrush");
         _plot.Children.Add(_cross);
@@ -134,6 +169,11 @@ public sealed class LiveChart : UserControl
         var root = new DockPanel();
         DockPanel.SetDock(header, Dock.Top);
         root.Children.Add(header);
+        if (detailed)
+        {
+            DockPanel.SetDock(_times, Dock.Bottom);
+            root.Children.Add(_times);
+        }
         root.Children.Add(_plot);
         Content = root;
 
@@ -144,7 +184,7 @@ public sealed class LiveChart : UserControl
     private void Refresh()
     {
         double width = _plot.ActualWidth;
-        var subject = Subjects[_subject];
+        var subject = _subjects[_subject];
 
         for (int i = 0; i < 2; i++)
         {
@@ -155,7 +195,7 @@ public sealed class LiveChart : UserControl
         if (width < 20) return;
 
         _to = DateTime.UtcNow;
-        _from = _to - Window;
+        _from = _to - _window;
 
         // One scale for both curves: they share a unit. Fixed where the reading has a real range.
         double lo = double.MaxValue, hi = double.MinValue;
@@ -168,39 +208,19 @@ public sealed class LiveChart : UserControl
         _lo = subject.Min ?? scale.Lo;
         _hi = subject.Max ?? scale.Hi;
 
+        if (_detailed)
+        {
+            DrawValues(width, subject.Unit);
+            DrawTimes(width);
+        }
+
         for (int i = 0; i < 2; i++)
         {
             var (key, _, brushKey) = subject.Series[i];
             var brush = (Brush)FindResource(brushKey);
             _lines[i].Stroke = brush;
 
-            var segments = TimeSeriesDecimator.Decimate(_source.Recent(key), _from, _to, Math.Max(8, (int)(width / 6)),
-                FastKeys.Contains(key) ? TimeSpan.FromSeconds(30) : SlowGap);
-
-            var line = new StreamGeometry();
-            var area = new StreamGeometry();
-            using (var l = line.Open())
-            using (var a = area.Open())
-            {
-                foreach (var segment in segments)
-                {
-                    if (segment.Count < 2) continue;
-                    var points = segment.Select(p => (X: X(p.AtUtc, width), Y: Y(p.Value))).ToList();
-                    var curve = Spline.Through(points);
-
-                    l.BeginFigure(new Point(points[0].X, points[0].Y), false, false);
-                    a.BeginFigure(new Point(points[0].X, PlotHeight), true, true);
-                    a.LineTo(new Point(points[0].X, points[0].Y), false, false);
-                    foreach (var c in curve)
-                    {
-                        l.BezierTo(new Point(c.C1.X, c.C1.Y), new Point(c.C2.X, c.C2.Y), new Point(c.End.X, c.End.Y), true, true);
-                        a.BezierTo(new Point(c.C1.X, c.C1.Y), new Point(c.C2.X, c.C2.Y), new Point(c.End.X, c.End.Y), false, true);
-                    }
-                    a.LineTo(new Point(points[^1].X, PlotHeight), false, false);
-                }
-            }
-            line.Freeze();
-            area.Freeze();
+            var (line, area) = Curves.Draw(key, _source.Recent(key), _from, _to, width, PlotHeight, Y, (int)(width / 6));
             _lines[i].Data = line;
             _areas[i].Data = area;
             _bases[i].Data = area;
@@ -210,8 +230,48 @@ public sealed class LiveChart : UserControl
             if (_tints[i] != colour)
             {
                 _tints[i] = colour;
-                _areas[i].Fill = new LinearGradientBrush(Color.FromArgb(0x4C, colour.R, colour.G, colour.B), Color.FromArgb(0x00, colour.R, colour.G, colour.B), 90);
+                _areas[i].Fill = Curves.Fill(colour);
             }
+        }
+    }
+
+    /// <summary>Two or three quiet rules at round values of the scale in force, each labelled with its unit.</summary>
+    private void DrawValues(double width, string unit)
+    {
+        _grid.Children.Clear();
+        var axis = ValueAxis.Nice(_lo, _hi, 3);
+        foreach (double value in axis.Ticks())
+        {
+            if (value < _lo || value > _hi) continue;
+            double y = Math.Round(Y(value)) + 0.5;
+
+            var rule = new Line { X1 = 0, X2 = width, Y1 = y, Y2 = y, StrokeThickness = 1, StrokeDashArray = new DoubleCollection { 2, 4 } };
+            rule.SetResourceReference(Shape.StrokeProperty, "BorderBrush");
+            _grid.Children.Add(rule);
+
+            var label = new TextBlock { Text = value.ToString("F" + axis.Decimals, System.Globalization.CultureInfo.InvariantCulture) + " " + unit };
+            label.SetResourceReference(StyleProperty, "CapsLabel");
+            Canvas.SetLeft(label, 2);
+            Canvas.SetTop(label, y < 18 ? y + 3 : y - 15);   // under the top rule, over the others
+            _grid.Children.Add(label);
+        }
+    }
+
+    /// <summary>Clock times under the plot: every minute across five, every five across fifteen or thirty.</summary>
+    private void DrawTimes(double width)
+    {
+        _times.Children.Clear();
+        var step = TimeSpan.FromMinutes(_window.TotalMinutes <= 5 ? 1 : 5);
+        var at = new DateTime(_from.Ticks - _from.Ticks % step.Ticks + step.Ticks, DateTimeKind.Utc);
+        for (; at < _to; at += step)
+        {
+            double x = X(at, width);
+            if (x < 24 || x > width - 24) continue;
+            var label = new TextBlock { Text = at.ToLocalTime().ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture) };
+            label.SetResourceReference(StyleProperty, "CapsLabel");
+            Canvas.SetLeft(label, x - 14);
+            Canvas.SetTop(label, 5);
+            _times.Children.Add(label);
         }
     }
 
@@ -227,7 +287,7 @@ public sealed class LiveChart : UserControl
 
         double x = Math.Clamp(e.GetPosition(_plot).X, 0, width);
         DateTime at = _from + TimeSpan.FromSeconds((_to - _from).TotalSeconds * x / width);
-        var subject = Subjects[_subject];
+        var subject = _subjects[_subject];
 
         var parts = new List<string>();
         double? firstY = null;

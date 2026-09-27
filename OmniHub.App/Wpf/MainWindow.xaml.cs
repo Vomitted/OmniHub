@@ -476,22 +476,31 @@ public partial class MainWindow : Window
 
         // Under the console look, the reference's sparse bar; under the previous look, the readout
         // bar it had. Both are live bands the window disposes when the chrome is rebuilt.
-        Views.AlternateInterface bar = _settings.Look == UiLook.Console
-            ? new Views.ConsoleBar(_ctx, metrics, FanStatus, OpenSettings)
+        Views.AlternateInterface bar = ConsoleChrome
+            ? new Views.ConsoleBar(_ctx, metrics, FanStatus, OpenSettings, dense: _settings.Look == UiLook.Studio)
             : new Views.InstrumentBar(_ctx, metrics);
         _chromeBand = bar;
-        return ChromeShell(bar, _settings.Look == UiLook.Console ? new Thickness(24, 11, 18, 11) : new Thickness(24, 12, 20, 11));
+        return ChromeShell(bar, ConsoleChrome ? new Thickness(24, 11, 18, 11) : new Thickness(24, 12, 20, 11));
     }
 
     // ---------------------------------------------------------------- the look
 
-    /// <summary>The Dashboard for the look in force: the console, or the previous widget page.</summary>
-    private UserControl CreateDashboard(MetricSource metrics) => _settings.Look == UiLook.Previous
+    /// <summary>Studio and Console share the reference's chrome; only Classic keeps the one before it.</summary>
+    private bool ConsoleChrome => _settings.Look != UiLook.Classic;
+
+    /// <summary>The Dashboard for the look in force: the console with or without Studio's arrangement, or the widget page.</summary>
+    private UserControl CreateDashboard(MetricSource metrics) => _settings.Look == UiLook.Classic
         ? new DashboardClassicView(_ctx, _service, _settings, metrics)
-        : new DashboardView(_ctx, _service, _settings, metrics);
+        : new DashboardView(_ctx, _service, _settings, metrics, studio: _settings.Look == UiLook.Studio);
 
     /// <summary>
-    /// Switches between the console and the previous look, and remembers the choice. Called from
+    /// Studio's heading face, set over the palette's. A palette decides colour; the look decides type
+    /// -- OLED Black's headings are Cascadia Mono, which set every page title as a terminal would.
+    /// </summary>
+    private static readonly System.Windows.Media.FontFamily StudioHeading = new("Segoe UI Variable Display Semibold, Segoe UI Semibold, Segoe UI");
+
+    /// <summary>
+    /// Switches between the looks -- Studio, Console, Classic -- and remembers the choice. Called from
     /// Settings; live rather than on restart, for the reason SetInterfaceMode gives -- a restart hands
     /// the fans back to the BIOS, which is a thermal event and not something to spend on a preference.
     /// </summary>
@@ -514,7 +523,13 @@ public partial class MainWindow : Window
     /// <summary>The sidebar's head and foot, and whether the travelling rail is drawn, for the look.</summary>
     private void ApplyLook()
     {
-        bool console = _settings.Look == UiLook.Console;
+        bool console = ConsoleChrome;
+
+        // Straight on the application's dictionary, which is looked in before any merged palette, so
+        // a theme switch keeps it and removing it hands the heading back to the palette.
+        if (_settings.Look == UiLook.Studio) System.Windows.Application.Current.Resources["HeadingFont"] = StudioHeading;
+        else System.Windows.Application.Current.Resources.Remove("HeadingFont");
+
         ClassicHeader.Visibility = console ? Visibility.Collapsed : Visibility.Visible;
         ConsoleHeader.Visibility = console ? Visibility.Visible : Visibility.Collapsed;
         ConsoleFooter.Visibility = console ? Visibility.Visible : Visibility.Collapsed;
@@ -775,7 +790,7 @@ public partial class MainWindow : Window
 
             // One line under the console look, as the reference draws its sidebar, with the state
             // gathered into the card at the foot; two under the previous look.
-            bool console = _settings.Look == UiLook.Console;
+            bool console = ConsoleChrome;
             if (console && row.Children.Count > 0 && row.Children[0] is FrameworkElement consoleIcon)
             {
                 consoleIcon.VerticalAlignment = VerticalAlignment.Center;
@@ -786,7 +801,9 @@ public partial class MainWindow : Window
                 VerticalAlignment = VerticalAlignment.Center,
                 Children = { new TextBlock { Text = workspace.Name } },
             });
-            if (!console) ((StackPanel)row.Children[^1]).Children.Add(status);
+            // Studio keeps the state under each name that the console look gathered into its footer:
+            // the user went back to the look that had it within minutes of seeing one without.
+            if (!console || _settings.Look == UiLook.Studio) ((StackPanel)row.Children[^1]).Children.Add(status);
 
             var item = new System.Windows.Controls.RadioButton
             {
@@ -817,7 +834,7 @@ public partial class MainWindow : Window
     private void UpdateNavStatus()
     {
         // The console's footer card: the same fan state the top bar's pill carries.
-        if (_settings.Look == UiLook.Console)
+        if (ConsoleChrome)
         {
             var (words, dotKey) = FanStatus();
             FooterStatus.Text = words;

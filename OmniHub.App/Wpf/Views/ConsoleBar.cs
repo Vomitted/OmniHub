@@ -17,28 +17,37 @@ namespace OmniHub.App.Wpf.Views;
 /// status pill at the left, a few readings at the right in their components' colours, and the way
 /// to Settings.
 ///
-/// Sparse on purpose, and the opposite of the bar it replaces under this look. The reference carries
-/// two readings up here and lets the page below do the rest; six figures with six traces across the
-/// top of every page were the busiest thing on the screen, above a page built to be calm. The
-/// reference's bell is left out: this application has no notifications, and a bell that does
-/// nothing would be decoration pretending to be a feature.
+/// The console look keeps it sparse, as the reference does: three readings, the page below doing
+/// the rest. That was argued as calm, and the user's answer was to switch back to the classic look,
+/// whose bar has six readings with a trace each, within minutes of seeing it. Studio's bar is dense
+/// again for that reason -- six readings, each trace in its component's colour -- and keeps the
+/// reference's shape around them. The reference's bell is left out of both: this application has no
+/// notifications, and a bell that does nothing would be decoration pretending to be a feature.
 /// </summary>
 public sealed class ConsoleBar : AlternateInterface
 {
     private readonly Func<(string Words, string DotKey)> _status;
     private readonly Action _openSettings;
+    private readonly bool _dense;
+
+    private const double TraceWidth = 44, TraceHeight = 14;
 
     private readonly Ellipse _dot = new() { Width = 7, Height = 7, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _statusText = new();
-    private readonly List<(string Key, string Unit, TextBlock Value)> _readings = new();
+    private readonly List<(string Key, string Unit, TextBlock Value, Path? Trace, FrameworkElement Cell)> _readings = new();
 
     /// <param name="status">Who is steering the fans, in words, and the colour of the dot beside them.</param>
     /// <param name="openSettings">Where the settings button goes.</param>
-    public ConsoleBar(HardwareContext ctx, MetricSource metrics, Func<(string Words, string DotKey)> status, Action openSettings)
+    /// <param name="dense">
+    /// Studio's bar: six readings, each with its recent trace, instead of the console's three. The user
+    /// went back to the look whose bar had them within minutes of seeing the sparse one.
+    /// </param>
+    public ConsoleBar(HardwareContext ctx, MetricSource metrics, Func<(string Words, string DotKey)> status, Action openSettings, bool dense = false)
         : base(ctx, metrics, null)
     {
         _status = status;
         _openSettings = openSettings;
+        _dense = dense;
         Start();
     }
 
@@ -72,15 +81,25 @@ public sealed class ConsoleBar : AlternateInterface
 
         // The readings, each in its component's colour, divided by hairlines.
         var readings = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        foreach (var (key, caption, unit, colour) in new[]
-                 {
-                     ("cpu", "CPU DIE", " °C", "MetricCpuBrush"),
-                     ("gpuclk", "GPU CLOCK", " MHz", "MetricGpuBrush"),
-                     ("fan", "FANS", " RPM", "MetricFanBrush"),
-                 })
+        var sparse = new[]
+        {
+            ("cpu", "CPU DIE", " °C", "MetricCpuBrush"),
+            ("gpuclk", "GPU CLOCK", " MHz", "MetricGpuBrush"),
+            ("fan", "FANS", " RPM", "MetricFanBrush"),
+        };
+        var dense = new[]
+        {
+            ("cpu", "CPU DIE", " °C", "MetricCpuBrush"),
+            ("gpu", "GPU", " °C", "MetricGpuBrush"),
+            ("fan", "FANS", " RPM", "MetricFanBrush"),
+            ("pkg", "PACKAGE", " W", "MetricCpuBrush"),
+            ("gpuw", "GPU POWER", " W", "MetricGpuBrush"),
+            ("cpuload", "CPU LOAD", " %", "MetricCpuBrush"),
+        };
+        foreach (var (key, caption, unit, colour) in _dense ? dense : sparse)
         {
             if (readings.Children.Count > 0)
-                readings.Children.Add(new Border { Width = 1, Height = 24, Margin = new Thickness(18, 0, 18, 0), Background = Brush("BorderBrush") });
+                readings.Children.Add(new Border { Width = 1, Height = 24, Margin = new Thickness(_dense ? 14 : 18, 0, _dense ? 14 : 18, 0), Background = Brush("BorderBrush") });
 
             var cell = new StackPanel();
             cell.Children.Add(new TextBlock
@@ -99,12 +118,46 @@ public sealed class ConsoleBar : AlternateInterface
                 FontWeight = FontWeights.SemiBold,
                 Foreground = Brush(colour),
                 HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(0, 2, 0, 0),
             };
-            cell.Children.Add(value);
+
+            // Dense: the trace beside the figure, scaled to its own window as the classic bar's are,
+            // so it shows movement and the figure carries the level.
+            Path? trace = null;
+            if (_dense)
+            {
+                trace = new Path
+                {
+                    Width = TraceWidth, Height = TraceHeight, StrokeThickness = 1.25,
+                    StrokeLineJoin = PenLineJoin.Round, Stroke = Brush(colour), Opacity = 0.9,
+                    Margin = new Thickness(0, 0, 8, 1), VerticalAlignment = VerticalAlignment.Bottom,
+                };
+                var line = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+                line.Children.Add(trace);
+                line.Children.Add(value);
+                cell.Children.Add(line);
+            }
+            else cell.Children.Add(value);
+
             readings.Children.Add(cell);
-            _readings.Add((key, unit, value));
+            _readings.Add((key, unit, value, trace, cell));
         }
+
+        // ponytail: two fixed breakpoints for the dense bar -- traces go below 1,250 px, the last two
+        // readings below 1,000 -- rather than measuring each cell; measure if the readings change.
+        if (_dense)
+            row.SizeChanged += (_, e) =>
+            {
+                for (int i = 0; i < _readings.Count; i++)
+                {
+                    var (_, _, _, trace, cell) = _readings[i];
+                    if (trace is not null) trace.Visibility = e.NewSize.Width >= 1250 ? Visibility.Visible : Visibility.Collapsed;
+                    bool shown = i < 4 || e.NewSize.Width >= 1000;
+                    cell.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+                    if (i > 0) readings.Children[i * 2 - 1].Visibility = cell.Visibility;   // its divider
+                }
+            };
 
         var settings = new Button
         {
@@ -143,13 +196,26 @@ public sealed class ConsoleBar : AlternateInterface
         _statusText.Text = words;
         _dot.Fill = Brush(dotKey);
 
-        foreach (var (key, unit, value) in _readings)
+        foreach (var (key, unit, value, trace, _) in _readings)
         {
             var metric = OmniHub.Core.Telemetry.Metrics.Find(key);
             double? v = Metrics.Value(key);
             value.Text = v is { } x && metric is not null
                 ? x.ToString(metric.Format, System.Globalization.CultureInfo.InvariantCulture) + unit
                 : OmniHub.Core.Telemetry.Metrics.Unavailable;
+
+            if (trace is null) continue;
+            var geometry = new StreamGeometry();
+            using (var g = geometry.Open())
+            {
+                foreach (var segment in Metrics.History(key).Segments(TraceWidth, TraceHeight))
+                {
+                    g.BeginFigure(new Point(segment[0].X, segment[0].Y), false, false);
+                    g.PolyLineTo(segment.Skip(1).Select(p => new Point(p.X, p.Y)).ToList(), true, true);
+                }
+            }
+            geometry.Freeze();
+            trace.Data = geometry;
         }
     }
 }

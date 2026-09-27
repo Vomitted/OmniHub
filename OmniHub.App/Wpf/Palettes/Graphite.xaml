@@ -32,9 +32,9 @@
     <Color x:Key="WarnColor">#FFF59E0B</Color>
     <Color x:Key="DangerColor">#FFF16060</Color>
 
-    <Color x:Key="MetricCpuColor">#FF87929D</Color>
+    <Color x:Key="MetricCpuColor">#FFE07A8F</Color>
     <Color x:Key="MetricMemColor">#FF22C55E</Color>
-    <Color x:Key="MetricGpuColor">#FFA9B4C0</Color>
+    <Color x:Key="MetricGpuColor">#FF6FB7D8</Color>
     <Color x:Key="MetricFanColor">#FFD4A24C</Color>
 
     <Color x:Key="CardTopHighlightColor">#14FFFFFF</Color>

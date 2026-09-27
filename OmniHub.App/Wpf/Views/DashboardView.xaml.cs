@@ -28,10 +28,14 @@ public partial class DashboardView : UserControl
     private readonly FanService _service;
     private readonly AppSettings _settings;
     private readonly MetricSource _metrics;
+    private readonly bool _studio;
     private bool _suppressPresetEvent;
 
     // The cards' bars, made once and filled on every reading.
     private readonly Controls.Meter _cpuLoad, _memUsed, _gpuLoad, _cpuTemp, _gpuTemp;
+
+    // Studio's cooling card carries the fan, turning with the real one, where the console has a thermometer.
+    private readonly Controls.FanGlyph? _fanIcon;
 
     // What the poll last said that the shared readings do not carry: whether the firmware reports
     // throttling.
@@ -55,10 +59,15 @@ public partial class DashboardView : UserControl
         "mem", "selfcpu", "selfmem",
     };
 
-    public DashboardView(HardwareContext ctx, FanService service, AppSettings settings, MetricSource metrics)
+    /// <param name="studio">
+    /// The Studio look: one row on a wide window, and every card with its last five minutes. Without
+    /// it, the console exactly as the reference was first built to (TECHNICAL-v5-ui.md, section 11).
+    /// </param>
+    public DashboardView(HardwareContext ctx, FanService service, AppSettings settings, MetricSource metrics, bool studio = false)
     {
         InitializeComponent();
         _ctx = ctx; _service = service; _settings = settings; _metrics = metrics;
+        _studio = studio;
 
         MachineLine.Text = $"{ctx.Model.Manufacturer} {ctx.Model.Product}".Trim();
 
@@ -69,6 +78,11 @@ public partial class DashboardView : UserControl
         GpuCard.IconData = Controls.ComponentCard.Icons.Graphics;
         MemCard.IconData = Controls.ComponentCard.Icons.Memory;
         CoolCard.IconData = Controls.ComponentCard.Icons.Thermometer;
+        if (studio)
+        {
+            _fanIcon = new Controls.FanGlyph { ColourKey = "MetricFanBrush" };
+            CoolCard.SetIcon(_fanIcon);
+        }
         CpuCard.Title = HardwareNames.ShortCpu(ReadProcessorName()) ?? "Processor";
         GpuCard.Title = "Discrete GPU";
         _cpuLoad = CpuCard.AddBar("LOAD");
@@ -83,7 +97,18 @@ public partial class DashboardView : UserControl
         SensorsHost.Content = new Controls.SensorTiles(metrics, SensorKeys);
         ShowSince();
 
-        LiveHost.Content = new Controls.LiveChart(metrics);
+        LiveHost.Content = new Controls.LiveChart(metrics, detailed: studio, fanTop: ctx.FanBackend.Calibration.MaxRpm);
+
+        // Each trace against the same top as its card's bar: load against a hundred, memory against
+        // installed, the temperatures against the higher of their hot points so the two share a scale.
+        if (studio)
+        {
+            double? hot = new[] { "cpu", "gpu" }.Max(k => Metrics.FullScale(Metrics.Find(k)!, null));
+            CpuCard.SetTrace(new Controls.Trace(metrics, () => 100, ("cpuload", "MetricCpuBrush")));
+            MemCard.SetTrace(new Controls.Trace(metrics, () => metrics.MemoryTotalGB, ("mem", "MetricMemBrush")));
+            GpuCard.SetTrace(new Controls.Trace(metrics, () => 100, ("gpuload", "MetricGpuBrush")));
+            CoolCard.SetTrace(new Controls.Trace(metrics, () => hot, ("cpu", "MetricCpuBrush"), ("gpu", "MetricGpuBrush")));
+        }
 
         LoadBattery();
         StartPowerDrawTimer();
@@ -145,30 +170,43 @@ public partial class DashboardView : UserControl
 
     // ---------------------------------------------------------------- layout
 
+    /// <summary>The three arrangements of the console (see <see cref="Reflow"/>).</summary>
+    private enum Arrangement { Row, Sides, Stacked }
+
     /// <summary>
-    /// The console as the reference lays it out -- cards down each side of the dial -- where there
-    /// is room for three columns, and otherwise the dial across the top with the cards two by two.
+    /// Where the cards and the dial stand, for the width there is.
     ///
-    /// A card needs about 210 px to keep its figure and its stats on their lines, and the centre is
-    /// twice a card, as the reference draws it -- 420, room for the 320 ring and its glow. With the
-    /// gaps that is about 900; below it the cards would squeeze until their names cut off. The
-    /// lattice behind the ring is wider than the centre and is meant to be cut by its edges.
+    /// <b>Sides</b> is the reference: two cards down each side of a centre twice a card's width. A card
+    /// needs about 210 px to keep its figure and its stats on their lines, so with the gaps this wants
+    /// about 900; below it, <b>Stacked</b> -- the dial across the top, the cards two by two under it.
+    ///
+    /// <b>Row</b> is Studio's, from 1,450: the four cards and the dial side by side. On a wide screen
+    /// the two-by-two makes every card and the centre landscape -- 400 px cards with nothing between
+    /// name and figure at 1,920 -- where the reference draws all of them portrait. In one row they
+    /// are about 300 × 520, the reference's proportion kept rather than its arrangement stretched.
+    /// The lattice behind the ring is wider than the centre in every arrangement, and is meant to be
+    /// cut by its edges.
     /// </summary>
     private void Reflow(double width)
     {
-        bool stacked = width < 900;
+        var arrangement = width < 900 ? Arrangement.Stacked
+                        : _studio && width >= 1450 ? Arrangement.Row
+                        : Arrangement.Sides;
+        bool row = arrangement == Arrangement.Row, stacked = arrangement == Arrangement.Stacked;
 
-        CentreColumn.Width = stacked ? new GridLength(0) : new GridLength(2, GridUnitType.Star);
+        // Each side is a pair of columns: joined into one card's width, or split for two cards.
+        PairGapLeft.Width = PairGapRight.Width = new GridLength(row ? 14 : 0);
+        CentreColumn.Width = stacked ? new GridLength(0) : new GridLength(row ? 1.5 : 4, GridUnitType.Star);
         RightGap.Width = stacked ? new GridLength(0) : new GridLength(14);
+        RowGap.Height = new GridLength(row ? 0 : 14);
         StackedGap.Height = new GridLength(stacked ? 14 : 0);
 
-        // The right-hand cards stay in the last column either way: stacked, the centre column and
-        // its gap close to nothing and the last column moves in beside the first.
-        Place(Centre, row: 0, column: stacked ? 0 : 2, rowSpan: stacked ? 1 : 3, columnSpan: stacked ? 5 : 1);
-        Place(CpuCard, row: stacked ? 2 : 0, column: 0);
-        Place(GpuCard, row: stacked ? 2 : 0, column: 4);
-        Place(MemCard, row: stacked ? 4 : 2, column: 0);
-        Place(CoolCard, row: stacked ? 4 : 2, column: 4);
+        int span = row ? 1 : 3;
+        Place(Centre, row: 0, column: stacked ? 0 : 4, rowSpan: stacked || row ? 1 : 3, columnSpan: stacked ? 9 : 1);
+        Place(CpuCard, row: stacked ? 2 : 0, column: 0, columnSpan: span);
+        Place(MemCard, row: row ? 0 : stacked ? 4 : 2, column: row ? 2 : 0, columnSpan: span);
+        Place(GpuCard, row: stacked ? 2 : 0, column: 6, columnSpan: span);
+        Place(CoolCard, row: row ? 0 : stacked ? 4 : 2, column: row ? 8 : 6, columnSpan: span);
 
         static void Place(UIElement element, int row, int column, int rowSpan = 1, int columnSpan = 1)
         {
@@ -192,6 +230,7 @@ public partial class DashboardView : UserControl
     private void UpdateWidgets()
     {
         double? fan1 = _metrics.Value("fan");
+        _fanIcon?.SetSpeed(fan1);
         double? pkg = _metrics.Value("pkg"), pkgLimit = _metrics.PackageLimitWatts;
 
         // The dial: the die temperature against its hot point, its warning stretch tinted, and what

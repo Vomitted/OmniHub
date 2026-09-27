@@ -114,6 +114,7 @@ public class ContrastTests
         "TextPrimaryColor", "TextMutedColor", "TextFaintColor",
         "AccentColor", "GoodColor", "WarnColor", "DangerColor",
         "MetricCpuColor", "MetricMemColor", "MetricGpuColor",
+        "MetricFanColor",   // the console's top bar sets the fan speed in it
     };
 
     public static IEnumerable<object[]> Palettes() =>

@@ -195,6 +195,18 @@ public sealed class ComponentCard : Border
         set => _reading.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>Studio's trace (see <see cref="Trace"/>), in the free row between the names and the figure.</summary>
+    public void SetTrace(FrameworkElement trace)
+    {
+        // Against the figure it is the history of, and no taller than a glance needs: stretched over
+        // a portrait card's whole free row a two-degree wobble drew as a cliff.
+        trace.Margin = new Thickness(0, 14, 0, 12);
+        trace.VerticalAlignment = VerticalAlignment.Bottom;
+        trace.Height = 110;
+        Grid.SetRow(trace, 1);
+        ((Grid)Child).Children.Add(trace);
+    }
+
     /// <summary>Adds a bar under the figure and returns it, to be filled with <see cref="ShowBar"/>.</summary>
     /// <param name="badged">The value in a glowing outlined badge, as the reference's sensor readings are.</param>
     public Meter AddBar(string label, bool badged = false)

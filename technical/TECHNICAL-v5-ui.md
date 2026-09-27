@@ -473,3 +473,139 @@ two steps for this — `look=Previous` and `scroll=N`, the second because the lo
 fold at any window a screen allows — and its log replay now starts each series fresh: appending the
 log after readings the sandbox had already taken left a series out of time order, and a filled curve
 folded back on itself. 991 tests pass.
+
+## 11. Studio: the console for the screen it is actually on
+
+Section 10's console was answered "sure, save it and make it an option to enable, but the ui is still
+not there yet". Before designing anything the live install was read rather than assumed:
+`settings.json` has theme **OLED Black**, density 2, on a **1920 × 1080** display at 96 DPI. Every
+comparison against the reference in sections 9 and 10 had been rendered in Midnight at 1,440 px. Rendered
+as the user sees it, three failures are plain, and none of them is visible in Midnight.
+
+### What the user's screen shows
+
+1. **Every component is the same colour.** OLED Black gives the processor `#22D3EE` and the graphics
+   card `#2DD4BF` — two cyans. The processor card, the graphics card, both sensor bars, both top-bar
+   figures and both curves of the live chart are cyan, and the chart's two lines cannot be told apart.
+   The console's whole idea, a colour per component, does not exist on this palette. Measured across
+   all ten palettes (CIE76 ΔE, smallest distance among the four component colours):
+
+   | Palette | Smallest ΔE | Between |
+   | --- | --- | --- |
+   | Midnight | 46.1 | graphics, memory |
+   | Custom (built) | 37.2 | processor, memory |
+   | OLED Black | 27.2 | processor, graphics |
+   | Ember | 26.5 | processor, fans |
+   | Sandstone | 22.6 | processor, graphics |
+   | Graphite | 12.8 | processor, graphics |
+   | Nord | 9.6 | processor, graphics |
+   | Mono | 8.0 | processor, graphics |
+   | Midnight Blue | **0.0** | processor, fans — the same value |
+   | Terminal | **0.0** | processor, memory — the same value |
+
+   CIE76 flatters the cyans — 27 reads as "the same colour" on screen — so the floor is set at **30**.
+2. **At 1,920 px the reference's arrangement goes empty.** Two cards a side and a centre twice a card's
+   width gives cards 400 px wide with nothing between name and figure, and an 820 × 600 dial panel with
+   the ring in its middle. The reference's cards and centre are *portrait* (0.65 and 0.66 wide to tall);
+   on a 1.85 : 1 screen the two-by-two arrangement makes both landscape.
+3. **Headings are set in a terminal face.** OLED Black's `HeadingFont` is Cascadia Mono, so every page
+   title — "Fan control", "Tuning", "Battery" — is heavy monospace, while the reference sets its title in
+   a sans.
+
+### The looks
+
+`UiLook` becomes three, and the section 10 console is kept exactly as it is:
+
+| Look | What it is |
+| --- | --- |
+| **Studio** (default) | The console, arranged for the screen and carrying its history — below |
+| **Console** | Section 10, unchanged: two cards a side, the reference's proportions |
+| **Classic** | Section 8: the widget row, the four history strips, the readout bar (was "Previous") |
+
+The values are renumbered — Studio 0, Classic 1, Console 2 — so the stored default moves to Studio:
+the console look never shipped in a release, and its only stored `0` is the default on this machine.
+
+### Studio
+
+- **Wide: one row.** At 1,400 px of content and more, the four cards and the dial stand in one row —
+  processor, memory, dial, graphics, sensors — every card portrait again (about 300 × 520 at 1,920)
+  and the dial in a portrait panel, which is the reference's proportion kept on a wide screen rather
+  than its arrangement stretched. The live chart is then on the first screen with room to spare.
+  Below 1,400 the two-by-two of the console; below 900, stacked. The console grid becomes nine columns
+  so one `Reflow` places all three.
+- **Every card carries its history.** The space between a card's name and its figure — empty in the
+  reference, and very empty at 1,920 — holds the last five minutes of the card's reading as a trace
+  against the **same full scale as its bar**: processor and graphics load against 100 %, memory in use
+  against installed, the two temperatures against their hot points. A trace with no real top is not
+  drawn. It is the project's rule that history sits beside every current value, in the form the user
+  asked for: drawn, not written.
+- **A sans for headings.** The look sets `HeadingFont` over the palette's, so a palette decides colour
+  and Studio decides type; the Console and Classic looks keep each palette's own face.
+
+### Colour identity, in every palette
+
+Not a Studio feature: a defect in nine palettes, fixed in all of them, and held by a test.
+
+| Palette | Processor | Graphics | Memory | Fans | Smallest ΔE |
+| --- | --- | --- | --- | --- | --- |
+| OLED Black | `#FF4F8B` | `#22D3EE` | `#22C55E` | `#F5A524` | 72.2 |
+| Midnight Blue | `#4D8DF7` | `#22D3EE` | `#22C55E` | `#F2A33A` | 59.9 |
+| Ember | `#E4673B` | `#F5C542` | `#57C48A` | `#6FB3D2` | 52.0 |
+| Graphite | `#E07A8F` | `#6FB7D8` | `#22C55E` | `#D4A24C` | 55.2 |
+| Mono | `#FFFFFF` | `#9E9E9E` | `#22C55E` | `#D9A441` | 34.9 |
+| Nord | `#88C0D0` | `#C3A0BD` | `#A3BE8C` | `#DC9A82` | above 30 |
+| Sandstone | `#EE8266` | `#4EA8C4` | `#8AB17D` | `#E9C46A` | above 30 |
+| Terminal | `#3FB950` | `#58A6FF` | `#D2A8FF` | `#FFA657` | 32.7 |
+
+`Contrast.Difference` (CIE76, in Core) and `ComponentColourTests` assert the floor for every palette
+file and for `CustomPalette`'s output. The fan colour joins the text-contrast set in `ContrastTests`,
+because the top bar and the sensor card now draw figures in it.
+
+The tests found three more things on their first runs. `CustomPalette` on a light ground darkened its
+blue and violet seeds until they met at 29.8, so its seeds are now the reference's four. Sandstone's
+new processor colour and Nord's new graphics colour sat at 4.30 and 4.35 : 1 on the tinted surface and
+were lightened a step. And Nord's fan colour, which the console's top bar had already been drawing as
+text, was below 4.5 : 1 there too — a shipped defect the old text list could not see.
+
+### Structure of the change
+
+- `Controls/Curves.cs` — the curve drawing `LiveChart` had inline (decimate, spline, line and filled
+  area, the gap each series tolerates), shared with the new `Trace`, so the two cannot drift.
+- `Controls/Trace.cs` — a card's sparkline: series, a real top, subscribed while loaded only.
+- `ComponentCard.SetTrace` — the trace in the card's free row.
+- `DashboardView(..., studio)` — one flag; the Console look constructs the same view without it.
+- `MainWindow` — one `ConsoleChrome` test for the chrome the Studio and Console looks share; `ApplyLook`
+  sets or clears the heading face.
+- Snapshot tool — `look=Studio|Console|Classic`, and `hide=<Name>` so a render can leave out the
+  readiness card the sandbox always shows and the user's install never does.
+
+### What the user did next, and what it changed
+
+`settings.json` was written at 12:40:09, four minutes after the section 10 deploy: the look was set to
+**Previous** — the classic look — and left there. Seen side by side with the console, the user chose the
+denser screen: six readings with traces across the top, each page's state under its sidebar name, four
+history strips with their values and times. It is the same preference already on record ("boring" means
+under-informed), and it settles what Studio must be: at least as informative as Classic, in the
+reference's look. So Studio also takes from Classic:
+
+| From Classic | In Studio |
+| --- | --- |
+| Six readings, each with its trace, across the top | `ConsoleBar(dense: true)`: die and GPU temperature, fans, package and GPU power, CPU load, each trace in its component's colour; traces drop below 1,250 px, the last two readings below 1,000 |
+| The state under each sidebar name | The console sidebar keeps its style and gains the second line |
+| Four strips on one clock, 5/15/30 minutes, values and times | `LiveChart(detailed: true)`: a fourth subject for the fans against their measured maximum, the 5/15/30-minute window, two or three labelled rules, clock times under the plot |
+| A fan that turns with the real one | The cooling card's icon is the `FanGlyph` again |
+
+The Console look keeps none of these: it is the section 10 console, kept as the user asked.
+
+The deploy moves the stored look to Studio. The user's Classic choice was made between the two looks
+that existed; Studio is the answer to the request that followed it, and a default nobody sees is the
+failure recorded in the project's notes on this user. Classic stays one click away, and the message
+that announces the deploy says so.
+
+### Verification
+
+Rendered as the user sees it — OLED Black, 1,920 × 1,040, the readiness card the sandbox raises hidden
+(`hide=`), and 90 to 100 seconds of real readings gathered first (`wait=`), since the log replay has no
+load or memory columns — and at 1,440 × 900, where Studio falls back to two a side; the Console look at
+1,920 to confirm it is unchanged. 1,003 tests pass; `ComponentColourTests` fails with OLED Black's old
+processor colour put back.

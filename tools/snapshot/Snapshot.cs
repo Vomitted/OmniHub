@@ -312,6 +312,7 @@ internal static class Snapshot
         string iface = settings.Interface.ToString();
         int scroll = 0;
         string look = "";
+        var hidden = new HashSet<string>();
 
         void Capture(int i, string? tab = null)
         {
@@ -320,14 +321,16 @@ internal static class Snapshot
             if (tab is not null && !SelectTab(win, tab)) Say($"no tab named {tab} on workspace {i}");
             if (tab is not null) Pump(900);
             if (replay is { Length: > 0 }) { Replay(win, replay); Pump(300); }
-            if (scroll > 0)
+            if (scroll > 0 || hidden.Count > 0)
             {
-                // Every scroller in the window: a page's lower half is below the fold at any
-                // window the screen allows.
+                // Every scroller in the window, since a page's lower half is below the fold at any
+                // window the screen allows; and anything named to hide, such as the readiness card
+                // the sandbox always raises and an elevated install never shows.
                 var pending = new Stack<DependencyObject>(new[] { (DependencyObject)win });
                 while (pending.TryPop(out var d))
                 {
-                    if (d is System.Windows.Controls.ScrollViewer sv) sv.ScrollToVerticalOffset(scroll);
+                    if (d is FrameworkElement { Name: var n } fe && hidden.Contains(n)) fe.Visibility = Visibility.Collapsed;
+                    if (scroll > 0 && d is System.Windows.Controls.ScrollViewer sv) sv.ScrollToVerticalOffset(scroll);
                     for (int c = 0; c < VisualTreeHelper.GetChildrenCount(d); c++) pending.Push(VisualTreeHelper.GetChild(d, c));
                 }
                 Pump(400);
@@ -339,13 +342,17 @@ internal static class Snapshot
         }
 
         // Steps, comma separated: "ws" for every workspace, a number for one, "5/History" for a tab
-        // inside a grouped page, "theme=Midnight", "iface=Cockpit", "look=Previous", "scroll=600"
-        // (pixels down each page before it is captured). Order matters: a step applies to
-        // everything after it.
+        // inside a grouped page, "theme=Midnight", "iface=Cockpit", "look=Studio|Console|Classic",
+        // "scroll=600" (pixels down each page before it is captured), "hide=ReadinessCard". Order
+        // matters: a step applies to everything after it.
         foreach (string step in plan.Split(','))
         {
             if (step.StartsWith("theme=")) { theme = step[6..]; OmniHub.App.Wpf.ThemeManager.Apply(theme); Pump(500); }
             else if (step.StartsWith("scroll=")) scroll = int.Parse(step[7..]);
+            else if (step.StartsWith("hide=")) hidden.Add(step[5..]);
+            // Seconds of real readings to gather before the next capture: the log replay has no load
+            // or memory columns, so their history is only ever what the sandbox itself measured.
+            else if (step.StartsWith("wait=")) Pump(int.Parse(step[5..]) * 1000);
             else if (step.StartsWith("look="))
             {
                 win.SetLook(Enum.Parse<OmniHub.App.UiLook>(step[5..]));

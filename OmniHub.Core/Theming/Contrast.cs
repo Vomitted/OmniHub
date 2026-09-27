@@ -89,6 +89,45 @@ public static class Contrast
         Ratio(foreground, background) >= MinimumRatio;
 
     /// <summary>
+    /// How far apart two colours that name different components must be.
+    ///
+    /// A colour per component is only a code if the colours can be told apart. OLED Black gave the
+    /// processor #22D3EE and the graphics card #2DD4BF, 27 apart by <see cref="Difference"/>: on screen,
+    /// one cyan, and the live chart's two lines could not be told apart. CIE76 flatters the cyans, so
+    /// the floor sits above that pair rather than at the textbook "clearly different".
+    /// </summary>
+    public const double MinimumComponentDifference = 30;
+
+    /// <summary>
+    /// The perceptual distance between two colours: CIE76, the straight-line distance in CIE L*a*b*
+    /// under D65. Unlike <see cref="Ratio"/>, which only compares brightness, this separates two
+    /// colours of the same brightness and different hue -- which is what telling components apart is.
+    /// </summary>
+    public static double Difference(Rgb a, Rgb b)
+    {
+        var (l1, a1, b1) = Lab(a);
+        var (l2, a2, b2) = Lab(b);
+        return Math.Sqrt((l1 - l2) * (l1 - l2) + (a1 - a2) * (a1 - a2) + (b1 - b2) * (b1 - b2));
+    }
+
+    private static (double L, double A, double B) Lab(Rgb c)
+    {
+        static double Linear(byte v)
+        {
+            double s = v / 255.0;
+            return s <= 0.04045 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4);
+        }
+
+        static double F(double t) => t > 216.0 / 24389 ? Math.Cbrt(t) : (24389.0 / 27 * t + 16) / 116;
+
+        double r = Linear(c.R), g = Linear(c.G), bl = Linear(c.B);
+        double x = F((0.4124 * r + 0.3576 * g + 0.1805 * bl) / 0.95047);
+        double y = F(0.2126 * r + 0.7152 * g + 0.0722 * bl);
+        double z = F((0.0193 * r + 0.1192 * g + 0.9505 * bl) / 1.08883);
+        return (116 * y - 16, 500 * (x - y), 200 * (y - z));
+    }
+
+    /// <summary>
     /// The pair named, for a message somebody can act on.
     ///
     /// "This palette is unreadable" tells the user to give up. Naming which two colours, what they

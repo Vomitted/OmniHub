@@ -29,9 +29,11 @@ public sealed record CustomPalette(
     private static readonly Rgb WarnSeed = new(0xE8, 0xB3, 0x39);
     private static readonly Rgb DangerSeed = new(0xE5, 0x5B, 0x5B);
 
-    private static readonly Rgb CpuSeed = new(0x4F, 0x9C, 0xF5);
-    private static readonly Rgb MemSeed = new(0xA9, 0x7B, 0xEF);
-    private static readonly Rgb GpuSeed = new(0x3F, 0xC2, 0xC9);
+    // The reference's four, far enough apart that they stay four after Readable darkens them for a
+    // light ground: the blue and violet these replaced met at 29.8 there (ComponentColourTests).
+    private static readonly Rgb CpuSeed = new(0xFF, 0x4F, 0x8B);
+    private static readonly Rgb MemSeed = new(0x22, 0xC5, 0x5E);
+    private static readonly Rgb GpuSeed = new(0x22, 0xD3, 0xEE);
     private static readonly Rgb FanSeed = new(0xF2, 0xA3, 0x3A);
 
     /// <summary>Every colour key a palette file defines, as the hex a palette file writes.</summary>

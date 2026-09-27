@@ -53,36 +53,40 @@
                 </StackPanel>
             </Grid>
 
-            <!-- The console: a card per component down each side of the dial. Five columns wide,
-                 and on a narrow window the dial across the top with the cards two by two under it
-                 (see Reflow). -->
+            <!-- The console: a card per component down each side of the dial, in one of three
+                 arrangements (see Reflow). Nine columns so one grid holds all three: a pair of
+                 columns per side, the centre between. -->
             <Grid x:Name="Console" Margin="0,0,0,14">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition x:Name="PairGapLeft" Width="0"/>
+                    <ColumnDefinition Width="*"/>
                     <ColumnDefinition x:Name="LeftGap" Width="14"/>
-                    <ColumnDefinition x:Name="CentreColumn" Width="2*"/>
+                    <ColumnDefinition x:Name="CentreColumn" Width="4*"/>
                     <ColumnDefinition x:Name="RightGap" Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition x:Name="PairGapRight" Width="0"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="14"/>
+                    <RowDefinition x:Name="RowGap" Height="14"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition x:Name="StackedGap" Height="0"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <controls:ComponentCard x:Name="CpuCard" Category="Processor" ColourKey="MetricCpuBrush"/>
-                <controls:ComponentCard x:Name="MemCard" Grid.Row="2" Category="System" Title="Memory" ColourKey="MetricMemBrush"/>
+                <controls:ComponentCard x:Name="CpuCard" Grid.ColumnSpan="3" Category="Processor" ColourKey="MetricCpuBrush"/>
+                <controls:ComponentCard x:Name="MemCard" Grid.Row="2" Grid.ColumnSpan="3" Category="System" Title="Memory" ColourKey="MetricMemBrush"/>
 
-                <Border x:Name="Centre" Grid.Column="2" Grid.RowSpan="3" Background="{StaticResource PanelBrush}"
+                <Border x:Name="Centre" Grid.Column="4" Grid.RowSpan="3" Background="{StaticResource PanelBrush}"
                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource RadiusMd}"
                         ClipToBounds="True">
                     <controls:HeroDial x:Name="Dial" Label="DIE TEMPERATURE"/>
                 </Border>
 
-                <controls:ComponentCard x:Name="GpuCard" Grid.Column="4" Category="Graphics" ColourKey="MetricGpuBrush" StripeRight="True"/>
-                <controls:ComponentCard x:Name="CoolCard" Grid.Row="2" Grid.Column="4" Category="Cooling" Title="Sensors"
+                <controls:ComponentCard x:Name="GpuCard" Grid.Column="6" Grid.ColumnSpan="3" Category="Graphics" ColourKey="MetricGpuBrush" StripeRight="True"/>
+                <controls:ComponentCard x:Name="CoolCard" Grid.Row="2" Grid.Column="6" Grid.ColumnSpan="3" Category="Cooling" Title="Sensors"
                                         ColourKey="MetricFanBrush" StripeRight="True" HasFigure="False"/>
             </Grid>
 

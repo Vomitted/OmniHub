@@ -32,8 +32,12 @@ public partial class SettingsView : UserControl
             default: WorkspacesUiBtn.IsChecked = true; break;
         }
 
-        if (_settings.Look == UiLook.Previous) PreviousLookBtn.IsChecked = true;
-        else ConsoleLookBtn.IsChecked = true;
+        (_settings.Look switch
+        {
+            UiLook.Classic => ClassicLookBtn,
+            UiLook.Console => ConsoleLookBtn,
+            _ => StudioLookBtn,
+        }).IsChecked = true;
 
         if (_settings.CloseBehavior == CloseBehavior.Exit) ExitCloseBtn.IsChecked = true;
         else TrayCloseBtn.IsChecked = true;

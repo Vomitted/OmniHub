@@ -578,22 +578,24 @@ dotnet build OmniHub.slnx -c Release</pre>
 
   <h3>Not in this download</h3>
   <p>
-    <strong><span id="ahead">163</span> commits</strong> have landed on
+    <strong><span id="ahead">164</span> commits</strong> have landed on
     <span class="m">main</span> since 1.3.3 was published on 10 September, and no release has
     been cut from them. The button at the top of this page does not have any of it. It is listed
     here so the download is not credited with work it does not contain.
   </p>
   <ul>
     <li><strong>Readings are drawn.</strong> The Dashboard is built around a dial for the die
-      temperature against its hot point, with a card per component down each side — processor,
-      memory, graphics, cooling — each in its own colour, with its part's own name, one large figure,
-      and bars filled against the limit the hardware itself reports, and no bar where it reports
-      none. Under them, a live chart of temperature, load or power over five minutes, drawn smooth
-      without a curve ever passing a value that was not read, and recorded while the window sits in
-      the tray, so it opens full. The default look is Midnight, near-black with mint into cyan;
-      switching theme now repaints everything without a restart, and the previous interface — its
-      gauges and four history strips — stays one setting away, with its blue as a theme of its own.
-      Bars no longer draw pointed at both ends.</li>
+      temperature against its hot point, with a card per component — processor, memory, graphics,
+      cooling — each in its own colour, with its part's own name, one large figure, its last five
+      minutes drawn against the same scale as its bar, and bars filled against the limit the hardware
+      itself reports, and no bar where it reports none. On a wide screen the four cards and the dial
+      stand in one row. Under them, a live chart of temperature, load, power or the fans over 5, 15 or
+      30 minutes, drawn smooth without a curve ever passing a value that was not read, and recorded
+      while the window sits in the tray, so it opens full. Six live readings with their traces run
+      across the top of every page. Every theme now gives the four components four colours an eye can
+      tell apart — in nine of the ten, two of them had been the same or nearly so — and switching theme
+      repaints everything without a restart. The two earlier looks stay one setting away. Bars no
+      longer draw pointed at both ends.</li>
     <li><strong>Every page is a console rather than a column.</strong> The Dashboard shows every
       reading as a tile: its current value, its trace, and the lowest and highest since launch —
       counted while the window sits in the tray — with the mean and where the number came from a

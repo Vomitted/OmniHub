@@ -37,10 +37,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Added
 
-- **The previous interface, one setting away.** Settings → Look switches between the console and
-  the interface before it — the instrument bar across the top, the two-line sidebar, the four
-  gauges and the four history strips — live, without a restart. Its colours are a theme of their
-  own, **Midnight Blue**.
+- **Studio, and every earlier look one setting away.** Settings → Look chooses between three,
+  live, without a restart:
+  - **Studio**, the default: the console arranged for the window it is in — on a wide screen the
+    four cards and the dial in one row, every card portrait — with each card's last five minutes
+    drawn against the same scale as its bar, six readings with traces across the top, each page's
+    state under its name in the sidebar, a fan that turns with the real one, and a live chart with
+    a fan view, a 5, 15 or 30-minute window and its values and times labelled. Headings are set in a
+    sans whatever the theme.
+  - **Console**: the reference layout as first built, kept as it was.
+  - **Classic**: the instrument bar, the two-line sidebar, the four gauges and the four history
+    strips. Its colours are a theme of their own, **Midnight Blue**.
 - **A vendor seam, so support can widen past HP.** The cooling loop, the fan band, the
   throttling answer, the temperature reader and the optimisation code no longer name an HP type.
   What stays HP-shaped is the HP screens and the HP commands, which is where it belongs.
@@ -307,6 +314,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Fixed
 
+- **Every theme tells the components apart.** The processor, graphics card, memory and fans each
+  have a colour used on every card, bar, trace and chart line — and in nine of ten themes two of
+  them were the same or nearly so. OLED Black drew the processor and the graphics card in two
+  cyans, so the live chart's two lines were one; Midnight Blue gave the processor and the fans the
+  identical value, Terminal the processor and memory. All nine are fixed, a custom theme built on
+  a light ground no longer merges two of its own, and a test now measures every pair.
 - **Bars are bars again.** Every bar — the cards', the meters', the limit strip's — drew thick in
   the middle and pointed at both ends: its rounding asked for a radius longer than the bar, and
   WPF answers that by stretching each corner along the bar. The ends are now rounded to half the

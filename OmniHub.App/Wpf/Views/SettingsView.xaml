@@ -61,14 +61,16 @@
                                 BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3"
                                 HorizontalAlignment="Left" Margin="0,7,0,0">
                             <StackPanel Orientation="Horizontal">
-                                <RadioButton x:Name="ConsoleLookBtn" GroupName="Look" Content="CONSOLE" Width="118" Height="30"
+                                <RadioButton x:Name="StudioLookBtn" GroupName="Look" Content="STUDIO" Width="118" Height="30"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Studio"/>
+                                <RadioButton x:Name="ConsoleLookBtn" GroupName="Look" Content="CONSOLE" Width="118" Height="30" Margin="3,0,0,0"
                                              Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Console"/>
-                                <RadioButton x:Name="PreviousLookBtn" GroupName="Look" Content="PREVIOUS" Width="118" Height="30" Margin="3,0,0,0"
-                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Previous"/>
+                                <RadioButton x:Name="ClassicLookBtn" GroupName="Look" Content="CLASSIC" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Classic"/>
                             </StackPanel>
                         </Border>
                         <TextBlock Style="{StaticResource SettingNote}"
-                                   Text="Console is built to the reference: a dial for the die temperature with a card per component either side, one live chart, a sparse top bar and a one-line sidebar. Previous is the look before it: the widget row, the four history strips, the readout bar and the two-line sidebar. For the previous colours as well, choose Midnight Blue under Theme."/>
+                                   Text="Studio arranges the console for the window it is in — on a wide screen the cards and the dial in one row — and gives every card its last five minutes, with a sans for headings whatever the theme. Console is the reference layout as first built: two cards either side of the dial. Classic is the look before both: the widget row, the four history strips, the readout bar and the two-line sidebar; for its colours as well, choose Midnight Blue under Theme."/>
                     </StackPanel>
                 </StackPanel>
             </Border>

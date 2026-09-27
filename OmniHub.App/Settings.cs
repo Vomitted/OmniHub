@@ -53,13 +53,20 @@ public enum InterfaceMode
 public enum UiLook
 {
     /// <summary>
-    /// Built to the reference the user supplied: a sparse top bar, a one-line sidebar with the
-    /// machine's state at its foot, and the Dashboard's console. The default.
+    /// The console arranged for the screen it is on and carrying its history: on a wide window the
+    /// cards and the dial in one row, every card with its last five minutes, a sans for headings over
+    /// whatever face the palette sets. The default. (TECHNICAL-v5-ui.md, section 11.)
     /// </summary>
-    Console,
+    Studio = 0,
 
-    /// <summary>The previous look: the readout bar, the two-line sidebar, the widget Dashboard.</summary>
-    Previous,
+    /// <summary>The look before the console: the readout bar, the two-line sidebar, the widget Dashboard.</summary>
+    Classic = 1,
+
+    /// <summary>
+    /// Built to the reference the user supplied, kept as it was when they asked for it to stay an
+    /// option: a sparse top bar, a one-line sidebar, two cards either side of the dial.
+    /// </summary>
+    Console = 2,
 }
 
 /// <summary>Which screen corner the telemetry overlay anchors to.</summary>
@@ -190,10 +197,10 @@ public sealed class AppSettings
     public InterfaceMode Interface { get; set; } = InterfaceMode.Workspaces;
 
     /// <summary>
-    /// How the Workspaces interface is dressed: the console built to the reference the user
-    /// supplied, or the look it had before, kept whole so it can be gone back to.
+    /// How the Workspaces interface is dressed: Studio, the console as it was built to the reference,
+    /// or the look before it -- each kept whole so it can be gone back to.
     /// </summary>
-    public UiLook Look { get; set; } = UiLook.Console;
+    public UiLook Look { get; set; } = UiLook.Studio;
 
     /// <summary>
     /// The palette built in the application, as the four colours it is described by.
