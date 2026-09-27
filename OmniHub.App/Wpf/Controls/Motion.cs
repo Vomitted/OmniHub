@@ -29,7 +29,7 @@ internal static class Motion
     /// </summary>
     public static bool On => ForReview ?? SystemParameters.ClientAreaAnimation;
 
-    internal static bool? ForReview;
+    internal static bool? ForReview = null;   // set by the snapshot tool, through reflection
 
     private static readonly IEasingFunction Out = Frozen(new CubicEase { EasingMode = EasingMode.EaseOut });
     private static readonly IEasingFunction Breathe = Frozen(new SineEase { EasingMode = EasingMode.EaseInOut });
