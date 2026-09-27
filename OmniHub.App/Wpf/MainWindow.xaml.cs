@@ -292,7 +292,7 @@ public partial class MainWindow : Window
         // Honours the system's "show animations" preference. A continuously moving element
         // is exactly what that setting exists to suppress, and ignoring it is an
         // accessibility failure, not a style choice.
-        if (!SystemParameters.ClientAreaAnimation)
+        if (!OmniHub.App.Wpf.Controls.Motion.On)
         {
             ActivityRibbon.Opacity = 0;
             return;
@@ -320,7 +320,7 @@ public partial class MainWindow : Window
     {
         // Every reading asks for a pulse, so unguarded this kept an animation clock alive more
         // than half the time with the window hidden.
-        if (!SystemParameters.ClientAreaAnimation || !ActivityRibbon.IsVisible) return;
+        if (!OmniHub.App.Wpf.Controls.Motion.On || !ActivityRibbon.IsVisible) return;
 
         // Rate-limited: the poll loop fires every 2s and actions can land in bursts, and a
         // ribbon that is permanently mid-pulse conveys nothing.
@@ -494,10 +494,17 @@ public partial class MainWindow : Window
         : new DashboardView(_ctx, _service, _settings, metrics, studio: _settings.Look == UiLook.Studio);
 
     /// <summary>
-    /// Studio's heading face, set over the palette's. A palette decides colour; the look decides type
-    /// -- OLED Black's headings are Cascadia Mono, which set every page title as a terminal would.
+    /// Studio's type and shape, set over the palette's. A palette decides colour; the look decides type
+    /// and shape -- OLED Black's headings are Cascadia Mono, which set every page title as a terminal
+    /// would, and its 4 px corners and 4 px bars are a long way from the reference's 16 and 8.
     /// </summary>
-    private static readonly System.Windows.Media.FontFamily StudioHeading = new("Segoe UI Variable Display Semibold, Segoe UI Semibold, Segoe UI");
+    private static readonly (string Key, object Value)[] StudioShape =
+    {
+        ("HeadingFont", new System.Windows.Media.FontFamily("Segoe UI Variable Display Semibold, Segoe UI Semibold, Segoe UI")),
+        ("RadiusMd", new CornerRadius(14)),
+        ("RadiusSm", new CornerRadius(8)),
+        ("TrackHeight", 7.0),
+    };
 
     /// <summary>
     /// Switches between the looks -- Studio, Console, Classic -- and remembers the choice. Called from
@@ -527,13 +534,17 @@ public partial class MainWindow : Window
 
         // Straight on the application's dictionary, which is looked in before any merged palette, so
         // a theme switch keeps it and removing it hands the heading back to the palette.
-        if (_settings.Look == UiLook.Studio) System.Windows.Application.Current.Resources["HeadingFont"] = StudioHeading;
-        else System.Windows.Application.Current.Resources.Remove("HeadingFont");
+        // Studio's type and shape over the palette's: the reference's sans, its rounder corners and
+        // its heavier bars. The other looks keep each palette's own.
+        var app = System.Windows.Application.Current.Resources;
+        foreach (var (key, value) in StudioShape)
+            if (_settings.Look == UiLook.Studio) app[key] = value;
+            else app.Remove(key);
 
         ClassicHeader.Visibility = console ? Visibility.Collapsed : Visibility.Visible;
         ConsoleHeader.Visibility = console ? Visibility.Visible : Visibility.Collapsed;
         ConsoleFooter.Visibility = console ? Visibility.Visible : Visibility.Collapsed;
-        NavIndicator.Visibility = console ? Visibility.Collapsed : Visibility.Visible;
+        NavIndicator.Visibility = console && _settings.Look != UiLook.Studio ? Visibility.Collapsed : Visibility.Visible;   // Studio keeps the travelling rail
         FooterMachine.Text = OmniHub.Core.Hardware.HardwareNames.ShortModel(_ctx.Model.Manufacturer, _ctx.Model.Product) ?? "This machine";
         ConsoleFooter.ToolTip = $"{_ctx.Model.Manufacturer} {_ctx.Model.Product}".Trim();
         UpdateNavStatus();
@@ -1230,7 +1241,7 @@ public partial class MainWindow : Window
             // the indicator reads as a marker and not a second background.
             double top = y + (target.ActualHeight - NavIndicator.Height) / 2.0;
 
-            if (!SystemParameters.ClientAreaAnimation)
+            if (!OmniHub.App.Wpf.Controls.Motion.On)
             {
                 NavIndicatorSlide.Y = top;
                 NavIndicator.Opacity = 1;
@@ -1276,7 +1287,7 @@ public partial class MainWindow : Window
         ResetStaggeredCards();
 
         // Straight swap when the system has animations turned off.
-        if (!SystemParameters.ClientAreaAnimation)
+        if (!OmniHub.App.Wpf.Controls.Motion.On)
         {
             ViewHost.Content = view;
             return;
@@ -1342,32 +1353,18 @@ public partial class MainWindow : Window
             // priority, which is long enough for another tab click to land in between.
             if (token != _navToken) return;
 
+            // The Studio Dashboard enters card by card, its dial sweeping and its curves drawing in.
+            if ((view is WorkspaceHost { Content: DashboardView d } ? d : view as DashboardView)?.Enter() == true) return;
+
             var panel = FindContentStack(view);
             if (panel is null) return;
             _staggeredView = view;
 
-            int index = 0;
-            foreach (var child in panel.Children.OfType<FrameworkElement>())
-            {
-                // Section labels are tiny and would flicker rather than animate; skip them so
-                // the sequence lands on the cards themselves.
-                if (child is TextBlock) continue;
-                if (index > 7) break; // anything below the fold is not worth animating
-
-                var offset = new TranslateTransform(0, 14);
-                child.RenderTransform = offset;
-                child.Opacity = 0;
-
-                var delay = TimeSpan.FromMilliseconds(40 * index);
-                var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(260))
-                { BeginTime = delay, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-                var rise = new DoubleAnimation(14, 0, TimeSpan.FromMilliseconds(300))
-                { BeginTime = delay, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-
-                child.BeginAnimation(OpacityProperty, fade);
-                offset.BeginAnimation(TranslateTransform.YProperty, rise);
-                index++;
-            }
+            // Section labels are tiny and would flicker rather than animate, and anything past the
+            // first eight is below the fold.
+            Controls.Motion.Stagger(panel.Children.OfType<FrameworkElement>()
+                .Where(c => c is not TextBlock && c.Visibility == Visibility.Visible)
+                .Take(8).Cast<UIElement>().ToList());
         });
     }
 
@@ -1387,6 +1384,12 @@ public partial class MainWindow : Window
     {
         if (view is GroupView group && group.CurrentSection is { } section)
             return FindContentStack(section);
+
+        // A workspace of one page hosts that page directly. Not seen through before, which in the
+        // Workspaces interface -- the default, and the one in daily use -- meant no page's entrance
+        // ever ran: every navigation there goes through a WorkspaceHost.
+        if (view is WorkspaceHost { Content: UserControl page })
+            return FindContentStack(page);
 
         if (view.Content is System.Windows.Controls.ScrollViewer { Content: System.Windows.Controls.Panel panel })
             return panel;

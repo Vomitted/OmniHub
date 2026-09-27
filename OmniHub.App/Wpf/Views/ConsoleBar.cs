@@ -65,6 +65,7 @@ public sealed class ConsoleBar : AlternateInterface
         _statusText.Foreground = Brush("TextMutedBrush");
         _statusText.Margin = new Thickness(8, 0, 0, 0);
         _statusText.VerticalAlignment = VerticalAlignment.Center;
+        if (_dense) Controls.Motion.Pulse(_dot, low: 0.45, periodMs: 2000);
         var pillRow = new StackPanel { Orientation = Orientation.Horizontal };
         pillRow.Children.Add(_dot);
         pillRow.Children.Add(_statusText);

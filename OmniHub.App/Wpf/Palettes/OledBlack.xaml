@@ -5,11 +5,11 @@
     <!-- OLED BLACK. True #000000 so the pixels are off, and deliberately the tightest theme here: sharp corners and close padding, an instrument rather than a card deck. -->
 
     <Color x:Key="BackgroundColor">#FF000000</Color>
-    <Color x:Key="PanelColor">#FF0A0C0E</Color>
-    <Color x:Key="PanelAltColor">#FF101316</Color>
-    <Color x:Key="PanelHoverColor">#FF15191D</Color>
-    <Color x:Key="BorderColor">#FF191D21</Color>
-    <Color x:Key="BorderStrongColor">#FF23282D</Color>
+    <Color x:Key="PanelColor">#FF141618</Color>
+    <Color x:Key="PanelAltColor">#FF1A1D20</Color>
+    <Color x:Key="PanelHoverColor">#FF202428</Color>
+    <Color x:Key="BorderColor">#FF24282C</Color>
+    <Color x:Key="BorderStrongColor">#FF30353A</Color>
 
     <Color x:Key="TextPrimaryColor">#FFE8EDF0</Color>
     <Color x:Key="TextMutedColor">#FFBFCAD4</Color>
@@ -30,15 +30,15 @@
 
     <Color x:Key="GoodColor">#FF22C55E</Color>
     <Color x:Key="WarnColor">#FFF59E0B</Color>
-    <Color x:Key="DangerColor">#FFF15E5E</Color>
+    <Color x:Key="DangerColor">#FFF87878</Color>
 
-    <Color x:Key="MetricCpuColor">#FFFF4F8B</Color>
+    <Color x:Key="MetricCpuColor">#FFFF639A</Color>
     <Color x:Key="MetricMemColor">#FF22C55E</Color>
     <Color x:Key="MetricGpuColor">#FF22D3EE</Color>
     <Color x:Key="MetricFanColor">#FFF5A524</Color>
 
     <Color x:Key="CardTopHighlightColor">#0CFFFFFF</Color>
-    <Color x:Key="GridLineColor">#FF101316</Color>
+    <Color x:Key="GridLineColor">#FF1A1D20</Color>
 
     <Color x:Key="CaptionColor">#FF000000</Color>
     <Color x:Key="CaptionTextColor">#FFE8EDF0</Color>

@@ -609,3 +609,82 @@ Rendered as the user sees it — OLED Black, 1,920 × 1,040, the readiness card 
 load or memory columns — and at 1,440 × 900, where Studio falls back to two a side; the Console look at
 1,920 to confirm it is unchanged. 1,003 tests pass; `ComponentColourTests` fails with OLED Black's old
 processor colour put back.
+
+## 12. Studio, finished: surfaces you can see, and motion
+
+Section 11 was answered "its still quite bad, also animate most of it, make it good please". The live
+window was measured first: maximized, 1,920 × 1,040 inside, Studio, OLED Black — the renders match it.
+Laid beside the reference card at the same scale, the gap is no longer arrangement; it is surface and
+shape, and it is worst in the palette the user runs.
+
+| | Reference | Studio on OLED Black |
+| --- | --- | --- |
+| Card on ground | `#151515` on `#0D0D0D` — L\* 6.8 on 3.6 | `#0A0C0E` on `#000000` — L\* 3.2 on 0 |
+| Corners | about 16 px | 4 px (the palette's `RadiusMd`) |
+| Edge stripe | inside the card, glowing | a hairline on the outer edge |
+| Bars | about 8 px | 4 px (the palette's `TrackHeight`) |
+| Motion | — | figures roll, the fan turns; nothing else moves |
+
+The step from ground to card is the reference's (3.2), but near black a display crushes both ends
+together: at L\* 3.2 the cards are black holes with an outline. Measured across all ten palettes, only
+OLED Black (3.2) and Terminal (4.3) put their cards below L\* 5.5.
+
+### Surfaces, in every palette
+
+`Contrast.Lightness` (CIE L\*, in Core) and `SurfaceTests` hold every palette to cards at L\* 5.5 or
+more, and at least 2.3 above the ground. OLED Black keeps its true-black ground — the point of the
+palette — and lifts its cards to `#141618`, with the alternate, hover and border tones stepped from
+there; Terminal lifts its cards the same way. The text-contrast test re-checks every text colour on
+the new surfaces.
+
+### Studio's shape
+
+Studio sets the shape the reference draws over whatever the palette says, exactly as it sets the
+heading face: `RadiusMd` 14, `RadiusSm` 8, `TrackHeight` 7. A palette decides colour; the look decides
+type and shape. Studio's cards pad wider, set their names larger, carry the component's stripe inside
+the card with a glow in its own colour, and lift a few pixels under the pointer. The dial's field
+shrinks to 440, so on a wide screen the cards are 0.65 wide to tall — the reference's proportion.
+
+### Motion
+
+"Animate most of it", within the rule already on record: this user found an animation-heavy pass
+slow, and durations were halved to 220–240 ms. So every transition is short, entrances are staggered
+but the whole of one finishes within 450 ms (`MotionBudget`, tested), loops run only while their
+element is on screen and at 30 frames a second, and nothing moves when Windows' own "Animation
+effects" is off.
+
+| Where | What |
+| --- | --- |
+| Every page | Its panels fade and rise into place, staggered, when the page is shown |
+| Dashboard | The cards and the dial enter in order; the ring sweeps from zero to the reading; the traces and the chart draw in from the left |
+| Chart | A new subject or window cross-fades in |
+| Bars | Every bar eases to its new fill, in every look |
+| Cards | Lift under the pointer |
+| Dial | The ring's glow breathes; the dashed and tinted squares behind it turn, slowly, in opposite directions |
+| Live dots | The chart's live dot and the fan-state dots pulse |
+| Sidebar | The travelling rail follows the selected page |
+
+Figures still roll to a new reading and the fan still turns with the real one. No motion stands for a
+reading it does not have: the sweep ends at the measured value, the bars at the measured fill.
+
+### Two defects found on the way
+
+- **No page's entrance had ever run in the Workspaces interface** — the default, and the one in daily
+  use. Every navigation there hands `AnimateTo` a `WorkspaceHost`, and `FindContentStack` did not look
+  inside one, so it returned null and the staggered entrance written for every page was silently
+  skipped. It now sees through a one-page workspace; the stagger itself moved into `Motion` and the
+  budget. The user asking for "most of it" to be animated was, in part, asking for motion that had
+  been written and never shown.
+- **Eleven places read Windows' animation setting for themselves.** They now read `Motion.On`, one
+  switch for the whole application.
+
+### Verification
+
+Rendered at 1,920 × 1,040 in OLED Black with 90 seconds of real readings: the Dashboard, System and
+Fans. Motion could not be filmed: the snapshot tool's sandbox never presents its window, so WPF
+advances an animation one tick and stops (measured: a page fade holds at 0.70 for 900 ms, while a
+detached probe animation in the same process runs normally). What was verified there instead is that
+each entrance runs and starts what it should — header, cards, dial and chart pane moving, the ring
+sweeping (`enter` step) — and that with motion forced on, a page change starts its fade. 1,018 tests
+pass; `SurfaceAndMotionTests` fails with OLED Black's old card colour put back, and with the stagger's
+compression removed.

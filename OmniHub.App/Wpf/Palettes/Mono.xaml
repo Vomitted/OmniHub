@@ -5,10 +5,10 @@
     <!-- MONO. No colour at all in the chrome: a white accent on greyscale, fully square, maximum density. When a reading goes amber it is the only hue on screen. -->
 
     <Color x:Key="BackgroundColor">#FF0B0B0B</Color>
-    <Color x:Key="PanelColor">#FF121212</Color>
-    <Color x:Key="PanelAltColor">#FF181818</Color>
-    <Color x:Key="PanelHoverColor">#FF1E1E1E</Color>
-    <Color x:Key="BorderColor">#FF242424</Color>
+    <Color x:Key="PanelColor">#FF141414</Color>
+    <Color x:Key="PanelAltColor">#FF1A1A1A</Color>
+    <Color x:Key="PanelHoverColor">#FF202020</Color>
+    <Color x:Key="BorderColor">#FF262626</Color>
     <Color x:Key="BorderStrongColor">#FF383838</Color>
 
     <Color x:Key="TextPrimaryColor">#FFF2F2F2</Color>
@@ -38,7 +38,7 @@
     <Color x:Key="MetricFanColor">#FFD9A441</Color>
 
     <Color x:Key="CardTopHighlightColor">#00000000</Color>
-    <Color x:Key="GridLineColor">#FF191919</Color>
+    <Color x:Key="GridLineColor">#FF1B1B1B</Color>
 
     <Color x:Key="CaptionColor">#FF0B0B0B</Color>
     <Color x:Key="CaptionTextColor">#FFF2F2F2</Color>

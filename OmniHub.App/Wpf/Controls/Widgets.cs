@@ -52,7 +52,7 @@ internal static class Roll
 
         text.SetValue(FormProperty, new Form(format, suffix));
 
-        if (!animate || double.IsNaN((double)text.GetValue(ValueProperty)) || !text.IsVisible || !SystemParameters.ClientAreaAnimation)
+        if (!animate || double.IsNaN((double)text.GetValue(ValueProperty)) || !text.IsVisible || !OmniHub.App.Wpf.Controls.Motion.On)
         {
             text.BeginAnimation(ValueProperty, null);
             text.SetValue(ValueProperty, v);
@@ -243,7 +243,7 @@ internal sealed class ArcDial : Canvas
 
         // Eased in 220 ms, the application's figure for a readout moving, and only while it can be
         // seen; hidden, it simply takes the value.
-        if (IsVisible && SystemParameters.ClientAreaAnimation)
+        if (IsVisible && OmniHub.App.Wpf.Controls.Motion.On)
             BeginAnimation(DrawnProperty, new DoubleAnimation(target, TimeSpan.FromMilliseconds(220))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
@@ -391,6 +391,16 @@ public sealed class Meter : Grid
     private readonly DropShadowEffect _badgeGlow = Glow.Make(blur: 10, opacity: 0.6);
     private bool _badged;
 
+    // The fill as a percentage, animatable, driving the two star columns that draw it.
+    private static readonly DependencyProperty FilledProperty = DependencyProperty.Register(
+        "Filled", typeof(double), typeof(Meter), new PropertyMetadata(0.0, (d, e) =>
+        {
+            var meter = (Meter)d;
+            double pct = Math.Clamp((double)e.NewValue, 0, 100);
+            meter._filled.Width = new GridLength(pct, GridUnitType.Star);
+            meter._rest.Width = new GridLength(100 - pct, GridUnitType.Star);
+        }));
+
     public Meter()
     {
         RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -469,9 +479,8 @@ public sealed class Meter : Grid
         _value.Text = value;
         _bar.Visibility = fraction is null ? Visibility.Collapsed : Visibility.Visible;
 
-        double pct = Math.Round((fraction ?? 0) * 100, 1);
-        _filled.Width = new GridLength(pct, GridUnitType.Star);
-        _rest.Width = new GridLength(100 - pct, GridUnitType.Star);
+        // Eased to the new fill rather than jumping to it; set outright while off screen.
+        Motion.To(this, FilledProperty, Math.Round((fraction ?? 0) * 100, 1), IsVisible);
 
         if (fill is null) _fill.SetResourceReference(Border.BackgroundProperty, "AccentGradientBrush");
         else _fill.Background = fill;
@@ -600,7 +609,7 @@ public sealed class FanGlyph : Viewbox
     {
         double angle = _turn.Angle % 360;
 
-        if (!IsVisible || _secondsPerTurn is not { } seconds || !SystemParameters.ClientAreaAnimation)
+        if (!IsVisible || _secondsPerTurn is not { } seconds || !OmniHub.App.Wpf.Controls.Motion.On)
         {
             _turn.BeginAnimation(RotateTransform.AngleProperty, null);
             _turn.Angle = angle;

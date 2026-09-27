@@ -97,6 +97,7 @@ internal static class Snapshot
         if (ctx.Smu is not null) return "the SMU opened";
 
         Say("sandbox holds: Low integrity, settings write denied, no vendor interface, no SMU");
+        Say($"animation effects: {(SystemParameters.ClientAreaAnimation ? "on" : "off")}");
         return null;
     }
 
@@ -116,6 +117,9 @@ internal static class Snapshot
 
     static object? Field(object o, string name) => o.GetType().GetField(name, Any)!.GetValue(o);
     static object? Call(object o, string name, params object?[] a) => o.GetType().GetMethod(name, Any)!.Invoke(o, a);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
 
     static void SavePng(Window win, string path)
     {
@@ -298,12 +302,18 @@ internal static class Snapshot
         settings.OverlayEnabled = false;
 
         win.WindowStartupLocation = WindowStartupLocation.Manual;
-        win.Left = -32000; win.Top = -32000;
+        // Off screen by default. SNAPSHOT_ONSCREEN=1 puts it on screen behind every other window instead:
+        // WPF stops advancing animations for a window with nothing to present, so frames of motion
+        // (film=) need a window the compositor is drawing, even if nobody can see it.
+        bool onScreen = Environment.GetEnvironmentVariable("SNAPSHOT_ONSCREEN") == "1";
+        win.Left = onScreen ? 0 : -32000; win.Top = onScreen ? 0 : -32000;
         win.Width = int.Parse(Environment.GetEnvironmentVariable("SNAPSHOT_WIDTH") ?? "1100");
         win.Height = int.Parse(Environment.GetEnvironmentVariable("SNAPSHOT_HEIGHT") ?? "740");
         win.ShowActivated = false;
         win.ShowInTaskbar = false;
         win.Show();
+        if (onScreen)
+            SetWindowPos(new System.Windows.Interop.WindowInteropHelper(win).Handle, (IntPtr)1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);   // HWND_BOTTOM, no size, no move, no activate
         Pump(1200);
 
         string? replay = Environment.GetEnvironmentVariable("SNAPSHOT_REPLAY");
@@ -313,10 +323,23 @@ internal static class Snapshot
         int scroll = 0;
         string look = "";
         var hidden = new HashSet<string>();
+        int[] film = Array.Empty<int>();
 
         void Capture(int i, string? tab = null)
         {
             Show(win, i);
+
+            // Frames of the entrance, at the given milliseconds after the page was asked for: a still
+            // render shows where motion ends, never whether it happened.
+            var shownAt = DateTime.UtcNow;
+            foreach (int at in film)
+            {
+                Pump(Math.Max(0, at - (int)(DateTime.UtcNow - shownAt).TotalMilliseconds));
+                string frameName = new(layout.Workspaces[i].Name.Where(char.IsLetterOrDigit).ToArray());
+                SavePng(win, Path.Combine(outDir, $"{iface}-{theme}-{i}-{frameName}-t{at:0000}.png"));
+                if (Field(win, "ViewHost") is UIElement host && Field(win, "NavIndicatorSlide") is TranslateTransform rail)
+                    Say($"  t{at}: effects {SystemParameters.ClientAreaAnimation}, page opacity {host.Opacity:0.00} (animating {host.HasAnimatedProperties}), rail at {rail.Y:0}, holds {((System.Windows.Controls.ContentControl)host).Content?.GetType().Name}/{(((System.Windows.Controls.ContentControl)host).Content as System.Windows.Controls.UserControl)?.Content?.GetType().Name}");
+            }
             Pump(900);
             if (tab is not null && !SelectTab(win, tab)) Say($"no tab named {tab} on workspace {i}");
             if (tab is not null) Pump(900);
@@ -353,6 +376,35 @@ internal static class Snapshot
             // Seconds of real readings to gather before the next capture: the log replay has no load
             // or memory columns, so their history is only ever what the sandbox itself measured.
             else if (step.StartsWith("wait=")) Pump(int.Parse(step[5..]) * 1000);
+            else if (step.StartsWith("film="))
+            {
+                film = step[5..].Split('/').Select(int.Parse).ToArray();
+                // Motion on for the film, whatever the sandbox's copy of the Windows setting says.
+                win.GetType().Assembly.GetType("OmniHub.App.Wpf.Controls.Motion")!
+                   .GetField("ForReview", Any)!.SetValue(null, true);
+            }
+            else if (step == "enter")
+            {
+                // The sandbox never presents its window, so WPF advances an animation one tick and
+                // stops: motion cannot be filmed here. What can be checked is that the entrance runs
+                // and starts what it should -- on the cards, the dial and the traces.
+                var views = (System.Collections.IDictionary)Field(win, "_views")!;
+                var dash = (FrameworkElement)views["dashboard"]!;
+                bool entered = (bool)Call(dash, "Enter")!;
+                UIElement Named(string n) => (UIElement)dash.FindName(n);
+                string Moving(string n) => $"{n} {(Named(n).HasAnimatedProperties || (Named(n).RenderTransform?.HasAnimatedProperties ?? false) ? "moving" : "still")}";
+                var dial = Named("Dial");
+                Say($"entrance ran: {entered}; {Moving("Header")}, {Moving("CpuCard")}, {Moving("CoolCard")}, {Moving("ChartPane")}; dial ring {(dial.HasAnimatedProperties ? "sweeping" : "still")}");
+            }
+            else if (step == "clock")
+            {
+                // Does this process advance animations at all? A plain one-second fade, read back.
+                var probe = new System.Windows.Controls.Border();
+                probe.BeginAnimation(UIElement.OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(1, 0, TimeSpan.FromSeconds(1)));
+                var started = DateTime.UtcNow;
+                Pump(300);
+                Say($"clock probe: opacity {probe.Opacity:0.00} after {(DateTime.UtcNow - started).TotalMilliseconds:0} ms (a ticking clock reads about 0.70)");
+            }
             else if (step.StartsWith("look="))
             {
                 win.SetLook(Enum.Parse<OmniHub.App.UiLook>(step[5..]));

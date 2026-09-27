@@ -44,7 +44,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
     drawn against the same scale as its bar, six readings with traces across the top, each page's
     state under its name in the sidebar, a fan that turns with the real one, and a live chart with
     a fan view, a 5, 15 or 30-minute window and its values and times labelled. Headings are set in a
-    sans whatever the theme.
+    sans, corners are rounded and bars are heavier whatever the theme, and each card's stripe glows
+    inside it in the component's colour.
   - **Console**: the reference layout as first built, kept as it was.
   - **Classic**: the instrument bar, the two-line sidebar, the four gauges and the four history
     strips. Its colours are a theme of their own, **Midnight Blue**.
@@ -314,6 +315,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Fixed
 
+- **Pages animate in.** Every page was written to rise into place, panel after panel, when shown —
+  and in the sidebar interface, the default, none ever did: the page arrived inside a container the
+  entrance did not look into. Studio goes further: the Dashboard's cards enter in order, the dial's
+  ring sweeps to the reading, the curves draw in from the left, bars ease to each new value, cards
+  lift under the pointer, the dial's glow breathes and its squares turn slowly, and the live dots
+  pulse. Every entrance finishes inside 450 ms, loops stop when the window is hidden, and nothing
+  moves when Windows' animation effects are off.
+- **Cards you can see in every theme.** OLED Black drew its cards two shades above pure black,
+  and on a real screen they vanished into it; they now sit where the reference puts them, with the
+  ground still true black. Terminal and Mono lifted the same way, and a test holds every theme to it.
 - **Every theme tells the components apart.** The processor, graphics card, memory and fans each
   have a colour used on every card, bar, trace and chart line — and in nine of ten themes two of
   them were the same or nearly so. OLED Black drew the processor and the graphics card in two

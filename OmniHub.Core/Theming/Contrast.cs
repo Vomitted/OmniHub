@@ -110,6 +110,17 @@ public static class Contrast
         return Math.Sqrt((l1 - l2) * (l1 - l2) + (a1 - a2) * (a1 - a2) + (b1 - b2) * (b1 - b2));
     }
 
+    /// <summary>
+    /// How light a card must be, and how far above its ground, to be seen as a card. Measured off the
+    /// reference (cards L* 6.8 on 3.6). Near black a display crushes both ends together, so a step
+    /// alone is not enough: OLED Black stepped its cards 3.2 above a true-black ground and they read
+    /// as black holes with an outline.
+    /// </summary>
+    public const double MinimumCardLightness = 5.5, MinimumCardStep = 2.3;
+
+    /// <summary>CIE L*, 0 (black) to 100 (white): lightness as an eye grades it.</summary>
+    public static double Lightness(Rgb c) => Lab(c).L;
+
     private static (double L, double A, double B) Lab(Rgb c)
     {
         static double Linear(byte v)

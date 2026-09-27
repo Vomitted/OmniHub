@@ -85,6 +85,7 @@ public sealed class LiveChart : UserControl
         var live = new Ellipse { Width = 8, Height = 8, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 9, 0) };
         live.SetResourceReference(Shape.FillProperty, "AccentBrush");
         title.Children.Add(live);
+        if (detailed) Motion.Pulse(live);   // it is live: the dot says so while the chart is on screen
         var name = new TextBlock { Text = "Live", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 16, 0) };
         name.SetResourceReference(StyleProperty, "PaneTitle");
         title.Children.Add(name);
@@ -99,7 +100,7 @@ public sealed class LiveChart : UserControl
             tab.SetResourceReference(StyleProperty, "PillRadioStyle");
             tab.Checked += (sender, _) =>
             {
-                if (sender is RadioButton { Tag: int index }) { _subject = index; Refresh(); }
+                if (sender is RadioButton { Tag: int index }) { _subject = index; Refresh(); if (_detailed) Motion.Refresh(_plot); }
             };
             title.Children.Add(tab);
         }
@@ -118,7 +119,7 @@ public sealed class LiveChart : UserControl
                 pill.SetResourceReference(StyleProperty, "PillRadioStyle");
                 pill.Checked += (sender, _) =>
                 {
-                    if (sender is RadioButton { Tag: int m }) { _window = TimeSpan.FromMinutes(m); Refresh(); }
+                    if (sender is RadioButton { Tag: int m }) { _window = TimeSpan.FromMinutes(m); Refresh(); Motion.Refresh(_plot); }
                 };
                 legend.Children.Add(pill);
             }

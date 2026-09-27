@@ -5,11 +5,11 @@
     <!-- TERMINAL. Green phosphor on near-black, square corners, minimum padding. The densest theme here on purpose: it is meant to read like a console, not an app. -->
 
     <Color x:Key="BackgroundColor">#FF060806</Color>
-    <Color x:Key="PanelColor">#FF0C100C</Color>
-    <Color x:Key="PanelAltColor">#FF121712</Color>
-    <Color x:Key="PanelHoverColor">#FF171D17</Color>
-    <Color x:Key="BorderColor">#FF1B221B</Color>
-    <Color x:Key="BorderStrongColor">#FF2A342A</Color>
+    <Color x:Key="PanelColor">#FF121812</Color>
+    <Color x:Key="PanelAltColor">#FF171E17</Color>
+    <Color x:Key="PanelHoverColor">#FF1C241C</Color>
+    <Color x:Key="BorderColor">#FF202820</Color>
+    <Color x:Key="BorderStrongColor">#FF2E382E</Color>
 
     <Color x:Key="TextPrimaryColor">#FFD7E6D7</Color>
     <Color x:Key="TextMutedColor">#FFAEC7B4</Color>
@@ -30,7 +30,7 @@
 
     <Color x:Key="GoodColor">#FF3FB950</Color>
     <Color x:Key="WarnColor">#FFD29922</Color>
-    <Color x:Key="DangerColor">#FFF85149</Color>
+    <Color x:Key="DangerColor">#FFF96962</Color>
 
     <Color x:Key="MetricCpuColor">#FF3FB950</Color>
     <Color x:Key="MetricMemColor">#FFD2A8FF</Color>
@@ -38,7 +38,7 @@
     <Color x:Key="MetricFanColor">#FFFFA657</Color>
 
     <Color x:Key="CardTopHighlightColor">#00000000</Color>
-    <Color x:Key="GridLineColor">#FF111611</Color>
+    <Color x:Key="GridLineColor">#FF161C16</Color>
 
     <Color x:Key="CaptionColor">#FF060806</Color>
     <Color x:Key="CaptionTextColor">#FFD7E6D7</Color>

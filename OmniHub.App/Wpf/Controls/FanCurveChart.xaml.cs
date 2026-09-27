@@ -160,7 +160,7 @@ public partial class FanCurveChart : UserControl
                 Root.Children.Add(dot);
             }
 
-            if (animateEntrance && SystemParameters.ClientAreaAnimation)
+            if (animateEntrance && OmniHub.App.Wpf.Controls.Motion.On)
             {
                 poly.Opacity = 0;
                 var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(500)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
@@ -200,7 +200,7 @@ public partial class FanCurveChart : UserControl
 
     private void Breathe(bool on)
     {
-        if (on && SystemParameters.ClientAreaAnimation)
+        if (on && OmniHub.App.Wpf.Controls.Motion.On)
         {
             var breathe = new DoubleAnimation(1.0, 1.35, TimeSpan.FromMilliseconds(1600))
             {

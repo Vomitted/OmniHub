@@ -31,7 +31,7 @@
             </Border>
 
             <!-- What this is and which machine, and the presets: what each one sends is written under them. -->
-            <Grid Margin="0,0,0,16">
+            <Grid x:Name="Header" Margin="0,0,0,16">
                 <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
                     <TextBlock Text="Overview" FontFamily="{StaticResource DisplayFont}" FontSize="26"
                                Foreground="{StaticResource TextPrimaryBrush}"/>
@@ -92,12 +92,12 @@
 
             <!-- The live chart, as the reference closes its screen: two smooth curves over the last
                  five minutes (see LiveChart). The four history strips stay under the previous look. -->
-            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,12">
+            <Border x:Name="ChartPane" Style="{StaticResource PaneStyle}" Margin="0,0,0,12">
                 <ContentControl x:Name="LiveHost" Focusable="False"/>
             </Border>
 
             <!-- What is holding the processor back, and what has been. -->
-            <Border Style="{StaticResource PaneStyle}" Margin="0,0,0,12">
+            <Border x:Name="LimitsPane" Style="{StaticResource PaneStyle}" Margin="0,0,0,12">
                 <StackPanel>
                     <TextBlock Text="What is limiting it" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left" Margin="0,0,0,8"/>
                     <controls:LimitStrip x:Name="Limits"/>
@@ -105,7 +105,7 @@
             </Border>
 
             <!-- The detail: every reading, now and since launch, as a tile. -->
-            <Border Style="{StaticResource PaneStyle}">
+            <Border x:Name="SensorsPane" Style="{StaticResource PaneStyle}">
                 <DockPanel>
                     <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
                         <TextBlock Text="Sensors" Style="{StaticResource PaneTitle}" HorizontalAlignment="Left"/>

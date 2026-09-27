@@ -37,6 +37,9 @@ public partial class DashboardView : UserControl
     // Studio's cooling card carries the fan, turning with the real one, where the console has a thermometer.
     private readonly Controls.FanGlyph? _fanIcon;
 
+    // Studio's traces, with the card each belongs to, for the entrance to draw them in as their cards arrive.
+    private readonly List<(UIElement Card, FrameworkElement Trace)> _traces = new();
+
     // What the poll last said that the shared readings do not carry: whether the firmware reports
     // throttling.
     private bool _throttling;
@@ -104,10 +107,19 @@ public partial class DashboardView : UserControl
         if (studio)
         {
             double? hot = new[] { "cpu", "gpu" }.Max(k => Metrics.FullScale(Metrics.Find(k)!, null));
-            CpuCard.SetTrace(new Controls.Trace(metrics, () => 100, ("cpuload", "MetricCpuBrush")));
-            MemCard.SetTrace(new Controls.Trace(metrics, () => metrics.MemoryTotalGB, ("mem", "MetricMemBrush")));
-            GpuCard.SetTrace(new Controls.Trace(metrics, () => 100, ("gpuload", "MetricGpuBrush")));
-            CoolCard.SetTrace(new Controls.Trace(metrics, () => hot, ("cpu", "MetricCpuBrush"), ("gpu", "MetricGpuBrush")));
+            foreach (var (card, trace) in new (Controls.ComponentCard, Controls.Trace)[]
+                     {
+                         (CpuCard, new Controls.Trace(metrics, () => 100, ("cpuload", "MetricCpuBrush"))),
+                         (MemCard, new Controls.Trace(metrics, () => metrics.MemoryTotalGB, ("mem", "MetricMemBrush"))),
+                         (GpuCard, new Controls.Trace(metrics, () => 100, ("gpuload", "MetricGpuBrush"))),
+                         (CoolCard, new Controls.Trace(metrics, () => hot, ("cpu", "MetricCpuBrush"), ("gpu", "MetricGpuBrush"))),
+                     })
+            {
+                card.Studio = true;
+                card.SetTrace(trace);
+                _traces.Add((card, trace));
+            }
+            Dial.Alive = true;
         }
 
         LoadBattery();
@@ -169,6 +181,28 @@ public partial class DashboardView : UserControl
     }
 
     // ---------------------------------------------------------------- layout
+
+    /// <summary>
+    /// Studio's entrance, called as the page is shown: the header, the cards and the dial, the chart
+    /// and the panes under it enter in reading order inside the motion budget; the ring sweeps to its
+    /// reading as the dial arrives, and each curve draws in from the left as its card does. False
+    /// outside Studio, where the page's panels enter as any page's do.
+    /// </summary>
+    public bool Enter()
+    {
+        if (!_studio || !Controls.Motion.On) return false;
+
+        var order = new UIElement[] { Header, CpuCard, MemCard, Centre, GpuCard, CoolCard, ChartPane, LimitsPane, SensorsPane }
+            .Where(e => e.Visibility == Visibility.Visible).ToList();
+        if (ReadinessCard.Visibility == Visibility.Visible) order.Insert(0, ReadinessCard);
+        Controls.Motion.Stagger(order);
+
+        int Delay(UIElement e) => OmniHub.Core.Theming.MotionBudget.Delay(order.IndexOf(e), order.Count);
+        Dial.SweepIn(Delay(Centre));
+        foreach (var (card, trace) in _traces) Controls.Motion.Reveal(trace, Delay(card) + 80);
+        if (LiveHost.Content is FrameworkElement chart) Controls.Motion.Reveal(chart, Delay(ChartPane) + 60, 520);
+        return true;
+    }
 
     /// <summary>The three arrangements of the console (see <see cref="Reflow"/>).</summary>
     private enum Arrangement { Row, Sides, Stacked }

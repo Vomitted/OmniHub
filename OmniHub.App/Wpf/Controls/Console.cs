@@ -4,6 +4,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using OmniHub.Core.Telemetry;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
@@ -71,6 +72,30 @@ public sealed class ComponentCard : Border
     private readonly TextBlock[] _statValues = { new(), new() };
     private string _colourKey = "AccentBrush";
     private bool _stripeRight;
+    private bool _studio;
+    private System.Windows.Media.Effects.DropShadowEffect? _stripeGlow;
+
+    /// <summary>
+    /// Studio's card (TECHNICAL-v5-ui.md, section 12): wider padding, a larger name, the stripe inside
+    /// the card glowing in its component's colour as the reference draws it, and a lift under the
+    /// pointer. The console look's card stays as it was.
+    /// </summary>
+    public bool Studio
+    {
+        get => _studio;
+        set
+        {
+            if (!value || _studio) return;
+            _studio = true;
+            Padding = new Thickness(22, 20, 22, 20);
+            _title.FontSize = 17;
+            _stripeGlow = Glow.Make(blur: 14, opacity: 0.85);
+            _stripe.Effect = _stripeGlow;
+            PlaceStripe();
+            ApplyColour();
+            Motion.Lift(this);
+        }
+    }
 
     public ComponentCard()
     {
@@ -223,8 +248,11 @@ public sealed class ComponentCard : Border
     }
 
     /// <summary>A bar in the component's colour, or in another's where it is another component's reading.</summary>
-    public void ShowBar(Meter bar, string text, double? fraction, string? colourKey = null) =>
+    public void ShowBar(Meter bar, string text, double? fraction, string? colourKey = null)
+    {
         bar.Show(text, fraction, (Brush)FindResource(colourKey ?? _colourKey));
+        if (_stripeGlow is not null) ApplyColour();
+    }
 
     public void ShowStats(string label1, string value1, string label2, string value2)
     {
@@ -243,7 +271,9 @@ public sealed class ComponentCard : Border
     {
         bool right = _stripeRight;
         _stripe.HorizontalAlignment = right ? HorizontalAlignment.Right : HorizontalAlignment.Left;
-        _stripe.Margin = right ? new Thickness(0, 0, -19, 0) : new Thickness(-19, 0, 0, 0);
+        // At the card's own edge, across the padding and the border; Studio's sits inside, 10 px in.
+        double outset = _studio ? -12 : -19;
+        _stripe.Margin = right ? new Thickness(0, 0, outset, 0) : new Thickness(outset, 0, 0, 0);
 
         var side = right ? HorizontalAlignment.Right : HorizontalAlignment.Left;
         _iconSlot.HorizontalAlignment = right ? HorizontalAlignment.Left : HorizontalAlignment.Right;
@@ -262,6 +292,10 @@ public sealed class ComponentCard : Border
     {
         _stripe.SetResourceReference(BackgroundProperty, _colourKey);
         _icon.SetResourceReference(Shape.StrokeProperty, _colourKey);
+
+        // Built from the brush as it is now; ShowBar calls this on every reading, so a theme switch
+        // reaches the glow on the next one.
+        if (_stripeGlow is not null && TryFindResource(_colourKey) is Brush brush) _stripeGlow.Color = Glow.Of(brush);
     }
 }
 
@@ -282,7 +316,9 @@ public sealed class HeroDial : Grid
     // The field the lattice is drawn on and the ring centred in it; the readout box sits in the same
     // coordinates, across the ring's foot. Proportions measured off the reference: a stroke about a
     // fortieth of the ring, a notch of a few degrees.
-    private const double Field = 520, Size = 320, Stroke = 8;
+    // 440 rather than the 520 first used: in Studio's one-row arrangement the dial's field sets the
+    // row's height, and at 440 the cards come out 0.65 wide to tall, the reference's proportion.
+    private const double Field = 440, Size = 320, Stroke = 8;
     private const double Notch = 3, Sweep = 360 - 2 * Notch;   // degrees; the gap is at twelve o'clock
 
     private readonly Canvas _ring = new() { Width = Size, Height = Size, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
@@ -299,6 +335,9 @@ public sealed class HeroDial : Grid
     private readonly TextBlock[] _chipLabels = { new(), new() };
     private readonly TextBlock[] _chipValues = { new(), new() };
     private double? _warnFrom;
+    private double _target;
+    private readonly List<(RotateTransform Turn, double From, double Degrees, int PeriodMs)> _turning = new();
+    private bool _alive;
     private string _unit = "";
     private string _format = "0.0";
 
@@ -424,6 +463,7 @@ public sealed class HeroDial : Grid
     public void Show(double? fraction, double? value, string format, string unit, Brush arc, Brush figure, double? warnFrom)
     {
         _format = format;
+        _target = fraction ?? 0;
         _unit = unit;
         _whole.Foreground = figure;
         _value.Stroke = arc;
@@ -435,7 +475,7 @@ public sealed class HeroDial : Grid
             _zone.Data = warnFrom is { } w ? Ring(w, 1, outset: Stroke / 2 + 5) : System.Windows.Media.Geometry.Empty;
         }
 
-        bool animate = IsVisible && SystemParameters.ClientAreaAnimation;
+        bool animate = IsVisible && OmniHub.App.Wpf.Controls.Motion.On;
         Ease(DrawnProperty, fraction ?? 0, animate, 220);
 
         if (value is not { } v || !double.IsFinite(v))
@@ -495,6 +535,38 @@ public sealed class HeroDial : Grid
         _fraction.Text = (dot < 0 ? "" : text[dot..]) + (_unit.Length > 0 ? " " + _unit : "");
     }
 
+    /// <summary>
+    /// The ring sweeping from its notch to the reading it holds, as the dial enters. It ends at the
+    /// measured value; the figure is not counted up, so no temperature is shown that was not read.
+    /// </summary>
+    public void SweepIn(int delayMs)
+    {
+        if (!Motion.On) return;
+        var sweep = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(delayMs + 480) };
+        sweep.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+        sweep.KeyFrames.Add(new DiscreteDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(delayMs))));
+        sweep.KeyFrames.Add(new EasingDoubleKeyFrame(_target, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(delayMs + 480)),
+                                                     new CubicEase { EasingMode = EasingMode.EaseOut }));
+        BeginAnimation(DrawnProperty, sweep);   // held at its end; the next reading eases on from there
+    }
+
+    /// <summary>
+    /// Studio's dial is alive while it is on screen: the ring's glow breathes and the squares behind it
+    /// turn, slowly, in opposite directions. Nothing here moves with a reading.
+    /// </summary>
+    public bool Alive
+    {
+        get => _alive;
+        set
+        {
+            if (!value || _alive) return;
+            _alive = true;
+            Motion.Loop(this, _glow, System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, 0.9, 0.45, 2600, autoReverse: true);
+            foreach (var (turn, from, degrees, period) in _turning)
+                Motion.Loop(this, turn, RotateTransform.AngleProperty, from, from + degrees, period, autoReverse: false);
+        }
+    }
+
     private void Redraw() => _value.Data = Ring(0, Drawn);
 
     /// <summary>
@@ -544,7 +616,7 @@ public sealed class HeroDial : Grid
     /// one tinted with the second accent. It carries no reading; it is the one thing on the page that
     /// is only there to be looked at, which is what the user asked the page to have.
     /// </summary>
-    private static UIElement Lattice()
+    private UIElement Lattice()
     {
         var canvas = new Canvas { Width = Field, Height = Field, IsHitTestVisible = false };
         // Sides and angles measured off the reference, as multiples of the ring; faint enough that the
@@ -567,6 +639,11 @@ public sealed class HeroDial : Grid
             Canvas.SetLeft(square, (Field - side) / 2);
             Canvas.SetTop(square, (Field - side) / 2);
             canvas.Children.Add(square);
+
+            // The dashed and the tinted squares turn when the dial is alive, the one against the other,
+            // one turn in two minutes and in two minutes forty; the large one stays as the frame.
+            if (dashed) _turning.Add(((RotateTransform)square.RenderTransform, angle, 360, 120_000));
+            else if (tint == "AccentBrush2") _turning.Add(((RotateTransform)square.RenderTransform, angle, -360, 160_000));
         }
         return canvas;
     }
