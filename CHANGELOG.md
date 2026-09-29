@@ -66,6 +66,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   lightest the material can be, and the tray flyout and the overlay, which float over the
   desktop and over games, keep solid cards. Windows draws the material only while the window has
   focus, and only from Windows 11 22H2; elsewhere the setting says so and nothing changes.
+
+  A **Strength** slider sets how much of the material shows through the whole window, from a
+  faint frost to nearly clear glass, and a **Material** choice picks Acrylic (a live blur of what
+  is behind the window), Mica (the wallpaper, tinted once rather than blurred every frame, so the
+  lighter of the two on the graphics card) or Mica Alt. Every colour is held to 4.5 : 1 at every
+  strength; at the clear end they grow paler, never unreadable. Windows offers no control over the
+  blur's radius, so the slider controls how much of it shows.
+- **App GPU routing can be filtered by preference.** All, high performance, power saving and
+  Windows decides, each with its count, combining with the search. Each application's preference
+  is now three segments rather than a drop-down: one click to change, and legible down the list.
 - **A vendor seam, so support can widen past HP.** The cooling loop, the fan band, the
   throttling answer, the temperature reader and the optimisation code no longer name an HP type.
   What stays HP-shaped is the HP screens and the HP commands, which is where it belongs.
@@ -332,6 +342,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Fixed
 
+- **App GPU routing no longer freezes the window.** On this machine Windows holds 404 per-application
+  GPU preferences, and the page built a card, a drop-down and a button for every one of them at
+  once — and again, after re-reading the registry, on every keystroke in its search box. The System
+  group also builds its tabs in the background, so the freeze came even to somebody who never
+  opened this one. The list now builds only the rows on screen and filters in memory. It also no
+  longer lists Windows' global DirectX options as though they were an application.
 - **Pages animate in.** Every page was written to rise into place, panel after panel, when shown —
   and in the sidebar interface, the default, none ever did: the page arrived inside a container the
   entrance did not look into. Studio goes further: the Dashboard's cards enter in order, the dial's

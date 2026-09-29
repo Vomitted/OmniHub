@@ -78,6 +78,22 @@ public enum UiLook
     DotMatrix = 4,
 }
 
+/// <summary>
+/// The material Windows 11 draws behind the window when frosted glass is on. The values are the
+/// system's own backdrop types (DWMWA_SYSTEMBACKDROP_TYPE), so they are passed through unchanged.
+/// </summary>
+public enum GlassMaterial
+{
+    /// <summary>Mica: the wallpaper, blurred and tinted once rather than every frame -- the cheaper material.</summary>
+    Mica = 2,
+
+    /// <summary>Acrylic: a live blur of whatever is behind the window.</summary>
+    Acrylic = 3,
+
+    /// <summary>Mica Alt: Mica with a stronger, darker tint.</summary>
+    MicaAlt = 4,
+}
+
 /// <summary>Which screen corner the telemetry overlay anchors to.</summary>
 public enum OverlayCorner { TopLeft, TopRight, BottomLeft, BottomRight }
 
@@ -216,6 +232,15 @@ public sealed class AppSettings
     /// material the desktop behind the window shows through, and not everybody wants that.
     /// </summary>
     public bool FrostedGlass { get; set; }
+
+    /// <summary>
+    /// How much of the material shows through the whole window, 0 to 100: a faint frost at 0, nearly
+    /// clear glass at 100. Every text colour stays readable across the range (LookSurfaces).
+    /// </summary>
+    public int GlassStrength { get; set; } = 30;
+
+    /// <summary>Which material Windows draws behind the glass. See <see cref="OmniHub.App.GlassMaterial"/>.</summary>
+    public GlassMaterial GlassMaterial { get; set; } = GlassMaterial.Acrylic;
 
     /// <summary>
     /// The palette built in the application, as the four colours it is described by.

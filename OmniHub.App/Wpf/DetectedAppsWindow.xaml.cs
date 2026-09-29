@@ -23,9 +23,12 @@ public partial class DetectedAppsWindow : Window
         // done, rather than freezing the window on open.
         Loaded += (_, _) =>
         {
+            // BeginInvoke, and the result only if the scan finished: t.Result on a faulted scan
+            // rethrew on the UI thread and took the window down with it.
             Task.Run(RunningAppDetector.GetVisibleApps).ContinueWith(t =>
             {
-                Dispatcher.Invoke(() => AppList.ItemsSource = t.Result);
+                var apps = t.IsCompletedSuccessfully ? t.Result : new List<DetectedApp>();
+                Dispatcher.BeginInvoke(() => AppList.ItemsSource = apps);
             }, TaskScheduler.Default);
         };
     }

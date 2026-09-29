@@ -615,8 +615,8 @@ public partial class MainWindow : Window
     /// <summary>Keys this window has set over the palette for the look and the blur, so they can be taken back.</summary>
     private readonly List<string> _materialKeys = new();
 
-    /// <summary>Whether the acrylic is behind the window now: asked for, and accepted by this build of Windows.</summary>
-    private bool _blur;
+    /// <summary>The material behind the window now, as Windows' backdrop type: asked for and accepted, or null.</summary>
+    private int? _backdrop;
 
     /// <summary>
     /// The look's materials and the blur, over whichever palette is merged (TECHNICAL-v5-ui.md,
@@ -636,9 +636,21 @@ public partial class MainWindow : Window
             System.Windows.Application.Current.TryFindResource(key) is Color c ? c.ToString() : "#FF000000";
 
         var look = LookMaterial;
-        bool blur = _settings.FrostedGlass && DwmTheme.SetAcrylic(this, true);
-        if (!blur && _blur) DwmTheme.SetAcrylic(this, false);
-        _blur = blur;
+
+        // Windows is asked only when the material wanted changes: a strength drag re-runs this every
+        // few frames and the backdrop has not moved. Refused, the surfaces stay solid.
+        int? want = _settings.FrostedGlass ? (int)_settings.GlassMaterial : null;
+        if (want != _backdrop)
+        {
+            if (want is not null && DwmTheme.SetBackdrop(this, want)) _backdrop = want;
+            else
+            {
+                if (_backdrop is not null) DwmTheme.SetBackdrop(this, null);
+                _backdrop = null;
+            }
+        }
+        bool blur = _backdrop is not null;
+        double? strength = blur ? _settings.GlassStrength / 100.0 : null;
 
         // The tray flyout and the overlay float over the desktop and over games: glass there would be
         // glass over whatever is behind them, so they take the panel made solid over the ground.
@@ -654,7 +666,7 @@ public partial class MainWindow : Window
             }
         }
 
-        foreach (var (key, value) in OmniHub.Core.Theming.LookSurfaces.Overrides(look, blur, Palette))
+        foreach (var (key, value) in OmniHub.Core.Theming.LookSurfaces.Overrides(look, strength, Palette))
         {
             app[key] = (Color)System.Windows.Media.ColorConverter.ConvertFromString(value);
             _materialKeys.Add(key);
@@ -709,7 +721,37 @@ public partial class MainWindow : Window
         _settings.FrostedGlass = on;
         try { _settings.Save(); } catch { /* applied now even if it cannot be written */ }
         ApplyMaterials();
-        return _blur;
+        return _backdrop is not null;
+    }
+
+    /// <summary>
+    /// The glass's strength, 0 to 100, from the Settings slider. A drag sends every step; the surfaces
+    /// are worked out again at most every 60 ms from the latest value, because each pass rewrites the
+    /// palette's colours and repaints every brush in the window -- a cost worth paying fifteen times a
+    /// second, not a hundred.
+    /// </summary>
+    public void SetGlassStrength(int strength)
+    {
+        _settings.GlassStrength = Math.Clamp(strength, 0, 100);
+        _glassTimer ??= new System.Windows.Threading.DispatcherTimer(
+            TimeSpan.FromMilliseconds(60), System.Windows.Threading.DispatcherPriority.Render, (_, _) =>
+            {
+                _glassTimer!.Stop();
+                try { _settings.Save(); } catch { /* applied now even if it cannot be written */ }
+                ApplyMaterials();
+            }, Dispatcher);
+        if (!_glassTimer.IsEnabled) _glassTimer.Start();
+    }
+
+    private System.Windows.Threading.DispatcherTimer? _glassTimer;
+
+    /// <summary>Which material is behind the glass. Returns whether Windows is drawing it now.</summary>
+    public bool SetGlassMaterial(GlassMaterial material)
+    {
+        _settings.GlassMaterial = material;
+        try { _settings.Save(); } catch { /* applied now even if it cannot be written */ }
+        ApplyMaterials();
+        return _backdrop is not null;
     }
 
     /// <summary>

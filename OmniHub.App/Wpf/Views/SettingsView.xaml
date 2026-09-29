@@ -85,12 +85,40 @@
                             <StackPanel Grid.Column="0" Margin="0,0,16,0">
                                 <TextBlock Text="Frosted glass" Style="{StaticResource SettingTitle}"/>
                                 <TextBlock x:Name="FrostedGlassNote" Style="{StaticResource SettingNote}"
-                                           Text="Puts Windows' own acrylic behind the window, on every look: the desktop shows through the page, blurred, and the panels turn to glass over it. The panels stay solid enough that every colour still reads at 4.5 to 1 whatever is behind them. Windows draws the material only while the window has focus, and only from Windows 11 22H2."/>
+                                           Text="Puts one of Windows' own materials behind the whole window, on every look: the ground and every panel turn to glass over it. Windows draws the material only while the window has focus, and only from Windows 11 22H2."/>
                             </StackPanel>
                             <CheckBox Grid.Column="1" x:Name="FrostedGlassToggle" Style="{StaticResource ToggleSwitchStyle}"
                                       VerticalAlignment="Center" Checked="FrostedGlass_Changed" Unchecked="FrostedGlass_Changed"
                                       AutomationProperties.Name="Frosted glass"/>
                         </Grid>
+
+                        <!-- How much of the material shows, and which material. -->
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Strength" Style="{StaticResource SettingTitle}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <Slider Grid.Column="1" x:Name="GlassStrengthSlider" Minimum="0" Maximum="100" SmallChange="1" LargeChange="10"
+                                    VerticalAlignment="Center" ValueChanged="GlassStrength_Changed" AutomationProperties.Name="Glass strength"/>
+                            <TextBlock Grid.Column="2" x:Name="GlassStrengthText" Style="{StaticResource TileFoot}" Width="48"
+                                       TextAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3"
+                                HorizontalAlignment="Left" Margin="0,10,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="AcrylicBtn" GroupName="GlassMaterial" Content="ACRYLIC" Width="118" Height="30"
+                                             Style="{StaticResource PillRadioStyle}" Checked="GlassMaterial_Checked" Tag="Acrylic"/>
+                                <RadioButton x:Name="MicaBtn" GroupName="GlassMaterial" Content="MICA" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="GlassMaterial_Checked" Tag="Mica"/>
+                                <RadioButton x:Name="MicaAltBtn" GroupName="GlassMaterial" Content="MICA ALT" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="GlassMaterial_Checked" Tag="MicaAlt"/>
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Style="{StaticResource SettingNote}"
+                                   Text="Strength is how much of the material shows through the ground and every panel together, from a faint frost to nearly clear glass; however far it goes, every colour stays readable at 4.5 to 1, growing paler where the glass is thinner. Acrylic blurs whatever is behind the window, live. Mica is the wallpaper, blurred and tinted once rather than every frame, and so the lighter of the two on the graphics card; Mica Alt is a darker Mica. Windows sets how blurred each is; what can be chosen is how much of it shows."/>
                     </StackPanel>
                 </StackPanel>
             </Border>

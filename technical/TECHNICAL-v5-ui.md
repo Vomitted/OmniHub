@@ -784,3 +784,56 @@ out of `DashboardView` into `PresetActions`, so all three Dashboards that offer 
 writes; none touches the Windows power plan. Motion follows section 12: the tiles enter inside the
 budget, Frosted's lid opens and its curves draw in, Dot matrix's fields light column by column, and
 the loops — the live dots, the screen's glow, the fans — run only while shown.
+
+## 14. App GPU routing that answers, and glass you can turn up
+
+The request, verbatim: "gpu routing menu is lagging and not responding, fix that, also i wanna be able
+to filter out which app is on power saving and high performance … i wanna be able to make the whole
+background glass or something and i can change the blur intensity". Mapped against the graph:
+`AppRoutingView` (System → App GPU routing) over `GpuAppRouting` in Core.
+
+### Why the page stopped responding
+
+Measured on this machine, `HKCU\Software\Microsoft\DirectX\UserGpuPreferences` holds **404** values:
+209 set to power saving, 194 to high performance, and one that is not an application at all —
+`DirectXUserGlobalSettings`, Windows' global DirectX options, which the page listed as a route. The
+page built every row at once, each a card with a styled `ComboBox` and a button, in a panel that does
+not virtualise, and rebuilt all of them — re-reading the registry first — on **every keystroke** in the
+search box. Four hundred combo boxes per key is the freeze.
+
+### The fix
+
+- **Read once, filter in memory.** The routes are read when the page opens and after a change made from
+  it; typing filters the list held in memory. The filtering is a pure function in Core
+  (`GpuAppRouting.Filter`) with its own tests, as is excluding the global-settings value.
+- **Only the rows on screen exist.** A virtualising, recycling list: about a dozen rows are built at any
+  moment whatever the count.
+- **One click, not two.** Each row's preference is three segments — *Windows decides*, *Power saving*,
+  *High performance* — rather than a drop-down, so the state of every row is legible at a glance.
+- **The filter the user asked for.** Above the list: *All*, *High performance*, *Power saving*,
+  *Windows decides*, each with its count, combining with the text search.
+
+### Glass over the whole window, at a strength you choose
+
+Section 13's blur was deliberately quiet — 70 % of the ground and 88 % of each panel left over it — and
+the verdict was to want more of it. So **Settings → Frosted glass** gains:
+
+- **Strength**, a slider. It sets how much of the material shows through the ground and through every
+  panel together, from a faint frost to nearly clear glass. Blur *radius* is not offered: Windows
+  exposes no control over it, and a painted imitation would cost a blur pass per frame.
+- **Material**: *Acrylic* (the live blur of what is behind the window), *Mica* (the wallpaper, tinted,
+  sampled once rather than blurred every frame — the cheaper of the two), and *Mica Alt*, a darker Mica.
+
+Readability does not become a casualty of the slider. `LookSurfaces.Overrides` takes the strength and
+derives both opacities from it, and the lift of section 13 carries every text colour up as far as the
+thinner glass requires. `LookSurfaceTests` holds every text colour on every surface at five strengths
+across the whole range, for every palette and look, over the same wide envelope. At full strength the
+colours are paler; they are never unreadable.
+
+### New looks
+
+Per the method that produced Frosted and Dot matrix: candidates built from published designs, each
+from this machine's real readings, for the user to choose among before anything is built in WPF.
+Chosen looks follow section 13's structure (`LookDashboard`, materials in `LookSurfaces`) and its
+efficiency rules: no bitmap effects (WPF renders blur and drop shadows in software), frozen brushes,
+drawing in `OnRender` for anything with more than a few dozen marks, and loops only while shown.

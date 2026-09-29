@@ -18,7 +18,7 @@ public static class LookSurfaces
     /// <see cref="Ground"/>, or with the blur on, over whatever the acrylic shows.
     /// </summary>
     /// <param name="BlurPanel">
-    /// The opaque tone a panel is made from when the blur is on, drawn at <see cref="BlurPanelOpacity"/>.
+    /// The opaque tone a panel is made from when the blur is on, drawn at <see cref="PanelOpacity"/>.
     /// Frosted's white glass cannot be it: white over a light acrylic takes the faintest text below
     /// 4.5 : 1, so under the blur its panels are a warm dark glass instead.
     /// </param>
@@ -61,11 +61,23 @@ public static class LookSurfaces
     public static readonly Material[] All = { Frosted, DotMatrix };
 
     /// <summary>
-    /// With the blur on: how much of the ground is left over the acrylic, and how opaque a panel is.
-    /// The ground nearly clear so the blur is what the eye sees; the panels solid enough that text
-    /// stays readable whatever the acrylic happens to show (<see cref="BlurBackdrops"/>).
+    /// The glass's strength when nobody has chosen one: 70 % of the ground and 90 % of each panel left
+    /// over the material, about where section 13's fixed figures were.
     /// </summary>
-    public const double BlurGroundOpacity = 0.70, BlurPanelOpacity = 0.88;
+    public const double DefaultBlurStrength = 0.30;
+
+    /// <summary>
+    /// With the blur on, how much of the ground is left over the material, from a faint frost at
+    /// strength 0 to nearly clear glass at 1. The lift in <see cref="Overrides"/> keeps every text
+    /// colour readable across the whole range (TECHNICAL-v5-ui.md, section 14).
+    /// </summary>
+    public static double GroundOpacity(double strength) => 0.92 - 0.72 * Math.Clamp(strength, 0, 1);
+
+    /// <summary>
+    /// How opaque every panel is at a strength: always more than the ground, so a tile stays a tile, and
+    /// never under 75 %, where Dot matrix's drawn red would fall below the 3 : 1 a graphic needs.
+    /// </summary>
+    public static double PanelOpacity(double strength) => 0.96 - 0.21 * Math.Clamp(strength, 0, 1);
 
     /// <summary>
     /// The darkest and the lightest a dark-mode acrylic settles at behind the window. Windows tints it
@@ -102,10 +114,10 @@ public static class LookSurfaces
     /// until it reads on the lightest surface the setting can put under it -- the palette's hue, as
     /// little changed as the glass allows.
     /// </summary>
-    public static Dictionary<string, string> Overrides(Material? look, bool blur, Func<string, string> palette)
+    public static Dictionary<string, string> Overrides(Material? look, double? blur, Func<string, string> palette)
     {
         var o = new Dictionary<string, string>();
-        if (look is null && !blur) return o;   // the palette, untouched
+        if (look is null && blur is null) return o;   // the palette, untouched
 
         if (look is not null)
         {
@@ -130,9 +142,9 @@ public static class LookSurfaces
             }
         }
 
-        if (blur)
+        if (blur is { } strength)
         {
-            o["BackgroundColor"] = WithOpacity(o.GetValueOrDefault("BackgroundColor") ?? palette("BackgroundColor"), BlurGroundOpacity);
+            o["BackgroundColor"] = WithOpacity(o.GetValueOrDefault("BackgroundColor") ?? palette("BackgroundColor"), GroundOpacity(strength));
             foreach (string key in SurfaceKeys.Skip(1))
             {
                 // A look's lighter tones made solid over its dark glass first, so a raised panel is
@@ -140,7 +152,7 @@ public static class LookSurfaces
                 string solid = look is null
                     ? palette(key)
                     : Over(o[key], Rgb.Parse(look.BlurPanel)!.Value).ToString();
-                o[key] = WithOpacity(key == "PanelColor" && look is not null ? look.BlurPanel : solid, BlurPanelOpacity);
+                o[key] = WithOpacity(key == "PanelColor" && look is not null ? look.BlurPanel : solid, PanelOpacity(strength));
             }
         }
 
@@ -169,12 +181,12 @@ public static class LookSurfaces
     /// itself where it shows, each panel tone over each of those, and the active chips' soft accent over
     /// the ground and the two panel tones -- the palette tests' surfaces, with the look's materials.
     /// </summary>
-    public static List<(string Name, Rgb Colour)> Surfaces(Material? look, bool blur, Func<string, string> get)
+    public static List<(string Name, Rgb Colour)> Surfaces(Material? look, double? blur, Func<string, string> get)
     {
         var beneath = Beneath(look, blur);
         var grounds = beneath.Length == 0
             ? new List<Rgb> { Rgb.Parse(get("BackgroundColor"))!.Value }
-            : beneath.Select(b => Over(get("BackgroundColor"), b)).Concat(blur ? Array.Empty<Rgb>() : beneath).ToList();
+            : beneath.Select(b => Over(get("BackgroundColor"), b)).Concat(blur is not null ? Array.Empty<Rgb>() : beneath).ToList();
 
         var surfaces = grounds.Select(g => ("the ground", g)).ToList();
         foreach (var ground in grounds)
@@ -191,8 +203,8 @@ public static class LookSurfaces
     /// What the window's ground is drawn over: the acrylic's extremes under the blur, Frosted's room
     /// without it, and nothing -- the ground is opaque -- otherwise.
     /// </summary>
-    public static Rgb[] Beneath(Material? look, bool blur) =>
-        blur ? BlurBackdrops : ReferenceEquals(look, Frosted) ? FrostedRoom : Array.Empty<Rgb>();
+    public static Rgb[] Beneath(Material? look, double? blur) =>
+        blur is not null ? BlurBackdrops : ReferenceEquals(look, Frosted) ? FrostedRoom : Array.Empty<Rgb>();
 
     private static string Opaque(Rgb c) => $"#FF{c.R:X2}{c.G:X2}{c.B:X2}";
 

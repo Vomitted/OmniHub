@@ -41,6 +41,14 @@ public partial class SettingsView : UserControl
             _ => StudioLookBtn,
         }).IsChecked = true;
         FrostedGlassToggle.IsChecked = _settings.FrostedGlass;
+        GlassStrengthSlider.Value = _settings.GlassStrength;
+        GlassStrengthText.Text = $"{_settings.GlassStrength} %";
+        (_settings.GlassMaterial switch
+        {
+            GlassMaterial.Mica => MicaBtn,
+            GlassMaterial.MicaAlt => MicaAltBtn,
+            _ => AcrylicBtn,
+        }).IsChecked = true;
 
         if (_settings.CloseBehavior == CloseBehavior.Exit) ExitCloseBtn.IsChecked = true;
         else TrayCloseBtn.IsChecked = true;
@@ -591,6 +599,35 @@ public partial class SettingsView : UserControl
                 FrostedGlassNote.Text = "This build of Windows did not accept the acrylic, so the window stays solid. It needs Windows 11 22H2 or later; the setting is kept for when it has it.";
         }
         else { _settings.FrostedGlass = on; _settings.Save(); }
+    }
+
+    /// <summary>
+    /// The glass's strength, as the slider moves. The window recomputes the surfaces at most every 60 ms
+    /// from the latest value, so a drag stays smooth however many steps it sends.
+    /// </summary>
+    private void GlassStrength_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (GlassStrengthText is null) return;   // ValueChanged fires during InitializeComponent
+        int strength = (int)Math.Round(e.NewValue);
+        GlassStrengthText.Text = $"{strength} %";
+        if (_suppressEvents) return;
+
+        if (Window.GetWindow(this) is MainWindow main) main.SetGlassStrength(strength);
+        else { _settings.GlassStrength = strength; _settings.Save(); }
+    }
+
+    /// <summary>Which of Windows' materials is behind the glass.</summary>
+    private void GlassMaterial_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_suppressEvents) return;
+        if (sender is not RadioButton { Tag: string tag } || !Enum.TryParse(tag, out GlassMaterial material)) return;
+
+        if (Window.GetWindow(this) is MainWindow main)
+        {
+            if (!main.SetGlassMaterial(material) && _settings.FrostedGlass)
+                FrostedGlassNote.Text = "This build of Windows did not accept that material, so the window stays solid. The setting is kept for when it has it.";
+        }
+        else { _settings.GlassMaterial = material; _settings.Save(); }
     }
 
     private void CloseBehavior_Checked(object sender, RoutedEventArgs e)

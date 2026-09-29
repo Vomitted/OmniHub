@@ -412,6 +412,12 @@ internal static class Snapshot
                 Say($"frosted glass: {(win.SetFrostedGlass(true) ? "acrylic accepted" : "acrylic refused here; surfaces solid")}");
                 Pump(500);
             }
+            else if (step.StartsWith("strength="))
+            {
+                // The glass's strength, 0 to 100, as the Settings slider sets it.
+                win.SetGlassStrength(int.Parse(step[9..]));
+                Pump(400);
+            }
             else if (step.StartsWith("look="))
             {
                 win.SetLook(Enum.Parse<OmniHub.App.UiLook>(step[5..]));

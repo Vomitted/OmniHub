@@ -27,11 +27,16 @@ public class LookSurfaceTests
     }
 
     /// <summary>Every text colour against every surface text lands on, under one look and blur setting.</summary>
-    private static IEnumerable<string> Failures(string xaml, LookSurfaces.Material? look, bool blur)
+    /// <summary>No blur, then the strength slider's whole range: both ends and three points between.</summary>
+    private static readonly double?[] Strengths = { null, 0, 0.25, 0.5, 0.75, 1 };
+
+    private static string Blurred(double? blur) => blur is { } b ? $" with the blur at {b:0.00}" : "";
+
+    private static IEnumerable<string> Failures(string xaml, LookSurfaces.Material? look, double? blur)
     {
         var o = LookSurfaces.Overrides(look, blur, key => PaletteColour(xaml, key));
         string Get(string key) => o.TryGetValue(key, out var v) ? v : PaletteColour(xaml, key);
-        string setting = $"{look switch { null => "no look", _ when look == LookSurfaces.Frosted => "Frosted", _ => "Dot matrix" }}{(blur ? " with the blur" : "")}";
+        string setting = $"{look switch { null => "no look", _ when look == LookSurfaces.Frosted => "Frosted", _ => "Dot matrix" }}{Blurred(blur)}";
 
         var surfaces = LookSurfaces.Surfaces(look, blur, Get);
 
@@ -61,7 +66,7 @@ public class LookSurfaceTests
         var failures = new List<string>();
 
         foreach (var look in new LookSurfaces.Material?[] { null, LookSurfaces.Frosted, LookSurfaces.DotMatrix })
-            foreach (bool blur in new[] { false, true })
+            foreach (double? blur in Strengths)
                 failures.AddRange(Failures(xaml, look, blur));
 
         Assert.True(failures.Count == 0, $"{paletteFile}:\n  " + string.Join("\n  ", failures));
@@ -76,7 +81,7 @@ public class LookSurfaceTests
         string xaml = File.ReadAllText(Path.Combine(WpfTestHost.WpfDir, "Palettes", paletteFile));
         foreach (var look in LookSurfaces.All)
         {
-            var o = LookSurfaces.Overrides(look, blur: false, key => PaletteColour(xaml, key));
+            var o = LookSurfaces.Overrides(look, blur: null, key => PaletteColour(xaml, key));
             var card = LookSurfaces.Over(look.Panel, Rgb.Parse(look.Ground)!.Value);
             foreach (string textKey in ContrastTests.TextColors)
             {
@@ -90,15 +95,15 @@ public class LookSurfaceTests
     public void TheBlurOnlyEverMakesTheSurfacesTranslucent()
     {
         // Text keys are never touched by the blur, and no key the blur sets is left opaque.
-        var withLook = LookSurfaces.Overrides(LookSurfaces.Frosted, blur: false, _ => "#FF000000");
-        var blurred = LookSurfaces.Overrides(LookSurfaces.Frosted, blur: true, _ => "#FF000000");
+        var withLook = LookSurfaces.Overrides(LookSurfaces.Frosted, blur: null, _ => "#FF000000");
+        var blurred = LookSurfaces.Overrides(LookSurfaces.Frosted, blur: LookSurfaces.DefaultBlurStrength, _ => "#FF000000");
         foreach (string key in withLook.Keys.Where(k => k.StartsWith("Text")))
             Assert.Equal(withLook[key], blurred[key]);
         foreach (string key in LookSurfaces.SurfaceKeys)
             Assert.False(blurred[key].StartsWith("#FF"), $"{key} is still opaque under the blur");
 
         // With no look and no blur, nothing is set: the palette is untouched.
-        Assert.Empty(LookSurfaces.Overrides(null, blur: false, _ => "#FF000000"));
+        Assert.Empty(LookSurfaces.Overrides(null, blur: null, _ => "#FF000000"));
     }
 
     [Theory]
@@ -108,12 +113,12 @@ public class LookSurfaceTests
         // A graphic, never text: held to the 3 : 1 a graphic needs, on the tiles its dots sit on.
         string xaml = File.ReadAllText(Path.Combine(WpfTestHost.WpfDir, "Palettes", paletteFile));
         var red = Rgb.Parse(LookSurfaces.Signal)!.Value;
-        foreach (bool blur in new[] { false, true })
+        foreach (double? blur in Strengths)
         {
             var o = LookSurfaces.Overrides(LookSurfaces.DotMatrix, blur, key => PaletteColour(xaml, key));
             string Get(string key) => o.TryGetValue(key, out var v) ? v : PaletteColour(xaml, key);
             foreach (var (name, tile) in LookSurfaces.Surfaces(LookSurfaces.DotMatrix, blur, Get).Where(s => s.Name is "PanelColor" or "PanelAltColor"))
-                Assert.True(Contrast.Ratio(red, tile) >= 3, $"{paletteFile}: the red on {name} {tile}{(blur ? " with the blur" : "")} scores {Contrast.Ratio(red, tile):0.00}");
+                Assert.True(Contrast.Ratio(red, tile) >= 3, $"{paletteFile}: the red on {name} {tile}{Blurred(blur)} scores {Contrast.Ratio(red, tile):0.00}");
         }
     }
 
