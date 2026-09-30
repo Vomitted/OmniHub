@@ -84,7 +84,7 @@ public static class OmniHubSnapshotDesktop {
 }
 
 try {
-    [OmniHubSnapshotDesktop]::Run($exe, "`"$exe`" `"$app`" `"$Out`" $Plan", [uint32]($TimeoutSec * 1000))
+    [OmniHubSnapshotDesktop]::Run($exe, "`"$exe`" `"$app`" `"$Out`" `"$Plan`"", [uint32]($TimeoutSec * 1000))
 }
 finally {
     Remove-Item Env:\SNAPSHOT_REPLAY -ErrorAction SilentlyContinue

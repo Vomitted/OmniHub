@@ -273,13 +273,13 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        ThemeManager.ApplyToWindowFrame(this);
+        ApplyMaterials();   // paints the frame, and puts the acrylic behind it where asked for
         RegisterOverlayHotkey(new System.Windows.Interop.WindowInteropHelper(this).Handle);
     }
 
     private void OnThemeChanged(ThemeDefinition theme)
     {
-        ThemeManager.ApplyToWindowFrame(this);
+        ApplyMaterials();   // the blur's tones and the lifted colours are derived from the palette
         UpdateNavStatus();
     }
 
@@ -361,7 +361,7 @@ public partial class MainWindow : Window
         bool rail = _settings.Interface == InterfaceMode.Workspaces;
 
         Sidebar.Visibility = rail ? Visibility.Visible : Visibility.Collapsed;
-        SidebarColumn.Width = new GridLength(rail ? 212 : 0);
+        SidebarColumn.Width = new GridLength(rail ? (IconRail ? 84 : 212) : 0);
 
         _topNav.Clear();
 
@@ -477,7 +477,7 @@ public partial class MainWindow : Window
         // Under the console look, the reference's sparse bar; under the previous look, the readout
         // bar it had. Both are live bands the window disposes when the chrome is rebuilt.
         Views.AlternateInterface bar = ConsoleChrome
-            ? new Views.ConsoleBar(_ctx, metrics, FanStatus, OpenSettings, dense: _settings.Look == UiLook.Studio)
+            ? new Views.ConsoleBar(_ctx, metrics, FanStatus, OpenSettings, dense: _settings.Look != UiLook.Console)
             : new Views.InstrumentBar(_ctx, metrics);
         _chromeBand = bar;
         return ChromeShell(bar, ConsoleChrome ? new Thickness(24, 11, 18, 11) : new Thickness(24, 12, 20, 11));
@@ -488,10 +488,41 @@ public partial class MainWindow : Window
     /// <summary>Studio and Console share the reference's chrome; only Classic keeps the one before it.</summary>
     private bool ConsoleChrome => _settings.Look != UiLook.Classic;
 
-    /// <summary>The Dashboard for the look in force: the console with or without Studio's arrangement, or the widget page.</summary>
-    private UserControl CreateDashboard(MetricSource metrics) => _settings.Look == UiLook.Classic
-        ? new DashboardClassicView(_ctx, _service, _settings, metrics)
-        : new DashboardView(_ctx, _service, _settings, metrics, studio: _settings.Look == UiLook.Studio);
+    /// <summary>The looks with their own materials navigate by a rail of round buttons rather than a list of names.</summary>
+    private bool IconRail => LookMaterial is not null;
+
+    /// <summary>The materials the look sets over the palette, or null for a look that keeps the palette's.</summary>
+    private OmniHub.Core.Theming.LookSurfaces.Material? LookMaterial => _settings.Look switch
+    {
+        UiLook.Frosted => OmniHub.Core.Theming.LookSurfaces.Frosted,
+        UiLook.DotMatrix => OmniHub.Core.Theming.LookSurfaces.DotMatrix,
+        UiLook.Neumorphic => OmniHub.Core.Theming.LookSurfaces.Neumorphic,
+        UiLook.Athletic => OmniHub.Core.Theming.LookSurfaces.Athletic,
+        UiLook.Companion => OmniHub.Core.Theming.LookSurfaces.Companion,
+        _ => null,
+    };
+
+    /// <summary>The Dashboard for the look in force.</summary>
+    private UserControl CreateDashboard(MetricSource metrics) => _settings.Look switch
+    {
+        UiLook.Classic => new DashboardClassicView(_ctx, _service, _settings, metrics),
+        UiLook.Frosted => new FrostedDashboardView(_ctx, _service, _settings, metrics, OnDashboardFanMode),
+        UiLook.DotMatrix => new DotMatrixDashboardView(_ctx, _service, _settings, metrics, OnDashboardFanMode),
+        UiLook.Neumorphic => new NeumorphicDashboardView(_ctx, _service, _settings, metrics, OnDashboardFanMode),
+        UiLook.Athletic => new AthleticDashboardView(_ctx, _service, _settings, metrics, OnDashboardFanMode),
+        UiLook.Companion => new CompanionDashboardView(_ctx, _service, _settings, metrics, OnDashboardFanMode),
+        _ => new DashboardView(_ctx, _service, _settings, metrics, studio: _settings.Look == UiLook.Studio),
+    };
+
+    /// <summary>
+    /// A fan mode chosen on a look's Dashboard, applied through the Fans page exactly as the tray menu
+    /// applies one, so there is one path to the hardware and the rest of the window hears about it.
+    /// </summary>
+    private void OnDashboardFanMode(FanControlMode mode)
+    {
+        _fansView.ApplyModeFromTray(mode);
+        UpdateNavStatus();
+    }
 
     /// <summary>
     /// Studio's type and shape, set over the palette's. A palette decides colour; the look decides type
@@ -537,17 +568,196 @@ public partial class MainWindow : Window
         // Studio's type and shape over the palette's: the reference's sans, its rounder corners and
         // its heavier bars. The other looks keep each palette's own.
         var app = System.Windows.Application.Current.Resources;
-        foreach (var (key, value) in StudioShape)
-            if (_settings.Look == UiLook.Studio) app[key] = value;
-            else app.Remove(key);
+        foreach (var (key, _) in StudioShape) app.Remove(key);
+        var shape = LookMaterial is { } m
+            ? new (string, object)[]
+            {
+                StudioShape[0],   // the same sans for headings
+                ("RadiusMd", new CornerRadius(m.Radius)),
+                ("RadiusSm", new CornerRadius(m.RadiusSmall)),
+                ("TrackHeight", m.TrackHeight),
+            }
+            : _settings.Look == UiLook.Studio ? StudioShape : Array.Empty<(string, object)>();
+        foreach (var (key, value) in shape) app[key] = value;
 
+        // Frosted and Dot matrix: the mark alone at the top, and the workspaces as round buttons in a
+        // floating dock; who is steering the fans stays in the top bar rather than a footer card.
+        bool iconRail = IconRail;
         ClassicHeader.Visibility = console ? Visibility.Collapsed : Visibility.Visible;
         ConsoleHeader.Visibility = console ? Visibility.Visible : Visibility.Collapsed;
-        ConsoleFooter.Visibility = console ? Visibility.Visible : Visibility.Collapsed;
-        NavIndicator.Visibility = console && _settings.Look != UiLook.Studio ? Visibility.Collapsed : Visibility.Visible;   // Studio keeps the travelling rail
+        ConsoleHeader.Margin = iconRail ? new Thickness(0, 24, 0, 22) : new Thickness(22, 24, 0, 26);
+        ConsoleHeader.HorizontalAlignment = iconRail ? System.Windows.HorizontalAlignment.Center : System.Windows.HorizontalAlignment.Stretch;
+        ConsoleHeaderName.Visibility = iconRail ? Visibility.Collapsed : Visibility.Visible;
+        ConsoleFooter.Visibility = console && !iconRail ? Visibility.Visible : Visibility.Collapsed;
+        NavIndicator.Visibility = iconRail || (console && _settings.Look != UiLook.Studio) ? Visibility.Collapsed : Visibility.Visible;   // Studio keeps the travelling rail
+
+        Sidebar.BorderThickness = new Thickness(0, 0, iconRail ? 0 : 1, 0);
+        RailDock.HorizontalAlignment = iconRail ? System.Windows.HorizontalAlignment.Center : System.Windows.HorizontalAlignment.Stretch;
+        RailDock.Padding = new Thickness(iconRail ? 6 : 0);
+        RailDock.CornerRadius = new CornerRadius(iconRail ? 29 : 0);
+        RailDock.BorderThickness = new Thickness(iconRail ? 1 : 0);
+        EditLayoutBtn.Content = iconRail ? ((char)0xE70F).ToString() : "EDIT LAYOUT";   // the pencil in Segoe's icon font
+        EditLayoutBtn.Width = iconRail ? 46 : double.NaN;
+        EditLayoutBtn.ToolTip = iconRail ? "Edit layout" : null;
+        if (iconRail)
+        {
+            RailDock.SetResourceReference(Border.BackgroundProperty, "PanelBrush");
+            RailDock.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
+            EditLayoutBtn.FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets");
+        }
+        else
+        {
+            RailDock.ClearValue(Border.BackgroundProperty);
+            RailDock.ClearValue(Border.BorderBrushProperty);
+            EditLayoutBtn.ClearValue(System.Windows.Controls.Control.FontFamilyProperty);
+        }
+
         FooterMachine.Text = OmniHub.Core.Hardware.HardwareNames.ShortModel(_ctx.Model.Manufacturer, _ctx.Model.Product) ?? "This machine";
         ConsoleFooter.ToolTip = $"{_ctx.Model.Manufacturer} {_ctx.Model.Product}".Trim();
+        ApplyMaterials();
         UpdateNavStatus();
+    }
+
+    /// <summary>Keys this window has set over the palette for the look and the blur, so they can be taken back.</summary>
+    private readonly List<string> _materialKeys = new();
+
+    /// <summary>The material behind the window now, as Windows' backdrop type: asked for and accepted, or null.</summary>
+    private int? _backdrop;
+
+    /// <summary>
+    /// The look's materials and the blur, over whichever palette is merged (TECHNICAL-v5-ui.md,
+    /// section 13). Straight on the application's dictionary, as Studio's shape is, and worked out
+    /// again from the palette whenever either changes: the blur's tones and any colour lifted to stay
+    /// readable on a look's glass are derived from it. The values themselves come from
+    /// LookSurfaces.Overrides, the function the contrast tests hold.
+    /// </summary>
+    private void ApplyMaterials()
+    {
+        var app = System.Windows.Application.Current.Resources;
+        foreach (string key in _materialKeys) app.Remove(key);
+        _materialKeys.Clear();
+
+        // The palette's own colours, now that nothing of ours covers them.
+        static string Palette(string key) =>
+            System.Windows.Application.Current.TryFindResource(key) is Color c ? c.ToString() : "#FF000000";
+
+        var look = LookMaterial;
+
+        // Windows is asked only when the material wanted changes: a strength drag re-runs this every
+        // few frames and the backdrop has not moved. Refused, the surfaces stay solid.
+        int? want = _settings.FrostedGlass ? (int)_settings.GlassMaterial : null;
+        if (want != _backdrop)
+        {
+            if (want is not null && DwmTheme.SetBackdrop(this, want)) _backdrop = want;
+            else
+            {
+                if (_backdrop is not null) DwmTheme.SetBackdrop(this, null);
+                _backdrop = null;
+            }
+        }
+        bool blur = _backdrop is not null;
+        double? strength = blur ? _settings.GlassStrength / 100.0 : null;
+
+        // The tray flyout and the overlay float over the desktop and over games: glass there would be
+        // glass over whatever is behind them, so they take the panel made solid over the ground.
+        app.Remove("FloatingCardBrush");
+        app.Remove("FloatingOverlayBrush");
+        if (look is not null || blur)
+        {
+            var ground = OmniHub.Core.Theming.Rgb.Parse(look?.Ground ?? Palette("BackgroundColor"))!.Value;
+            foreach (var (key, panel) in new[] { ("FloatingCardBrush", look?.Panel ?? Palette("PanelColor")), ("FloatingOverlayBrush", look?.PanelAlt ?? Palette("PanelAltColor")) })
+            {
+                var solid = OmniHub.Core.Theming.LookSurfaces.Over(panel, ground);
+                app[key] = new SolidColorBrush(Color.FromRgb(solid.R, solid.G, solid.B));
+            }
+        }
+
+        foreach (var (key, value) in OmniHub.Core.Theming.LookSurfaces.Overrides(look, strength, Palette, _backdrop ?? 3))
+        {
+            app[key] = (Color)System.Windows.Media.ColorConverter.ConvertFromString(value);
+            _materialKeys.Add(key);
+        }
+        ThemeManager.Repaint();
+
+        // What the window stands on: the acrylic through a veil of the ground, Frosted's lit room, or
+        // the palette's own gradient.
+        if (blur)
+            SetResourceReference(BackgroundProperty, "BackgroundBrush");
+        else if (look == OmniHub.Core.Theming.LookSurfaces.Frosted)
+            Background = FrostedRoom();
+        else
+            SetResourceReference(BackgroundProperty, "AppBackgroundGradient");
+        Sidebar.Background = IconRail || blur ? System.Windows.Media.Brushes.Transparent : (Brush)FindResource("SidebarGradient");
+
+        if (blur) DwmTheme.ApplySystemDefault(this, dark: true);   // the caption shows the acrylic too
+        else ThemeManager.ApplyToWindowFrame(this);
+    }
+
+    /// <summary>
+    /// Frosted's ground: a warm room lit from the upper right, the two tones LookSurfaces.FrostedRoom
+    /// names and the contrast tests hold -- the darkest and the lightest the glass is ever over.
+    /// </summary>
+    private static Brush FrostedRoom()
+    {
+        var dark = OmniHub.Core.Theming.LookSurfaces.FrostedRoom[0];
+        var light = OmniHub.Core.Theming.LookSurfaces.FrostedRoom[1];
+        var brush = new RadialGradientBrush
+        {
+            Center = new Point(0.78, 0.18),
+            GradientOrigin = new Point(0.78, 0.18),
+            RadiusX = 0.9,
+            RadiusY = 1.1,
+            GradientStops =
+            {
+                new GradientStop(Color.FromRgb(light.R, light.G, light.B), 0),
+                new GradientStop(Color.FromRgb(dark.R, dark.G, dark.B), 1),
+            },
+        };
+        brush.Freeze();
+        return brush;
+    }
+
+    /// <summary>
+    /// Turns the acrylic behind the window on or off, on whichever look, and remembers it. Live, and
+    /// honest about a Windows that has no such material: the setting is kept, the surfaces stay solid.
+    /// Returns whether the blur is showing now.
+    /// </summary>
+    public bool SetFrostedGlass(bool on)
+    {
+        _settings.FrostedGlass = on;
+        try { _settings.Save(); } catch { /* applied now even if it cannot be written */ }
+        ApplyMaterials();
+        return _backdrop is not null;
+    }
+
+    /// <summary>
+    /// The glass's strength, 0 to 100, from the Settings slider. A drag sends every step; the surfaces
+    /// are worked out again at most every 60 ms from the latest value, because each pass rewrites the
+    /// palette's colours and repaints every brush in the window -- a cost worth paying fifteen times a
+    /// second, not a hundred.
+    /// </summary>
+    public void SetGlassStrength(int strength)
+    {
+        _settings.GlassStrength = Math.Clamp(strength, 0, 100);
+        _glassTimer ??= new System.Windows.Threading.DispatcherTimer(
+            TimeSpan.FromMilliseconds(60), System.Windows.Threading.DispatcherPriority.Render, (_, _) =>
+            {
+                _glassTimer!.Stop();
+                try { _settings.Save(); } catch { /* applied now even if it cannot be written */ }
+                ApplyMaterials();
+            }, Dispatcher);
+        if (!_glassTimer.IsEnabled) _glassTimer.Start();
+    }
+
+    private System.Windows.Threading.DispatcherTimer? _glassTimer;
+
+    /// <summary>Which material is behind the glass. Returns whether Windows is drawing it now.</summary>
+    public bool SetGlassMaterial(GlassMaterial material)
+    {
+        _settings.GlassMaterial = material;
+        try { _settings.Save(); } catch { /* applied now even if it cannot be written */ }
+        ApplyMaterials();
+        return _backdrop is not null;
     }
 
     /// <summary>
@@ -784,6 +994,25 @@ public partial class MainWindow : Window
         {
             var workspace = _layout.Workspaces[i];
             int index = i;
+
+            // Frosted and Dot matrix: the icon alone in a round button, the name in its tooltip and
+            // its accessible name. No second line: the state lives on the Dashboard's tiles.
+            if (IconRail)
+            {
+                var railItem = new System.Windows.Controls.RadioButton
+                {
+                    GroupName = "Nav",
+                    Style = (Style)FindResource("RailNavStyle"),
+                    Content = NavIconFor(workspace),
+                    Tag = index,
+                    IsChecked = index == _currentWorkspace,
+                    ToolTip = index < 9 ? $"{workspace.Name}  ·  press {index + 1}" : workspace.Name,
+                };
+                System.Windows.Automation.AutomationProperties.SetName(railItem, workspace.Name);
+                railItem.Checked += NavChecked;
+                NavItems.Children.Add(railItem);
+                continue;
+            }
 
             var row = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
 
@@ -1354,7 +1583,8 @@ public partial class MainWindow : Window
             if (token != _navToken) return;
 
             // The Studio Dashboard enters card by card, its dial sweeping and its curves drawing in.
-            if ((view is WorkspaceHost { Content: DashboardView d } ? d : view as DashboardView)?.Enter() == true) return;
+            var dashboard = view is WorkspaceHost { Content: UserControl inner } ? inner : view;
+            if ((dashboard as DashboardView)?.Enter() == true || (dashboard as LookDashboard)?.Enter() == true) return;
 
             var panel = FindContentStack(view);
             if (panel is null) return;

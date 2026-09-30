@@ -60,17 +60,71 @@
                         <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3"
                                 HorizontalAlignment="Left" Margin="0,7,0,0">
-                            <StackPanel Orientation="Horizontal">
+                            <WrapPanel Orientation="Horizontal">
                                 <RadioButton x:Name="StudioLookBtn" GroupName="Look" Content="STUDIO" Width="118" Height="30"
                                              Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Studio"/>
+                                <RadioButton x:Name="FrostedLookBtn" GroupName="Look" Content="FROSTED" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Frosted"/>
+                                <RadioButton x:Name="DotMatrixLookBtn" GroupName="Look" Content="DOT MATRIX" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="DotMatrix"/>
+                                <RadioButton x:Name="NeumorphicLookBtn" GroupName="Look" Content="NEUMORPHIC" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Neumorphic"/>
+                                <RadioButton x:Name="AthleticLookBtn" GroupName="Look" Content="ATHLETIC" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Athletic"/>
+                                <RadioButton x:Name="CompanionLookBtn" GroupName="Look" Content="COMPANION" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Companion"/>
                                 <RadioButton x:Name="ConsoleLookBtn" GroupName="Look" Content="CONSOLE" Width="118" Height="30" Margin="3,0,0,0"
                                              Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Console"/>
                                 <RadioButton x:Name="ClassicLookBtn" GroupName="Look" Content="CLASSIC" Width="118" Height="30" Margin="3,0,0,0"
                                              Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Classic"/>
+                            </WrapPanel>
+                        </Border>
+                        <TextBlock Style="{StaticResource SettingNote}"
+                                   Text="Studio arranges the console for the window it is in — on a wide screen the cards and the dial in one row — and gives every card its last five minutes, with a sans for headings whatever the theme. Frosted is glass tiles over a warm, lit room, the machine drawn as the hero with its readings beside it. Dot matrix is greys and one red, every figure drawn in dots and five minutes of history as lit columns. Neumorphic raises dark surfaces in soft light around a blue cooling dial. Athletic is pure black with three rounded-square rings: headroom, load and what the fans are asked for. Companion puts the laptop first with its charge and three round presets, and the last five minutes as a route on a map. All five navigate by a rail of round buttons and keep the theme's colours for the readings, lifting any that would not read on their surfaces. Console is the reference layout as first built: two cards either side of the dial. Classic is the look before all of them: the widget row, the four history strips, the readout bar and the two-line sidebar; for its colours as well, choose Midnight Blue under Theme."/>
+
+                        <!-- The blur, on whichever look: Windows' own acrylic behind the window. -->
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                <TextBlock Text="Frosted glass" Style="{StaticResource SettingTitle}"/>
+                                <TextBlock x:Name="FrostedGlassNote" Style="{StaticResource SettingNote}"
+                                           Text="Puts one of Windows' own materials behind the whole window, on every look: the ground and every panel turn to glass over it. Windows draws the material only while the window has focus, and only from Windows 11 22H2."/>
+                            </StackPanel>
+                            <CheckBox Grid.Column="1" x:Name="FrostedGlassToggle" Style="{StaticResource ToggleSwitchStyle}"
+                                      VerticalAlignment="Center" Checked="FrostedGlass_Changed" Unchecked="FrostedGlass_Changed"
+                                      AutomationProperties.Name="Frosted glass"/>
+                        </Grid>
+
+                        <!-- How much of the material shows, and which material. -->
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Strength" Style="{StaticResource SettingTitle}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <Slider Grid.Column="1" x:Name="GlassStrengthSlider" Minimum="0" Maximum="100" SmallChange="1" LargeChange="10"
+                                    VerticalAlignment="Center" ValueChanged="GlassStrength_Changed" AutomationProperties.Name="Glass strength"/>
+                            <TextBlock Grid.Column="2" x:Name="GlassStrengthText" Style="{StaticResource TileFoot}" Width="48"
+                                       TextAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Border Background="{StaticResource PanelAltBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="{DynamicResource RadiusSm}" Padding="3"
+                                HorizontalAlignment="Left" Margin="0,10,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="AcrylicBtn" GroupName="GlassMaterial" Content="ACRYLIC" Width="118" Height="30"
+                                             Style="{StaticResource PillRadioStyle}" Checked="GlassMaterial_Checked" Tag="Acrylic"/>
+                                <RadioButton x:Name="MicaBtn" GroupName="GlassMaterial" Content="MICA" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="GlassMaterial_Checked" Tag="Mica"/>
+                                <RadioButton x:Name="MicaAltBtn" GroupName="GlassMaterial" Content="MICA ALT" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="GlassMaterial_Checked" Tag="MicaAlt"/>
                             </StackPanel>
                         </Border>
                         <TextBlock Style="{StaticResource SettingNote}"
-                                   Text="Studio arranges the console for the window it is in — on a wide screen the cards and the dial in one row — and gives every card its last five minutes, with a sans for headings whatever the theme. Console is the reference layout as first built: two cards either side of the dial. Classic is the look before both: the widget row, the four history strips, the readout bar and the two-line sidebar; for its colours as well, choose Midnight Blue under Theme."/>
+                                   Text="Strength is how much of the material shows through the ground and every panel together, from a faint frost to as clear as the look's own colours still read at 4.5 to 1 — they never change with it. Acrylic blurs whatever is behind the window, live, and is the only one that shows your other windows; over a white page it measures #929292, on which even white text reads at only 3 to 1, so it stays frosted. Mica and Mica Alt tint the wallpaper dark, and can go much clearer. Mica is the wallpaper, blurred and tinted once rather than every frame, and so the lighter of the two on the graphics card; Mica Alt is a darker Mica. Windows sets how blurred each is; what can be chosen is how much of it shows."/>
                     </StackPanel>
                 </StackPanel>
             </Border>

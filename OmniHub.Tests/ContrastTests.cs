@@ -109,13 +109,7 @@ public class ContrastTests
     /// (FansView, GpuView, PowerView and DashboardView all set Foreground to one of them), not
     /// merely as fills. That is exactly how Nord's DangerColor came to sit at 3.82 to 1 on a card.
     /// </summary>
-    private static readonly string[] TextColors =
-    {
-        "TextPrimaryColor", "TextMutedColor", "TextFaintColor",
-        "AccentColor", "GoodColor", "WarnColor", "DangerColor",
-        "MetricCpuColor", "MetricMemColor", "MetricGpuColor",
-        "MetricFanColor",   // the console's top bar sets the fan speed in it
-    };
+    internal static readonly string[] TextColors = OmniHub.Core.Theming.LookSurfaces.TextKeys;
 
     public static IEnumerable<object[]> Palettes() =>
         Directory.EnumerateFiles(Path.Combine(WpfTestHost.WpfDir, "Palettes"), "*.xaml")

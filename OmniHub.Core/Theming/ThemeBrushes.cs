@@ -48,6 +48,8 @@ public static class ThemeBrushes
         ("AppBackgroundGradient", ["PanelColor", "BackgroundColor"]),
         ("SidebarGradient", ["PanelColor", "BackgroundColor"]),
         ("CardGradientBrush", ["PanelAltColor", "PanelColor"]),
+        ("FloatingCardBrush", ["PanelAltColor", "PanelColor"]),
+        ("FloatingOverlayBrush", ["PanelAltColor"]),
         ("PaneEdgeBrush", ["CardTopHighlightColor", "BorderColor"]),
         ("DialGradientBrush", ["AccentColor", "AccentColor2"]),
         ("AccentGradientBrush", ["AccentColor", "AccentColor2"]),

@@ -688,3 +688,217 @@ each entrance runs and starts what it should — header, cards, dial and chart p
 sweeping (`enter` step) — and that with motion forced on, a page change starts its fade. 1,018 tests
 pass; `SurfaceAndMotionTests` fails with OLED Black's old card colour put back, and with the stagger's
 compression removed.
+
+## 13. Two looks the user chose, and a blur for every look
+
+After three rejected looks the user asked for references and "multiple candidates". Four were built as
+animated pages from real readings, each after a named, well-received design, and the user chose two:
+
+| Look | After | Its grammar |
+| --- | --- | --- |
+| **Frosted** | "Smart Home Dashboard — Designed for Modern Living", Beka Kvaratskhelia | Glass tiles over a warm, lit room; the machine drawn as the hero; soft pills; a floating dock |
+| **Dot matrix** | "New Nothing OS 4.0 Concept", Slava Kornilov for Geex Arts | Greys and one red; huge figures drawn in dots; history as lit columns; round buttons, a capsule, light tiles |
+
+And, verbatim, "i want that blur too, applied by toggle to every look". Both looks are options under
+**Settings → Look**, beside Studio, Console and Classic.
+
+### The blur
+
+**Settings → Frosted glass**, off by default, on every look. It is the real material, not a painted
+imitation: `DwmTheme.SetAcrylic` asks Windows for its transient backdrop (`DWMWA_SYSTEMBACKDROP_TYPE`
+= 3, acrylic), extends the frame over the whole client area, clears WPF's own clear colour to
+transparent, and hands the caption back to the system so the title bar shows the material too. What
+blurs is whatever is behind the window. Windows draws it only while the window has focus, and only
+from Windows 11 22H2; where it is refused, `SetAcrylic` returns false, the surfaces stay solid, and the
+setting's note says why nothing changed.
+
+The surfaces then turn translucent over it: the ground at 70 % of its own colour, every panel tone at
+88 % — a look's lighter tones made solid over its dark glass first, so a raised panel stays raised.
+Those two figures are what the contrast tests allowed. The acrylic's real range on this machine has
+not been measured, so the tests hold every text colour over an envelope wider than Windows' documented
+dark acrylic: from `#000000` to `#6A6A6A` behind the window. The first figures tried, 45 % and 80 %,
+failed there — faint text and the palettes' reds fell to 3.3 : 1 — which is why the blur is quieter than
+the reference's.
+
+### A look decides its materials
+
+Studio decides type and shape over the palette (section 12). Frosted and Dot matrix go one step
+further and decide the *materials* — the ground, the panel and border tones, the corners — so every
+page, not only the Dashboard, is made of the same stuff. The values live in Core (`LookSurfaces`).
+
+| Material | Frosted | Dot matrix |
+| --- | --- | --- |
+| Ground | a warm room lit from the upper right, `#26221E` into `#161412` | `#0A0A0A` |
+| Panel | white glass, 7 % / 10 % / 13 % for panel, raised, hover | `#1A1A1A`, `#222222`, `#2A2A2A` |
+| Corners | 26, small 14 | 30, small 18 |
+| Text | its own warm whites | its own greys |
+| Accent | the palette's | a red legible as text, `#FF6166`; the drawn red `#E8262C` for dots only |
+
+Everything a look does not set is the palette's — but a look's glass is lighter than any palette's
+panel, and a palette's red that reads at 5 : 1 on near-black fell to 3.5 on it. So
+`LookSurfaces.Overrides` lifts each text colour toward white, in the steps a custom palette already
+uses (`CustomPalette.Readable`), until it reads on the lightest surface the setting can put under it:
+the palette's hue, changed only as far as the glass requires. A lifted accent takes its gradient
+partner with it, and the text on the accent is chosen again.
+
+`Overrides` is the one function the window applies and the one the tests read, so the two cannot
+drift apart. `LookSurfaceTests` holds every text colour on every surface — ground, the three panel
+tones, the soft accent under the active chips — for every palette, under no look, Frosted and Dot
+matrix, with the blur off and on; the drawn red at the 3 : 1 a graphic needs on the tiles its dots sit
+on; and the tray flyout's and overlay's cards. Those two float over the desktop and over games, so
+glass there would be glass over anything: `FloatingCardBrush` and `FloatingOverlayBrush` are the
+panel made solid over the look's ground whenever a look or the blur makes panels translucent.
+
+The widened test earned its keep on the first run: Frosted's first materials put the palettes' greens,
+ambers and faint greys between 2.8 and 4.4 : 1 on its lighter glass. The room and the glass were
+darkened and the lift added until every case passed; with the lift disabled, twelve fail.
+
+### The shell
+
+Both looks put the navigation in a rail of round buttons in a floating dock (`RailNavStyle`), so the
+page takes the width: the mark alone at the top, the workspace's name in each button's tooltip with its
+number key and in its accessible name, the chosen one filled with the accent and its icon drawn in the
+colour made for text on the accent. Who is steering the fans stays in the top bar.
+
+### The Dashboards
+
+`FrostedDashboardView` and `DotMatrixDashboardView`, over a shared `LookDashboard` (the readings on the
+shared tick while shown, the throttling flag from the poll, presets, fan modes, battery, entrance):
+
+- **Frosted** — the laptop drawn with the die temperature on its screen, its state and what holds it
+  back beneath, the graphics, fan and power readings beside it; fans with the turning fan and
+  Auto/BIOS/Max; the three presets, each saying what it sends, and what the processor answers to;
+  processor and graphics tiles tinted in their colours with their five minutes; processor power
+  against the SMU's sustained limit as a ring; memory; battery.
+- **Dot matrix** — the die temperature drawn in dots sixteen pixels apart (`DotText`, from the 5 × 7
+  `DotFont` in Core) and a bar of dots against its hot point, the last lit dot red; five minutes as
+  columns of lit dots, the newest red; the binding limit on a light tile; fans; power as a capsule
+  against the sustained limit; graphics; the presets as round buttons; memory as a grid of dots; the
+  battery on a light tile; the processor's clock.
+
+Every scale is one the reading already has — a temperature against its own hot point, a load against a
+hundred, memory against what is installed, power against the SMU's limit — and a reading without one is
+the figure alone. A fan mode chosen on either goes through the Fans page as the tray's does, so there is
+one path to the hardware, and a mode changed elsewhere is shown without being sent again. Presets moved
+out of `DashboardView` into `PresetActions`, so all three Dashboards that offer them send the same
+writes; none touches the Windows power plan. Motion follows section 12: the tiles enter inside the
+budget, Frosted's lid opens and its curves draw in, Dot matrix's fields light column by column, and
+the loops — the live dots, the screen's glow, the fans — run only while shown.
+
+## 14. App GPU routing that answers, and glass you can turn up
+
+The request, verbatim: "gpu routing menu is lagging and not responding, fix that, also i wanna be able
+to filter out which app is on power saving and high performance … i wanna be able to make the whole
+background glass or something and i can change the blur intensity". Mapped against the graph:
+`AppRoutingView` (System → App GPU routing) over `GpuAppRouting` in Core.
+
+### Why the page stopped responding
+
+Measured on this machine, `HKCU\Software\Microsoft\DirectX\UserGpuPreferences` holds **404** values:
+209 set to power saving, 194 to high performance, and one that is not an application at all —
+`DirectXUserGlobalSettings`, Windows' global DirectX options, which the page listed as a route. The
+page built every row at once, each a card with a styled `ComboBox` and a button, in a panel that does
+not virtualise, and rebuilt all of them — re-reading the registry first — on **every keystroke** in the
+search box. Four hundred combo boxes per key is the freeze.
+
+### The fix
+
+- **Read once, filter in memory.** The routes are read when the page opens and after a change made from
+  it; typing filters the list held in memory. The filtering is a pure function in Core
+  (`GpuAppRouting.Filter`) with its own tests, as is excluding the global-settings value.
+- **Only the rows on screen exist.** A virtualising, recycling list: about a dozen rows are built at any
+  moment whatever the count.
+- **One click, not two.** Each row's preference is three segments — *Windows decides*, *Power saving*,
+  *High performance* — rather than a drop-down, so the state of every row is legible at a glance.
+- **The filter the user asked for.** Above the list: *All*, *High performance*, *Power saving*,
+  *Windows decides*, each with its count, combining with the text search.
+
+### Glass over the whole window, at a strength you choose
+
+Section 13's blur was deliberately quiet — 70 % of the ground and 88 % of each panel left over it — and
+the verdict was to want more of it. So **Settings → Frosted glass** gains:
+
+- **Strength**, a slider. It sets how much of the material shows through the ground and through every
+  panel together, from a faint frost to nearly clear glass. Blur *radius* is not offered: Windows
+  exposes no control over it, and a painted imitation would cost a blur pass per frame.
+- **Material**: *Acrylic* (the live blur of what is behind the window), *Mica* (the wallpaper, tinted,
+  sampled once rather than blurred every frame — the cheaper of the two), and *Mica Alt*, a darker Mica.
+
+Readability does not become a casualty of the slider. `LookSurfaces.Overrides` takes the strength and
+derives both opacities from it, and the lift of section 13 carries every text colour up as far as the
+thinner glass requires. `LookSurfaceTests` holds every text colour on every surface at five strengths
+across the whole range, for every palette and look, over the same wide envelope. At full strength the
+colours are paler; they are never unreadable.
+
+### New looks
+
+Per the method that produced Frosted and Dot matrix: candidates built from published designs, each
+from this machine's real readings, for the user to choose among before anything is built in WPF.
+Chosen looks follow section 13's structure (`LookDashboard`, materials in `LookSurfaces`) and its
+efficiency rules: no bitmap effects (WPF renders blur and drop shadows in software), frozen brushes,
+drawing in `OnRender` for anything with more than a few dozen marks, and loops only while shown.
+
+## 15. Three more looks: Neumorphic, Athletic, Companion
+
+The first set of candidates for section 14 -- a terminal monitor, an avionics display, a synthesiser,
+subway signage, chosen for being famous and well made -- was rejected whole ("wow its all bad"). The
+register was wrong, not the craft: the two accepted looks came from polished consumer concept work, and
+none of the four did. The second set was drawn only from that register, each from a well-liked Dribbble
+shot, and all three were chosen:
+
+| Look | After | Its grammar |
+| --- | --- | --- |
+| **Neumorphic** | "Tesla Smart App", Gavrisov Dmitri (2.8k likes) | Dark surfaces raised and inset in soft light; the machine as the hero; the reference's climate screen as cooling -- a blue dial, fan speed, round mode buttons |
+| **Athletic** | "Whoop app redesign concept", Taras Migulko | Pure black; three rounded-square rings in bold condensed figures; cards that state a condition first; one wide history |
+| **Companion** | "Tesla Concept", yuhang (468 likes) | Black, the laptop as hero with its charge and three round preset buttons; clean cards; the last five minutes drawn like a route on a map |
+
+Each follows section 13: materials in `LookSurfaces` (so `LookSurfaceTests` holds every text colour on
+them, blur off and on, at every strength), a Dashboard over `LookDashboard`, the icon rail. Readings
+map honestly: **headroom** is the distance from the die to its hot point as a share of it; the fan
+speed bar is against the board's calibrated maximum where one is measured, and against the fastest the
+fans reached in the window where not, and says which.
+
+**Efficient by construction.** Neumorphism is usually drawn with two large blurred shadows per surface;
+WPF renders those in software, per frame an ancestor moves. Here a raised surface is a diagonal gradient
+fill with a gradient edge -- light at the top left, dark at the bottom right -- which reads as the same
+soft relief at the cost of a solid fill. The rounded-square rings and the cooling dial are one drawn path
+each; the laptop is one shared vector control (`LaptopArt`), now also Frosted's.
+
+## 16. Glass that stays the theme's colours
+
+The request, verbatim: "i want real glass background thins please, also when i maximise the setting it
+changes color for the buttons and sometimes the text really cant be seen because its white and white".
+
+### What was wrong
+
+Section 14 kept text readable at every strength by *lifting* each text colour toward white until it read
+on the lightest surface the glass could put under it -- and it assumed that surface, for every material,
+was the acrylic over something bright, taken as `#6A6A6A`. At strength 100 on Neumorphic over Ember that
+lift turned the blue accent to `#C4E2FF`, the red to `#FAD7D4` and the muted text to `#DCDEE2`: every
+button changed colour, and a chosen pill (primary text, `#EEF1F5`) became indistinguishable from the
+others (muted text, now nearly the same white).
+
+The assumed backdrop was never measured. Measured on this machine -- a dark-mode window with each system
+backdrop over a pure white window and over a black one, centre pixel read from the screen:
+
+| Material | over white | over black |
+| --- | --- | --- |
+| Acrylic | `#929292` | `#151515` |
+| Mica | `#1F2024` | `#151515` |
+| Mica Alt | `#060820` | `#151515` |
+
+So the guess was wrong both ways: Mica and Mica Alt are far darker than assumed (the colour shift there
+was needless), and Acrylic -- the only material that shows the windows behind, the "real glass" -- is
+lighter, so text over a white page could genuinely vanish.
+
+### The fix
+
+- **Each material's own extremes.** `LookSurfaces.Backdrop(material)` returns the measured pair. Mica
+  samples the wallpaper rather than the windows, so its lightest is taken as `#303030`, a margin over the
+  `#1F2024` measured on this wallpaper for a brighter one.
+- **Clarity stops where the colours would have to move.** Instead of bleaching colours as the glass
+  clears, `LookSurfaces.Clarity` finds the clearest the glass can go -- by bisection over the strength --
+  with every text colour still reading, unchanged, on the lightest surface that material can produce.
+  The slider spans zero to that. On Mica Alt that is the whole range; on Acrylic it stops where a white
+  page behind the window would take a colour below 4.5 : 1.
+- The lift stays as the net under it, and the contrast tests now run per material.

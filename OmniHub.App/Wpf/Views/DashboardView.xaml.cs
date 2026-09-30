@@ -337,7 +337,7 @@ public partial class DashboardView : UserControl
     /// The processor's name as Windows records it at boot. The registry rather than WMI, because it
     /// is one value read once and WMI is a service round trip; null when it cannot be read.
     /// </summary>
-    private static string? ReadProcessorName()
+    internal static string? ReadProcessorName()
     {
         try
         {
@@ -347,7 +347,7 @@ public partial class DashboardView : UserControl
         catch { return null; }
     }
 
-    private static string Fig(double? value, string format, string unit) =>
+    internal static string Fig(double? value, string format, string unit) =>
         value is { } v ? v.ToString(format, CultureInfo.InvariantCulture) + unit : Metrics.Unavailable;
 
     /// <summary>"19.3 / 25 W" against a known limit, "19.3 W" without one.</summary>
@@ -547,34 +547,17 @@ public partial class DashboardView : UserControl
     {
         if (ProfileNote is null) return;   // Checked fires during InitializeComponent
 
-        ProfileNote.Text = PerformanceBtn.IsChecked == true
-            ? "Custom TGP on, Dynamic Boost on, fans held at maximum."
-            : SilentBtn.IsChecked == true
-                ? "Custom TGP off, Dynamic Boost off, fans on the curve."
-                : "Custom TGP on, Dynamic Boost off, fans on the curve.";
+        ProfileNote.Text = PresetActions.All[PerformanceBtn.IsChecked == true ? 2 : SilentBtn.IsChecked == true ? 0 : 1].Note;
     }
 
-    // Every call here (SetPowerPreset, SetMaxFan, Stop's RestoreAutomaticControl, and
-    // RefreshGpuMode's own reads) is a synchronous BIOS/WMI call. Run the whole thing
-    // off the UI thread -- called directly from a button click, this was blocking the
-    // UI for the full chain of hardware calls before, which read as "freezing."
+    // The writes are PresetActions', off the UI thread; the mode is read back after them, off it too.
     private void ApplyPreset(GpuPowerLevel gpuLevel, FanControlMode fanMode)
     {
-        Task.Run(() =>
+        PresetActions.Apply(_ctx, _service, _settings, gpuLevel, fanMode).ContinueWith(_ =>
         {
-            try { _ctx.Gpu.SetPowerPreset(gpuLevel); } catch { }
-            try
-            {
-                if (fanMode == FanControlMode.Auto) { _ctx.System.SetMaxFan(false); _service.Start(); }
-                else if (fanMode == FanControlMode.Max) { if (_service.IsRunning) _service.Stop(); _ctx.System.SetMaxFan(true); }
-                _settings.FanControlMode = fanMode;
-                _settings.Save();
-            }
-            catch { }
-
             string mode = ReadGpuMode();
             Dispatcher.BeginInvoke(() => { _gpuMode = mode; ShowGpu(); });
-        });
+        }, TaskScheduler.Default);
     }
 
     // ---------------------------------------------------------------- graphics

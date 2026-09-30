@@ -27,11 +27,35 @@ public static class GpuAppRouting
 
         foreach (var valueName in key.GetValueNames())
         {
-            if (string.IsNullOrWhiteSpace(valueName)) continue;
+            if (!IsRoute(valueName)) continue;
             var raw = key.GetValue(valueName) as string ?? "";
             result.Add(new AppGpuRoute(valueName, ParsePreference(raw)));
         }
         return result;
+    }
+
+    /// <summary>
+    /// Windows keeps its global DirectX options -- windowed-game optimisations, auto HDR -- as one more
+    /// value beside the per-application ones. It is not an application, and listing it as a route
+    /// offered to "route" the whole of DirectX. Store apps are routes too, named by their app ID
+    /// rather than a path, so this excludes the one name, not everything without a backslash.
+    /// </summary>
+    internal static bool IsRoute(string valueName) =>
+        !string.IsNullOrWhiteSpace(valueName) && !valueName.Equals(GlobalSettingsName, StringComparison.OrdinalIgnoreCase);
+
+    internal const string GlobalSettingsName = "DirectXUserGlobalSettings";
+
+    /// <summary>
+    /// The routes a search and a preference leave: the text matched anywhere in the path, since two
+    /// builds of one game share an executable and a folder is often all that tells them apart; the
+    /// preference exactly, or every preference when null.
+    /// </summary>
+    public static IReadOnlyList<AppGpuRoute> Filter(IEnumerable<AppGpuRoute> routes, string text, AppGpuPreference? preference)
+    {
+        text = text.Trim();
+        return routes.Where(r => (preference is null || r.Preference == preference)
+                                 && (text.Length == 0 || r.ExecutablePath.Contains(text, StringComparison.OrdinalIgnoreCase)))
+                     .ToList();
     }
 
     public static void SetPreference(string executablePath, AppGpuPreference preference)
@@ -45,7 +69,7 @@ public static class GpuAppRouting
     // this same value (e.g. flip-model overrides), as "Key=Value;" pairs. Replaces just
     // the GpuPreference segment and preserves everything else -- a blind overwrite here
     // would silently destroy any of those other properties the user set outside OmniHub.
-    private static string WithPreference(string existing, AppGpuPreference preference)
+    internal static string WithPreference(string existing, AppGpuPreference preference)
     {
         const string marker = "GpuPreference=";
         var idx = existing.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
@@ -64,7 +88,7 @@ public static class GpuAppRouting
         key?.DeleteValue(executablePath, throwOnMissingValue: false);
     }
 
-    private static AppGpuPreference ParsePreference(string raw)
+    internal static AppGpuPreference ParsePreference(string raw)
     {
         const string marker = "GpuPreference=";
         var idx = raw.IndexOf(marker, StringComparison.OrdinalIgnoreCase);

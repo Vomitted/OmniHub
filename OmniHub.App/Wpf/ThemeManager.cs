@@ -155,7 +155,7 @@ public static class ThemeManager
     /// find it frozen. Not SetCurrentValue either: layered over a reference it breaks the per-element
     /// clone above with an InvalidCastException inside WPF, which is how this came to be written down.
     /// </summary>
-    private static void Repaint()
+    internal static void Repaint()
     {
         var app = Application.Current;
 

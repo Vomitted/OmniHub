@@ -37,8 +37,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Added
 
-- **Studio, and every earlier look one setting away.** Settings → Look chooses between three,
-  live, without a restart:
+- **Studio, five new looks, and every earlier look one setting away.** Settings → Look chooses
+  between eight, live, without a restart:
   - **Studio**, the default: the console arranged for the window it is in — on a wide screen the
     four cards and the dial in one row, every card portrait — with each card's last five minutes
     drawn against the same scale as its bar, six readings with traces across the top, each page's
@@ -46,9 +46,49 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
     a fan view, a 5, 15 or 30-minute window and its values and times labelled. Headings are set in a
     sans, corners are rounded and bars are heavier whatever the theme, and each card's stripe glows
     inside it in the component's colour.
+  - **Frosted**, after Beka Kvaratskhelia's "Smart Home Dashboard": glass tiles over a warm, lit
+    room, the laptop drawn as the hero with the die temperature on its screen and its readings
+    beside it, pills for the fan modes and the presets, and the workspaces as round buttons in a
+    floating dock.
+  - **Dot matrix**, after Slava Kornilov's "Nothing OS 4.0" concept: greys and one red, the
+    readings drawn in dots, the last five minutes as columns of lit dots, round buttons, and the
+    binding limit and the battery on light tiles.
+  - **Neumorphic**, after Gavrisov Dmitri's "Tesla Smart App": dark surfaces raised in soft light,
+    the laptop as the hero with its die temperature large, and the reference's climate screen as
+    cooling — a blue dial against the hot point, the fan speed against the board's calibrated top,
+    and Auto / BIOS / Max as round buttons.
+  - **Athletic**, after Taras Migulko's WHOOP redesign: pure black, three rounded-square rings —
+    headroom to the hot point, processor load, what the fan curve asks — in bold condensed figures,
+    cards that state a condition first ("Within range · 5/5 readings"), and one wide history.
+  - **Companion**, after yuhang's "Tesla Concept": the laptop as the hero with its charge and three
+    round preset buttons, cooling, graphics and power as clean cards each with its five minutes,
+    and the die's last five minutes drawn like a route on a dark map.
   - **Console**: the reference layout as first built, kept as it was.
   - **Classic**: the instrument bar, the two-line sidebar, the four gauges and the four history
     strips. Its colours are a theme of their own, **Midnight Blue**.
+
+  Frosted and Dot matrix set their own materials over the theme, so every page is made of them,
+  not only the Dashboard. The theme's colours stay; any that would fall below 4.5 : 1 on a look's
+  lighter glass are lifted toward white just far enough to read.
+- **Frosted glass, on every look.** Settings → Frosted glass puts Windows 11's own acrylic behind
+  the window — the desktop shows through the page, blurred — and turns the panels to glass over
+  it. They stay solid enough that every colour still reads at 4.5 : 1 over the darkest and the
+  lightest the material can be, and the tray flyout and the overlay, which float over the
+  desktop and over games, keep solid cards. Windows draws the material only while the window has
+  focus, and only from Windows 11 22H2; elsewhere the setting says so and nothing changes.
+
+  A **Strength** slider sets how much of the material shows through the whole window, from a
+  faint frost to nearly clear glass, and a **Material** choice picks Acrylic (a live blur of what
+  is behind the window), Mica (the wallpaper, tinted once rather than blurred every frame, so the
+  lighter of the two on the graphics card) or Mica Alt. The slider never changes a colour: it runs
+  only as clear as the look's own colours still read at 4.5 : 1 on the lightest that material was
+  measured to be — Mica Alt nearly black, Mica a dark grey, Acrylic `#929292` over a white window —
+  so Mica and Mica Alt go much clearer, and Acrylic, the one that shows the other windows, stays
+  frosted, since not even white text reads at 4.5 : 1 on clear glass over a white page. Windows
+  offers no control over the blur's radius, so the slider controls how much of it shows.
+- **App GPU routing can be filtered by preference.** All, high performance, power saving and
+  Windows decides, each with its count, combining with the search. Each application's preference
+  is now three segments rather than a drop-down: one click to change, and legible down the list.
 - **A vendor seam, so support can widen past HP.** The cooling loop, the fan band, the
   throttling answer, the temperature reader and the optimisation code no longer name an HP type.
   What stays HP-shaped is the HP screens and the HP commands, which is where it belongs.
@@ -315,6 +355,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Fixed
 
+- **App GPU routing no longer freezes the window.** On this machine Windows holds 404 per-application
+  GPU preferences, and the page built a card, a drop-down and a button for every one of them at
+  once — and again, after re-reading the registry, on every keystroke in its search box. The System
+  group also builds its tabs in the background, so the freeze came even to somebody who never
+  opened this one. The list now builds only the rows on screen and filters in memory. It also no
+  longer lists Windows' global DirectX options as though they were an application.
 - **Pages animate in.** Every page was written to rise into place, panel after panel, when shown —
   and in the sidebar interface, the default, none ever did: the page arrived inside a container the
   entrance did not look into. Studio goes further: the Dashboard's cards enter in order, the dial's

@@ -80,6 +80,48 @@ public static class DwmTheme
         TrySet(hwnd, DWMWA_BORDER_COLOR, ref def);
     }
 
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref Margins margins);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Margins { public int Left, Right, Top, Bottom; }
+
+    // Windows 11 22621+. 1 is no backdrop, 3 the transient material: acrylic, blurred and tinted.
+    private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+
+    /// <summary>
+    /// Puts one of Windows' own materials behind the whole window, frame and all -- Mica (2),
+    /// Acrylic (3) or Mica Alt (4), the system's backdrop types -- or takes it away (null). The
+    /// material is the desktop window manager's rather than something drawn to look like it: WPF is
+    /// told to clear to nothing, the frame is extended over the client area, and DWM fills what
+    /// shows through. Returns false where the build of Windows has no such material, so the caller
+    /// can keep its surfaces opaque rather than going translucent over a plain black.
+    /// </summary>
+    public static bool SetBackdrop(Window window, int? material)
+    {
+        var hwnd = new WindowInteropHelper(window).Handle;
+        if (hwnd == IntPtr.Zero) return false;
+
+        bool on = material is not null;
+        int type = material ?? 1;
+        int hr;
+        try { hr = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref type, sizeof(int)); }
+        catch (DllNotFoundException) { return false; }
+        catch (EntryPointNotFoundException) { return false; }
+        if (on && hr != 0) on = false;
+
+        var margins = on ? new Margins { Left = -1, Right = -1, Top = -1, Bottom = -1 } : default;
+        try { DwmExtendFrameIntoClientArea(hwnd, ref margins); } catch { return false; }
+
+        // WPF's own clear colour, black unless told otherwise, sits between the window and DWM.
+        if (HwndSource.FromHwnd(hwnd)?.CompositionTarget is { } target)
+            target.BackgroundColor = on ? Colors.Transparent : Colors.Black;
+
+        // The caption's painted colour would cover the material in the title bar; hand it back.
+        if (on) ApplySystemDefault(window, dark: true);
+        return on;
+    }
+
     private static void TrySet(IntPtr hwnd, int attribute, ref int value)
     {
         // Unsupported attributes return E_INVALIDARG rather than throwing, so an older

@@ -33,11 +33,14 @@
                               Stroke="{StaticResource BackgroundBrush}" StrokeThickness="1.4" StrokeLineJoin="Round"
                               Width="17" Height="17" Stretch="Uniform"/>
                     </Border>
-                    <TextBlock Text="OmniHub" FontFamily="{StaticResource UiFontSemibold}" FontSize="16" FontWeight="SemiBold"
+                    <TextBlock x:Name="ConsoleHeaderName" Text="OmniHub" FontFamily="{StaticResource UiFontSemibold}" FontSize="16" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="11,0,0,1"/>
                 </StackPanel>
 
-                <Grid DockPanel.Dock="Top">
+                <!-- Empty under the other looks; under Frosted and Dot matrix the floating dock the
+                     rail of round buttons sits in (MainWindow.ApplyLook). -->
+                <Border x:Name="RailDock" DockPanel.Dock="Top">
+                <Grid>
                 <!-- One indicator that travels, rather than a rail per item switching on and
                      off. The movement is what makes the sidebar read as a single control:
                      seven independent rails blinking gives no sense of going from one place to
@@ -56,6 +59,7 @@
                      cannot be markup. The leading figure is the number key that switches to it. -->
                 <StackPanel x:Name="NavItems"/>
                 </Grid>
+                </Border>
 
                 <!-- The ACTIVE MODE card that sat here held one fact, the fan mode. Each item above
                      now carries the state of its own subject on a second line, the fan mode among

@@ -67,6 +67,40 @@ public enum UiLook
     /// option: a sparse top bar, a one-line sidebar, two cards either side of the dial.
     /// </summary>
     Console = 2,
+
+    /// <summary>
+    /// One soft frosted window of widgets over a warm, lit room, after the design chosen from four
+    /// candidates; navigation in a floating dock. (TECHNICAL-v5-ui.md, section 13.)
+    /// </summary>
+    Frosted = 3,
+
+    /// <summary>Greys and one red, figures drawn in dots, round buttons; navigation in a rail of them.</summary>
+    DotMatrix = 4,
+
+    /// <summary>Dark surfaces raised in soft light, a blue cooling dial, round mode buttons. (Section 15.)</summary>
+    Neumorphic = 5,
+
+    /// <summary>Pure black, three rounded-square rings in bold condensed figures, condition-first cards.</summary>
+    Athletic = 6,
+
+    /// <summary>Black, the laptop as hero with its charge and three round presets, clean cards, a route of history.</summary>
+    Companion = 7,
+}
+
+/// <summary>
+/// The material Windows 11 draws behind the window when frosted glass is on. The values are the
+/// system's own backdrop types (DWMWA_SYSTEMBACKDROP_TYPE), so they are passed through unchanged.
+/// </summary>
+public enum GlassMaterial
+{
+    /// <summary>Mica: the wallpaper, blurred and tinted once rather than every frame -- the cheaper material.</summary>
+    Mica = 2,
+
+    /// <summary>Acrylic: a live blur of whatever is behind the window.</summary>
+    Acrylic = 3,
+
+    /// <summary>Mica Alt: Mica with a stronger, darker tint.</summary>
+    MicaAlt = 4,
 }
 
 /// <summary>Which screen corner the telemetry overlay anchors to.</summary>
@@ -201,6 +235,21 @@ public sealed class AppSettings
     /// or the look before it -- each kept whole so it can be gone back to.
     /// </summary>
     public UiLook Look { get; set; } = UiLook.Studio;
+
+    /// <summary>
+    /// The Windows 11 acrylic behind the window, on whichever look is chosen. Off by default: it is a
+    /// material the desktop behind the window shows through, and not everybody wants that.
+    /// </summary>
+    public bool FrostedGlass { get; set; }
+
+    /// <summary>
+    /// How much of the material shows through the whole window, 0 to 100: a faint frost at 0, nearly
+    /// clear glass at 100. Every text colour stays readable across the range (LookSurfaces).
+    /// </summary>
+    public int GlassStrength { get; set; } = 30;
+
+    /// <summary>Which material Windows draws behind the glass. See <see cref="OmniHub.App.GlassMaterial"/>.</summary>
+    public GlassMaterial GlassMaterial { get; set; } = GlassMaterial.Acrylic;
 
     /// <summary>
     /// The palette built in the application, as the four colours it is described by.

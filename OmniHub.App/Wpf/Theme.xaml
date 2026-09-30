@@ -79,6 +79,15 @@
         <GradientStop Color="{DynamicResource PanelColor}" Offset="1"/>
     </LinearGradientBrush>
 
+    <!-- The tray flyout's and the overlay's cards. They float over the desktop and over games, so
+         when a look's glass or the blur makes the panels translucent, the main window swaps these
+         for the panel made solid (MainWindow.ApplyMaterials); otherwise they are the usual brushes. -->
+    <LinearGradientBrush x:Key="FloatingCardBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{DynamicResource PanelAltColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource PanelColor}" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="FloatingOverlayBrush" Color="{DynamicResource PanelAltColor}"/>
+
     <!-- The Dashboard dial's ring: the accent at the top right running into the second accent at the
          bottom left, as the reference's ring runs mint into pale cyan round its left side. -->
     <LinearGradientBrush x:Key="DialGradientBrush" StartPoint="1,0" EndPoint="0,1">
