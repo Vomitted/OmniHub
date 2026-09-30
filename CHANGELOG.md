@@ -37,8 +37,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ### Added
 
-- **Studio, two new looks, and every earlier look one setting away.** Settings → Look chooses
-  between five, live, without a restart:
+- **Studio, five new looks, and every earlier look one setting away.** Settings → Look chooses
+  between eight, live, without a restart:
   - **Studio**, the default: the console arranged for the window it is in — on a wide screen the
     four cards and the dial in one row, every card portrait — with each card's last five minutes
     drawn against the same scale as its bar, six readings with traces across the top, each page's
@@ -53,6 +53,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   - **Dot matrix**, after Slava Kornilov's "Nothing OS 4.0" concept: greys and one red, the
     readings drawn in dots, the last five minutes as columns of lit dots, round buttons, and the
     binding limit and the battery on light tiles.
+  - **Neumorphic**, after Gavrisov Dmitri's "Tesla Smart App": dark surfaces raised in soft light,
+    the laptop as the hero with its die temperature large, and the reference's climate screen as
+    cooling — a blue dial against the hot point, the fan speed against the board's calibrated top,
+    and Auto / BIOS / Max as round buttons.
+  - **Athletic**, after Taras Migulko's WHOOP redesign: pure black, three rounded-square rings —
+    headroom to the hot point, processor load, what the fan curve asks — in bold condensed figures,
+    cards that state a condition first ("Within range · 5/5 readings"), and one wide history.
+  - **Companion**, after yuhang's "Tesla Concept": the laptop as the hero with its charge and three
+    round preset buttons, cooling, graphics and power as clean cards each with its five minutes,
+    and the die's last five minutes drawn like a route on a dark map.
   - **Console**: the reference layout as first built, kept as it was.
   - **Classic**: the instrument bar, the two-line sidebar, the four gauges and the four history
     strips. Its colours are a theme of their own, **Midnight Blue**.

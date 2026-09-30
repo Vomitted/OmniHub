@@ -206,10 +206,14 @@ public abstract class LookDashboard : UserControl
         return t;
     }
 
-    /// <summary>A choice among several, in the look's pill: a round button when <paramref name="round"/> is set.</summary>
-    protected RadioButton Pill(string text, string group, bool chosen, Action onChosen, double? round = null)
+    /// <summary>
+    /// A choice among several, in the look's pill: a round button when <paramref name="round"/> is set,
+    /// filled with the accent rather than the text colour when chosen if <paramref name="accent"/> is.
+    /// </summary>
+    protected RadioButton Pill(object content, string group, bool chosen, Action onChosen, double? round = null, bool accent = false)
     {
-        var b = new RadioButton { Content = text, GroupName = group + GetHashCode(), IsChecked = chosen, Style = (Style)FindResource("LookPillStyle") };
+        var b = new RadioButton { Content = content, GroupName = group + GetHashCode(), IsChecked = chosen, Style = (Style)FindResource(accent ? "LookAccentPillStyle" : "LookPillStyle") };
+        string text = content as string ?? group;
         if (round is { } size) { b.Width = b.Height = size; b.Padding = new Thickness(0); }
         b.SizeChanged += (_, e) => { if (b.Template?.FindName("Bd", b) is Border bd) bd.CornerRadius = new CornerRadius(e.NewSize.Height / 2); };
         System.Windows.Automation.AutomationProperties.SetName(b, text);
@@ -238,6 +242,37 @@ public abstract class LookDashboard : UserControl
     {
         border.SizeChanged += (_, e) => border.CornerRadius = new CornerRadius(e.NewSize.Height / 2);
         return border;
+    }
+
+    /// <summary>
+    /// A bar filled to a fraction of its track in a theme brush, eased; a null fraction empties it rather
+    /// than guessing. Returns the track to place and the setter to call on every reading.
+    /// </summary>
+    protected static (Border Track, Action<double?> Set) Meter(string brushKey, double height = 8)
+    {
+        var fill = new Border { HorizontalAlignment = HorizontalAlignment.Left, Width = 0, CornerRadius = new CornerRadius(height / 2) };
+        fill.SetResourceReference(Border.BackgroundProperty, brushKey);
+        var track = new Border { Height = height, CornerRadius = new CornerRadius(height / 2), Child = fill, ClipToBounds = true };
+        track.SetResourceReference(Border.BackgroundProperty, "PanelHoverBrush");
+        double? last = null;
+        void Set(double? fraction)
+        {
+            last = fraction;
+            Controls.Motion.To(fill, FrameworkElement.WidthProperty, Math.Max(0, track.ActualWidth * Math.Clamp(fraction ?? 0, 0, 1)), fill.IsVisible, 700);
+        }
+        track.SizeChanged += (_, _) => Set(last);
+        return (track, Set);
+    }
+
+    /// <summary>A small line icon in the button's own foreground.</summary>
+    protected static System.Windows.Shapes.Path Glyph(string data)
+    {
+        var p = new System.Windows.Shapes.Path { Data = Geometry.Parse(data), Width = 22, Height = 22, Stretch = Stretch.Uniform, StrokeThickness = 2, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round };
+        p.SetBinding(System.Windows.Shapes.Shape.StrokeProperty, new System.Windows.Data.Binding("Foreground")
+        {
+            RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.FindAncestor, typeof(System.Windows.Controls.Control), 1),
+        });
+        return p;
     }
 
     /// <summary>A grid of star rows and columns with gap tracks between, for the tiles.</summary>

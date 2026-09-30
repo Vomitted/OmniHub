@@ -412,6 +412,12 @@ internal static class Snapshot
                 Say($"frosted glass: {(win.SetFrostedGlass(true) ? "acrylic accepted" : "acrylic refused here; surfaces solid")}");
                 Pump(500);
             }
+            else if (step == "noglass")
+            {
+                // The sandbox reads the real settings file; this renders the opaque surfaces whatever it holds.
+                win.SetFrostedGlass(false);
+                Pump(400);
+            }
             else if (step.StartsWith("strength="))
             {
                 // The glass's strength, 0 to 100, as the Settings slider sets it.

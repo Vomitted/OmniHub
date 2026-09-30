@@ -57,8 +57,32 @@ public static class LookSurfaces
     /// </summary>
     public const string Signal = "#FFE8262C";
 
+    /// <summary>
+    /// After "Tesla Smart App" by Gavrisov Dmitri: a charcoal ground, surfaces a shade lighter that the
+    /// window raises with a gradient edge rather than a blurred shadow, the reference's blue.
+    /// </summary>
+    public static readonly Material Neumorphic = new(
+        Ground: "#FF1C1E21", Panel: "#FF23262A", PanelAlt: "#FF282B30", PanelHover: "#FF2E3137",
+        Border: "#FF30343A", BorderStrong: "#FF3B4047", BlurPanel: "#FF202327",
+        Radius: 32, RadiusSmall: 18, TrackHeight: 8, Accent: "#FF3AA0FF",
+        TextPrimary: "#FFEEF1F5", TextMuted: "#FFA7ADB6", TextFaint: "#FF8E959F", OnAccent: "#FF000000");
+
+    /// <summary>After the "Whoop app redesign concept" by Taras Migulko: pure black, near-black cards.</summary>
+    public static readonly Material Athletic = new(
+        Ground: "#FF000000", Panel: "#FF141414", PanelAlt: "#FF1B1B1B", PanelHover: "#FF232323",
+        Border: "#FF1C1C1C", BorderStrong: "#FF2C2C2C", BlurPanel: "#FF141414",
+        Radius: 18, RadiusSmall: 12, TrackHeight: 10, Accent: null,
+        TextPrimary: "#FFFFFFFF", TextMuted: "#FFA0A0A0", TextFaint: "#FF8E8E8E");
+
+    /// <summary>After "Tesla Concept" by yuhang: black, iOS's grouped greys, a legible system blue.</summary>
+    public static readonly Material Companion = new(
+        Ground: "#FF000000", Panel: "#FF141416", PanelAlt: "#FF1C1C1E", PanelHover: "#FF252528",
+        Border: "#FF1C1C1E", BorderStrong: "#FF2C2C2E", BlurPanel: "#FF141416",
+        Radius: 22, RadiusSmall: 12, TrackHeight: 8, Accent: "#FF409CFF",
+        TextPrimary: "#FFFFFFFF", TextMuted: "#FFAEAEB2", TextFaint: "#FF8E8E93", OnAccent: "#FF000000");
+
     /// <summary>Every look with its own materials, for the tests that hold them.</summary>
-    public static readonly Material[] All = { Frosted, DotMatrix };
+    public static readonly Material[] All = { Frosted, DotMatrix, Neumorphic, Athletic, Companion };
 
     /// <summary>
     /// The glass's strength when nobody has chosen one: 70 % of the ground and 90 % of each panel left

@@ -38,6 +38,9 @@ public partial class SettingsView : UserControl
             UiLook.Console => ConsoleLookBtn,
             UiLook.Frosted => FrostedLookBtn,
             UiLook.DotMatrix => DotMatrixLookBtn,
+            UiLook.Neumorphic => NeumorphicLookBtn,
+            UiLook.Athletic => AthleticLookBtn,
+            UiLook.Companion => CompanionLookBtn,
             _ => StudioLookBtn,
         }).IsChecked = true;
         FrostedGlassToggle.IsChecked = _settings.FrostedGlass;

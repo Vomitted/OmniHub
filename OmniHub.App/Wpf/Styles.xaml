@@ -353,6 +353,34 @@
         </Setter>
     </Style>
 
+    <!-- The same choice filled with the accent when chosen, its words in the colour made for text on the
+         accent, which the contrast tests hold for every palette and look. Neumorphic's round buttons.
+         Its own template: the pill's template triggers would outrank a style trigger on the fill. -->
+    <Style x:Key="LookAccentPillStyle" TargetType="RadioButton" BasedOn="{StaticResource LookPillStyle}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource RadiusSm}" BorderThickness="1" BorderBrush="{StaticResource PaneEdgeBrush}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource PanelHoverBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource OnAccentBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- The same choice as a card, for one with a line of explanation under its name: Frosted's presets. -->
     <Style x:Key="LookChoiceStyle" TargetType="RadioButton" BasedOn="{StaticResource LookPillStyle}">
         <Setter Property="Height" Value="NaN"/>

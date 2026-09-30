@@ -837,3 +837,29 @@ from this machine's real readings, for the user to choose among before anything 
 Chosen looks follow section 13's structure (`LookDashboard`, materials in `LookSurfaces`) and its
 efficiency rules: no bitmap effects (WPF renders blur and drop shadows in software), frozen brushes,
 drawing in `OnRender` for anything with more than a few dozen marks, and loops only while shown.
+
+## 15. Three more looks: Neumorphic, Athletic, Companion
+
+The first set of candidates for section 14 -- a terminal monitor, an avionics display, a synthesiser,
+subway signage, chosen for being famous and well made -- was rejected whole ("wow its all bad"). The
+register was wrong, not the craft: the two accepted looks came from polished consumer concept work, and
+none of the four did. The second set was drawn only from that register, each from a well-liked Dribbble
+shot, and all three were chosen:
+
+| Look | After | Its grammar |
+| --- | --- | --- |
+| **Neumorphic** | "Tesla Smart App", Gavrisov Dmitri (2.8k likes) | Dark surfaces raised and inset in soft light; the machine as the hero; the reference's climate screen as cooling -- a blue dial, fan speed, round mode buttons |
+| **Athletic** | "Whoop app redesign concept", Taras Migulko | Pure black; three rounded-square rings in bold condensed figures; cards that state a condition first; one wide history |
+| **Companion** | "Tesla Concept", yuhang (468 likes) | Black, the laptop as hero with its charge and three round preset buttons; clean cards; the last five minutes drawn like a route on a map |
+
+Each follows section 13: materials in `LookSurfaces` (so `LookSurfaceTests` holds every text colour on
+them, blur off and on, at every strength), a Dashboard over `LookDashboard`, the icon rail. Readings
+map honestly: **headroom** is the distance from the die to its hot point as a share of it; the fan
+speed bar is against the board's calibrated maximum where one is measured, and against the fastest the
+fans reached in the window where not, and says which.
+
+**Efficient by construction.** Neumorphism is usually drawn with two large blurred shadows per surface;
+WPF renders those in software, per frame an ancestor moves. Here a raised surface is a diagonal gradient
+fill with a gradient edge -- light at the top left, dark at the bottom right -- which reads as the same
+soft relief at the cost of a solid fill. The rounded-square rings and the cooling dial are one drawn path
+each; the laptop is one shared vector control (`LaptopArt`), now also Frosted's.

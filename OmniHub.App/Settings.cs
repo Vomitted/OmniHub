@@ -76,6 +76,15 @@ public enum UiLook
 
     /// <summary>Greys and one red, figures drawn in dots, round buttons; navigation in a rail of them.</summary>
     DotMatrix = 4,
+
+    /// <summary>Dark surfaces raised in soft light, a blue cooling dial, round mode buttons. (Section 15.)</summary>
+    Neumorphic = 5,
+
+    /// <summary>Pure black, three rounded-square rings in bold condensed figures, condition-first cards.</summary>
+    Athletic = 6,
+
+    /// <summary>Black, the laptop as hero with its charge and three round presets, clean cards, a route of history.</summary>
+    Companion = 7,
 }
 
 /// <summary>

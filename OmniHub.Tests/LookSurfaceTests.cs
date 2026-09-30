@@ -36,7 +36,7 @@ public class LookSurfaceTests
     {
         var o = LookSurfaces.Overrides(look, blur, key => PaletteColour(xaml, key));
         string Get(string key) => o.TryGetValue(key, out var v) ? v : PaletteColour(xaml, key);
-        string setting = $"{look switch { null => "no look", _ when look == LookSurfaces.Frosted => "Frosted", _ => "Dot matrix" }}{Blurred(blur)}";
+        string setting = $"{(look is null ? "no look" : "look #" + Array.IndexOf(LookSurfaces.All, look))}{Blurred(blur)}";
 
         var surfaces = LookSurfaces.Surfaces(look, blur, Get);
 
@@ -65,7 +65,7 @@ public class LookSurfaceTests
         string xaml = File.ReadAllText(Path.Combine(WpfTestHost.WpfDir, "Palettes", paletteFile));
         var failures = new List<string>();
 
-        foreach (var look in new LookSurfaces.Material?[] { null, LookSurfaces.Frosted, LookSurfaces.DotMatrix })
+        foreach (var look in LookSurfaces.All.Prepend<LookSurfaces.Material?>(null))
             foreach (double? blur in Strengths)
                 failures.AddRange(Failures(xaml, look, blur));
 

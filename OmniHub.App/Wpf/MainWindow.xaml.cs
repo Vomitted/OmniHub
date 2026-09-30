@@ -488,14 +488,17 @@ public partial class MainWindow : Window
     /// <summary>Studio and Console share the reference's chrome; only Classic keeps the one before it.</summary>
     private bool ConsoleChrome => _settings.Look != UiLook.Classic;
 
-    /// <summary>The Frosted and Dot matrix looks navigate by a rail of round buttons rather than a list of names.</summary>
-    private bool IconRail => _settings.Look is UiLook.Frosted or UiLook.DotMatrix;
+    /// <summary>The looks with their own materials navigate by a rail of round buttons rather than a list of names.</summary>
+    private bool IconRail => LookMaterial is not null;
 
     /// <summary>The materials the look sets over the palette, or null for a look that keeps the palette's.</summary>
     private OmniHub.Core.Theming.LookSurfaces.Material? LookMaterial => _settings.Look switch
     {
         UiLook.Frosted => OmniHub.Core.Theming.LookSurfaces.Frosted,
         UiLook.DotMatrix => OmniHub.Core.Theming.LookSurfaces.DotMatrix,
+        UiLook.Neumorphic => OmniHub.Core.Theming.LookSurfaces.Neumorphic,
+        UiLook.Athletic => OmniHub.Core.Theming.LookSurfaces.Athletic,
+        UiLook.Companion => OmniHub.Core.Theming.LookSurfaces.Companion,
         _ => null,
     };
 
@@ -505,6 +508,9 @@ public partial class MainWindow : Window
         UiLook.Classic => new DashboardClassicView(_ctx, _service, _settings, metrics),
         UiLook.Frosted => new FrostedDashboardView(_ctx, _service, _settings, metrics, OnDashboardFanMode),
         UiLook.DotMatrix => new DotMatrixDashboardView(_ctx, _service, _settings, metrics, OnDashboardFanMode),
+        UiLook.Neumorphic => new NeumorphicDashboardView(_ctx, _service, _settings, metrics, OnDashboardFanMode),
+        UiLook.Athletic => new AthleticDashboardView(_ctx, _service, _settings, metrics, OnDashboardFanMode),
+        UiLook.Companion => new CompanionDashboardView(_ctx, _service, _settings, metrics, OnDashboardFanMode),
         _ => new DashboardView(_ctx, _service, _settings, metrics, studio: _settings.Look == UiLook.Studio),
     };
 

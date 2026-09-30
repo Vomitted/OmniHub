@@ -67,6 +67,12 @@
                                              Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Frosted"/>
                                 <RadioButton x:Name="DotMatrixLookBtn" GroupName="Look" Content="DOT MATRIX" Width="118" Height="30" Margin="3,0,0,0"
                                              Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="DotMatrix"/>
+                                <RadioButton x:Name="NeumorphicLookBtn" GroupName="Look" Content="NEUMORPHIC" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Neumorphic"/>
+                                <RadioButton x:Name="AthleticLookBtn" GroupName="Look" Content="ATHLETIC" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Athletic"/>
+                                <RadioButton x:Name="CompanionLookBtn" GroupName="Look" Content="COMPANION" Width="118" Height="30" Margin="3,0,0,0"
+                                             Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Companion"/>
                                 <RadioButton x:Name="ConsoleLookBtn" GroupName="Look" Content="CONSOLE" Width="118" Height="30" Margin="3,0,0,0"
                                              Style="{StaticResource PillRadioStyle}" Checked="Look_Checked" Tag="Console"/>
                                 <RadioButton x:Name="ClassicLookBtn" GroupName="Look" Content="CLASSIC" Width="118" Height="30" Margin="3,0,0,0"
@@ -74,7 +80,7 @@
                             </WrapPanel>
                         </Border>
                         <TextBlock Style="{StaticResource SettingNote}"
-                                   Text="Studio arranges the console for the window it is in — on a wide screen the cards and the dial in one row — and gives every card its last five minutes, with a sans for headings whatever the theme. Frosted is glass tiles over a warm, lit room, the machine drawn as the hero with its readings beside it. Dot matrix is greys and one red, every figure drawn in dots and five minutes of history as lit columns. Both navigate by a rail of round buttons and keep the theme's colours for the readings, lifting any that would not read on their surfaces. Console is the reference layout as first built: two cards either side of the dial. Classic is the look before all of them: the widget row, the four history strips, the readout bar and the two-line sidebar; for its colours as well, choose Midnight Blue under Theme."/>
+                                   Text="Studio arranges the console for the window it is in — on a wide screen the cards and the dial in one row — and gives every card its last five minutes, with a sans for headings whatever the theme. Frosted is glass tiles over a warm, lit room, the machine drawn as the hero with its readings beside it. Dot matrix is greys and one red, every figure drawn in dots and five minutes of history as lit columns. Neumorphic raises dark surfaces in soft light around a blue cooling dial. Athletic is pure black with three rounded-square rings: headroom, load and what the fans are asked for. Companion puts the laptop first with its charge and three round presets, and the last five minutes as a route on a map. All five navigate by a rail of round buttons and keep the theme's colours for the readings, lifting any that would not read on their surfaces. Console is the reference layout as first built: two cards either side of the dial. Classic is the look before all of them: the widget row, the four history strips, the readout bar and the two-line sidebar; for its colours as well, choose Midnight Blue under Theme."/>
 
                         <!-- The blur, on whichever look: Windows' own acrylic behind the window. -->
                         <Grid Margin="0,16,0,0">

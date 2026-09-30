@@ -28,12 +28,12 @@ public sealed class FrostedDashboardView : LookDashboard
 {
     private const string Light = "Segoe UI Variable Display Light, Segoe UI Light, Segoe UI";
 
-    private readonly TextBlock _screenTemp = Figure(54), _heroName = Words(size: 19, brush: "TextPrimaryBrush", weight: FontWeights.SemiBold),
+    private readonly Controls.LaptopArt _laptop = new(Controls.LaptopArt.Finish.Warm);
+    private readonly TextBlock _heroName = Words(size: 19, brush: "TextPrimaryBrush", weight: FontWeights.SemiBold),
         _heroState = Words(size: 12.5), _heroLimit = Words(size: 12.5);
     private readonly Ellipse _stateDot = new() { Width = 8, Height = 8, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock _chipGpu = Words(size: 12.5, brush: "TextPrimaryBrush"), _chipFan = Words(size: 12.5, brush: "TextPrimaryBrush"),
         _chipPkg = Words(size: 12.5, brush: "TextPrimaryBrush");
-    private readonly Border _lid = new(), _glow = new();
 
     private readonly Controls.FanGlyph _fan = new() { ColourKey = "MetricFanBrush", Width = 66, Height = 66 };
     private readonly TextBlock _rpm = Figure(44), _fanWords = Words(size: 12);
@@ -81,7 +81,7 @@ public sealed class FrostedDashboardView : LookDashboard
         // right, so the two never share pixels however narrow the tile is.
         var g = new Grid { ColumnDefinitions = { new ColumnDefinition(), new ColumnDefinition { Width = GridLength.Auto } } };
 
-        var art = Laptop();
+        var art = _laptop;
         art.HorizontalAlignment = HorizontalAlignment.Center;
         art.VerticalAlignment = VerticalAlignment.Center;
         art.Margin = new Thickness(0, 40, 12, 58);
@@ -114,59 +114,6 @@ public sealed class FrostedDashboardView : LookDashboard
         Grid.SetColumn(_heroLimit, 1);
         g.Children.Add(_heroLimit);
         return g;
-    }
-
-    /// <summary>
-    /// A laptop, lid up: the reading on its screen in white over the screen's own near-black, which
-    /// is drawn here and so is the same under every palette.
-    /// </summary>
-    private FrameworkElement Laptop()
-    {
-        var screen = new Grid();
-        _glow.CornerRadius = new CornerRadius(7);
-        _glow.Background = new RadialGradientBrush
-        {
-            Center = new Point(0.5, 0.35), GradientOrigin = new Point(0.5, 0.35), RadiusX = 0.8, RadiusY = 0.9,
-            GradientStops = { new GradientStop(Color.FromArgb(0x55, 0xFF, 0xD7, 0x9A), 0), new GradientStop(Color.FromArgb(0, 0xFF, 0xD7, 0x9A), 1) },
-        };
-        screen.Children.Add(new Border { CornerRadius = new CornerRadius(7), Background = new SolidColorBrush(Color.FromRgb(0x0E, 0x0D, 0x0C)) });
-        screen.Children.Add(_glow);
-        Controls.Motion.Loop(_glow, _glow, OpacityProperty, 1, 0.55, 4200, autoReverse: true);
-
-        _screenTemp.Foreground = Brushes.White;
-        _screenTemp.HorizontalAlignment = HorizontalAlignment.Center;
-        var caption = new TextBlock { Text = "processor", Foreground = new SolidColorBrush(Color.FromRgb(0xC9, 0xC4, 0xBC)), FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center };
-        screen.Children.Add(new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { _screenTemp, caption } });
-
-        _lid.Width = 250; _lid.Height = 160;
-        _lid.CornerRadius = new CornerRadius(12);
-        _lid.Padding = new Thickness(9);
-        _lid.BorderThickness = new Thickness(1.5);
-        _lid.BorderBrush = new SolidColorBrush(Color.FromArgb(0x55, 0xFF, 0xFF, 0xFF));
-        _lid.Background = new LinearGradientBrush(Color.FromRgb(0x2A, 0x28, 0x25), Color.FromRgb(0x15, 0x14, 0x12), 90);
-        _lid.Child = screen;
-        _lid.RenderTransformOrigin = new Point(0.5, 1);
-        _lid.RenderTransform = new ScaleTransform(1, 1);
-
-        var deck = new Path
-        {
-            Data = Geometry.Parse("M 0,0 L 290,0 L 280,12 Q 278,14 272,14 L 18,14 Q 12,14 10,12 Z"),
-            Fill = new LinearGradientBrush(Color.FromRgb(0x3A, 0x37, 0x33), Color.FromRgb(0x1C, 0x1A, 0x18), 90),
-            Stroke = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
-            StrokeThickness = 1,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        var shadow = new Ellipse
-        {
-            Width = 300, Height = 22, Margin = new Thickness(0, -4, 0, 0),
-            Fill = new RadialGradientBrush(Color.FromArgb(0x70, 0, 0, 0), Color.FromArgb(0, 0, 0, 0)),
-        };
-
-        return new Viewbox
-        {
-            MaxWidth = 330,
-            Child = new StackPanel { Width = 300, Children = { new Border { Child = _lid, HorizontalAlignment = HorizontalAlignment.Center }, deck, shadow } },
-        };
     }
 
     private UIElement Fans(out RadioButton[] modes)
@@ -280,7 +227,7 @@ public sealed class FrostedDashboardView : LookDashboard
         double? cpu = Metrics.Value("cpu"), gpu = Metrics.Value("gpu"), fan = Metrics.Value("fan"), pkg = Metrics.Value("pkg");
         var (state, dot) = State();
 
-        _screenTemp.Text = Fig(cpu, "0", "°");
+        _laptop.Reading.Text = Fig(cpu, "0", "°");
         _heroState.Text = state;
         _stateDot.SetResourceReference(Shape.FillProperty, dot);
         _chipGpu.Text = gpu is null && GpuState is { } asleep ? asleep : Fig(gpu, "0", " °C");
@@ -324,11 +271,7 @@ public sealed class FrostedDashboardView : LookDashboard
     protected override void OnEnter(Func<int, int> delayOf)
     {
         // The lid opens as the hero arrives, and each curve draws in from the left with its tile.
-        if (_lid.RenderTransform is ScaleTransform lift)
-            lift.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.15, 1, TimeSpan.FromMilliseconds(OmniHub.Core.Theming.MotionBudget.EnterMs + 160))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }, FillBehavior = FillBehavior.Stop,
-            });
+        _laptop.Open();
         foreach (var (trace, tile) in _traces) Controls.Motion.Reveal(trace, delayOf(tile) + 80);
     }
 
