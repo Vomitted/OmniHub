@@ -863,3 +863,42 @@ WPF renders those in software, per frame an ancestor moves. Here a raised surfac
 fill with a gradient edge -- light at the top left, dark at the bottom right -- which reads as the same
 soft relief at the cost of a solid fill. The rounded-square rings and the cooling dial are one drawn path
 each; the laptop is one shared vector control (`LaptopArt`), now also Frosted's.
+
+## 16. Glass that stays the theme's colours
+
+The request, verbatim: "i want real glass background thins please, also when i maximise the setting it
+changes color for the buttons and sometimes the text really cant be seen because its white and white".
+
+### What was wrong
+
+Section 14 kept text readable at every strength by *lifting* each text colour toward white until it read
+on the lightest surface the glass could put under it -- and it assumed that surface, for every material,
+was the acrylic over something bright, taken as `#6A6A6A`. At strength 100 on Neumorphic over Ember that
+lift turned the blue accent to `#C4E2FF`, the red to `#FAD7D4` and the muted text to `#DCDEE2`: every
+button changed colour, and a chosen pill (primary text, `#EEF1F5`) became indistinguishable from the
+others (muted text, now nearly the same white).
+
+The assumed backdrop was never measured. Measured on this machine -- a dark-mode window with each system
+backdrop over a pure white window and over a black one, centre pixel read from the screen:
+
+| Material | over white | over black |
+| --- | --- | --- |
+| Acrylic | `#929292` | `#151515` |
+| Mica | `#1F2024` | `#151515` |
+| Mica Alt | `#060820` | `#151515` |
+
+So the guess was wrong both ways: Mica and Mica Alt are far darker than assumed (the colour shift there
+was needless), and Acrylic -- the only material that shows the windows behind, the "real glass" -- is
+lighter, so text over a white page could genuinely vanish.
+
+### The fix
+
+- **Each material's own extremes.** `LookSurfaces.Backdrop(material)` returns the measured pair. Mica
+  samples the wallpaper rather than the windows, so its lightest is taken as `#303030`, a margin over the
+  `#1F2024` measured on this wallpaper for a brighter one.
+- **Clarity stops where the colours would have to move.** Instead of bleaching colours as the glass
+  clears, `LookSurfaces.Clarity` finds the clearest the glass can go -- by bisection over the strength --
+  with every text colour still reading, unchanged, on the lightest surface that material can produce.
+  The slider spans zero to that. On Mica Alt that is the whole range; on Acrylic it stops where a white
+  page behind the window would take a colour below 4.5 : 1.
+- The lift stays as the net under it, and the contrast tests now run per material.

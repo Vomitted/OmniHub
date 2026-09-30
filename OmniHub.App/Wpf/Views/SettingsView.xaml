@@ -124,7 +124,7 @@
                             </StackPanel>
                         </Border>
                         <TextBlock Style="{StaticResource SettingNote}"
-                                   Text="Strength is how much of the material shows through the ground and every panel together, from a faint frost to nearly clear glass; however far it goes, every colour stays readable at 4.5 to 1, growing paler where the glass is thinner. Acrylic blurs whatever is behind the window, live. Mica is the wallpaper, blurred and tinted once rather than every frame, and so the lighter of the two on the graphics card; Mica Alt is a darker Mica. Windows sets how blurred each is; what can be chosen is how much of it shows."/>
+                                   Text="Strength is how much of the material shows through the ground and every panel together, from a faint frost to as clear as the look's own colours still read at 4.5 to 1 — they never change with it. Acrylic blurs whatever is behind the window, live, and is the only one that shows your other windows; over a white page it measures #929292, on which even white text reads at only 3 to 1, so it stays frosted. Mica and Mica Alt tint the wallpaper dark, and can go much clearer. Mica is the wallpaper, blurred and tinted once rather than every frame, and so the lighter of the two on the graphics card; Mica Alt is a darker Mica. Windows sets how blurred each is; what can be chosen is how much of it shows."/>
                     </StackPanel>
                 </StackPanel>
             </Border>

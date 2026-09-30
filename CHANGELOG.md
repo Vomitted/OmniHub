@@ -80,9 +80,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
   A **Strength** slider sets how much of the material shows through the whole window, from a
   faint frost to nearly clear glass, and a **Material** choice picks Acrylic (a live blur of what
   is behind the window), Mica (the wallpaper, tinted once rather than blurred every frame, so the
-  lighter of the two on the graphics card) or Mica Alt. Every colour is held to 4.5 : 1 at every
-  strength; at the clear end they grow paler, never unreadable. Windows offers no control over the
-  blur's radius, so the slider controls how much of it shows.
+  lighter of the two on the graphics card) or Mica Alt. The slider never changes a colour: it runs
+  only as clear as the look's own colours still read at 4.5 : 1 on the lightest that material was
+  measured to be — Mica Alt nearly black, Mica a dark grey, Acrylic `#929292` over a white window —
+  so Mica and Mica Alt go much clearer, and Acrylic, the one that shows the other windows, stays
+  frosted, since not even white text reads at 4.5 : 1 on clear glass over a white page. Windows
+  offers no control over the blur's radius, so the slider controls how much of it shows.
 - **App GPU routing can be filtered by preference.** All, high performance, power saving and
   Windows decides, each with its count, combining with the search. Each application's preference
   is now three segments rather than a drop-down: one click to change, and legible down the list.

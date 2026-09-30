@@ -32,13 +32,16 @@ public class LookSurfaceTests
 
     private static string Blurred(double? blur) => blur is { } b ? $" with the blur at {b:0.00}" : "";
 
-    private static IEnumerable<string> Failures(string xaml, LookSurfaces.Material? look, double? blur)
-    {
-        var o = LookSurfaces.Overrides(look, blur, key => PaletteColour(xaml, key));
-        string Get(string key) => o.TryGetValue(key, out var v) ? v : PaletteColour(xaml, key);
-        string setting = $"{(look is null ? "no look" : "look #" + Array.IndexOf(LookSurfaces.All, look))}{Blurred(blur)}";
+    /// <summary>Windows' backdrop types: Mica, Acrylic, Mica Alt.</summary>
+    private static readonly int[] Materials = { 2, 3, 4 };
 
-        var surfaces = LookSurfaces.Surfaces(look, blur, Get);
+    private static IEnumerable<string> Failures(string xaml, LookSurfaces.Material? look, double? blur, int material)
+    {
+        var o = LookSurfaces.Overrides(look, blur, key => PaletteColour(xaml, key), material);
+        string Get(string key) => o.TryGetValue(key, out var v) ? v : PaletteColour(xaml, key);
+        string setting = $"{(look is null ? "no look" : "look #" + Array.IndexOf(LookSurfaces.All, look))}{Blurred(blur)} on material {material}";
+
+        var surfaces = LookSurfaces.Surfaces(look, blur, Get, material);
 
         foreach (string textKey in ContrastTests.TextColors)
         {
@@ -67,9 +70,51 @@ public class LookSurfaceTests
 
         foreach (var look in LookSurfaces.All.Prepend<LookSurfaces.Material?>(null))
             foreach (double? blur in Strengths)
-                failures.AddRange(Failures(xaml, look, blur));
+                foreach (int material in Materials)
+                    failures.AddRange(Failures(xaml, look, blur, material));
 
         Assert.True(failures.Count == 0, $"{paletteFile}:\n  " + string.Join("\n  ", failures));
+    }
+
+    [Theory]
+    [MemberData(nameof(Palettes))]
+    public void TheGlassNeverChangesAColour(string paletteFile)
+    {
+        // Turning the strength up bleached every colour toward white until a chosen pill could not be
+        // told from the rest (section 16). The glass may only change surfaces, never what is drawn on them.
+        string xaml = File.ReadAllText(Path.Combine(WpfTestHost.WpfDir, "Palettes", paletteFile));
+        string P(string key) => PaletteColour(xaml, key);
+        var failures = new List<string>();
+
+        foreach (var look in LookSurfaces.All.Prepend<LookSurfaces.Material?>(null))
+        {
+            var solid = LookSurfaces.Overrides(look, null, P);
+            foreach (int material in Materials)
+                foreach (double? blur in Strengths.Skip(1))
+                {
+                    var glass = LookSurfaces.Overrides(look, blur, P, material);
+                    foreach (string key in LookSurfaces.TextKeys.Append("AccentColor2").Append("OnAccentColor"))
+                    {
+                        string before = solid.GetValueOrDefault(key) ?? P(key), after = glass.GetValueOrDefault(key) ?? P(key);
+                        if (before != after) failures.Add($"look #{Array.IndexOf(LookSurfaces.All, look)} material {material}{Blurred(blur)}: {key} {before} -> {after}");
+                    }
+                }
+        }
+
+        Assert.True(failures.Count == 0, $"{paletteFile}:\n  " + string.Join("\n  ", failures));
+    }
+
+    [Fact]
+    public void EachMaterialStandsOnWhatWasMeasuredUnderIt()
+    {
+        // Acrylic over a white window measured #929292; Mica and Mica Alt sample the wallpaper, darker.
+        Assert.Equal(new Rgb(0x92, 0x92, 0x92), LookSurfaces.Backdrop(3)[1]);
+        Assert.Same(LookSurfaces.MicaBackdrops, LookSurfaces.Backdrop(2));
+        Assert.Same(LookSurfaces.MicaBackdrops, LookSurfaces.Backdrop(4));
+
+        // The darker the material, the clearer the glass may go.
+        string P(string key) => "#FF000000";
+        Assert.True(LookSurfaces.Clarity(LookSurfaces.Neumorphic, 4, P) > LookSurfaces.Clarity(LookSurfaces.Neumorphic, 3, P));
     }
 
     [Theory]
@@ -114,12 +159,13 @@ public class LookSurfaceTests
         string xaml = File.ReadAllText(Path.Combine(WpfTestHost.WpfDir, "Palettes", paletteFile));
         var red = Rgb.Parse(LookSurfaces.Signal)!.Value;
         foreach (double? blur in Strengths)
-        {
-            var o = LookSurfaces.Overrides(LookSurfaces.DotMatrix, blur, key => PaletteColour(xaml, key));
-            string Get(string key) => o.TryGetValue(key, out var v) ? v : PaletteColour(xaml, key);
-            foreach (var (name, tile) in LookSurfaces.Surfaces(LookSurfaces.DotMatrix, blur, Get).Where(s => s.Name is "PanelColor" or "PanelAltColor"))
-                Assert.True(Contrast.Ratio(red, tile) >= 3, $"{paletteFile}: the red on {name} {tile}{Blurred(blur)} scores {Contrast.Ratio(red, tile):0.00}");
-        }
+            foreach (int material in Materials)
+            {
+                var o = LookSurfaces.Overrides(LookSurfaces.DotMatrix, blur, key => PaletteColour(xaml, key), material);
+                string Get(string key) => o.TryGetValue(key, out var v) ? v : PaletteColour(xaml, key);
+                foreach (var (name, tile) in LookSurfaces.Surfaces(LookSurfaces.DotMatrix, blur, Get, material).Where(s => s.Name is "PanelColor" or "PanelAltColor"))
+                    Assert.True(Contrast.Ratio(red, tile) >= 3, $"{paletteFile}: the red on {name} {tile}{Blurred(blur)} on material {material} scores {Contrast.Ratio(red, tile):0.00}");
+            }
     }
 
     [Fact]

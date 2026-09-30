@@ -672,7 +672,7 @@ public partial class MainWindow : Window
             }
         }
 
-        foreach (var (key, value) in OmniHub.Core.Theming.LookSurfaces.Overrides(look, strength, Palette))
+        foreach (var (key, value) in OmniHub.Core.Theming.LookSurfaces.Overrides(look, strength, Palette, _backdrop ?? 3))
         {
             app[key] = (Color)System.Windows.Media.ColorConverter.ConvertFromString(value);
             _materialKeys.Add(key);
